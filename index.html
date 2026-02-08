@@ -16,25 +16,9 @@
 </head>
 <body>
   <div class="app">
-    <header class="topbar">
-      <div>
-        <div class="brand">Forge</div>
-        <div class="sub">Strength and Cardio Log</div>
-      </div>
-      <div class="top-actions">
-        <button id="installBtn" class="ghost hidden">Install</button>
-      </div>
-    </header>
-    <nav class="top-nav">
-      <button class="nav-btn active" data-action="nav" data-view="log">Start</button>
-      <button class="nav-btn" data-action="nav" data-view="routines">Workouts</button>
-      <button class="nav-btn" data-action="nav" data-view="exercises">Exercises</button>
-      <button class="nav-btn" data-action="nav" data-view="stats">Stats</button>
-      <button class="nav-btn" data-action="nav" data-view="tools">Tools</button>
-    </nav>
 
     <main id="viewContainer">
-      <section id="view-log" class="view active">
+      <section id="view-workouts" class="view active">
         <div id="noWorkout" class="landing">
           <div class="hero">
             <div class="eyebrow">New in 6.0</div>
@@ -46,21 +30,9 @@
           <div class="panel">
             <div class="row space">
               <h2>Workouts</h2>
-              <button class="ghost" data-action="nav" data-view="routines">Manage</button>
             </div>
-            <div class="row wrap landing-controls">
-              <select id="startRoutineSelect"></select>
-              <button class="primary" data-action="start-routine">Start Workout</button>
-              <button class="ghost" data-action="nav" data-view="routines">Create Workout</button>
-            </div>
+            <button class="primary wide tile-button" data-action="create-workout">+ Workout</button>
             <div id="landingWorkouts" class="workout-grid"></div>
-          </div>
-
-          <div class="panel">
-            <div class="row space">
-              <h2>Recent Workouts</h2>
-            </div>
-            <div id="recentWorkouts"></div>
           </div>
         </div>
 
@@ -99,7 +71,12 @@
             <div class="timer card">
               <div class="timer-title">Rest Timer</div>
               <div id="timerDisplay" class="timer-display">01:30</div>
-              <div class="row">
+              <div class="row wrap timer-controls">
+                <select id="timerPreset">
+                  <option value="work">Work Set</option>
+                  <option value="warmup">Warm-up Set</option>
+                  <option value="drop">Drop Set</option>
+                </select>
                 <button class="primary" data-action="timer-start">Start</button>
                 <button class="ghost" data-action="timer-stop">Stop</button>
               </div>
@@ -128,18 +105,8 @@
       <section id="view-routines" class="view">
         <div class="panel">
           <div class="row space">
-            <h2>Workouts</h2>
-          </div>
-          <div class="row wrap">
-            <input type="text" id="newRoutineName" placeholder="Workout name">
-            <button class="primary" data-action="create-routine">Create Workout</button>
-          </div>
-          <div id="routineList"></div>
-        </div>
-
-        <div class="panel">
-          <div class="row space">
-            <h2>Workout Builder</h2>
+            <h2>Edit Workout</h2>
+            <button class="ghost" data-action="nav" data-view="workouts">Back</button>
           </div>
           <div class="row wrap">
             <select id="routineSelect"></select>
@@ -156,17 +123,11 @@
       </section>
 
       <section id="view-exercises" class="view">
-        <div class="panel">
-          <div class="row space">
-            <h2>Exercise Library</h2>
-            <input type="search" id="exerciseSearch" placeholder="Search exercises">
-          </div>
-          <div id="exerciseList"></div>
-        </div>
-
-        <div class="panel">
+        <button class="primary wide tile-button" data-action="toggle-exercise-form">+ Exercise</button>
+        <div id="exerciseForm" class="panel hidden">
           <div class="row space">
             <h2>Add Exercise</h2>
+            <button class="ghost" data-action="toggle-exercise-form">Close</button>
           </div>
           <div class="grid-2">
             <label>
@@ -187,16 +148,16 @@
                 <option value="duration">Duration</option>
               </select>
             </label>
-            <label>
-              Video URL (optional)
-              <input type="url" id="exerciseVideo" placeholder="https://">
-            </label>
           </div>
-          <label>
-            Instructions
-            <textarea id="exerciseInstructions" placeholder="Short coaching cues"></textarea>
-          </label>
           <button class="primary" data-action="create-exercise">Add Exercise</button>
+        </div>
+
+        <div class="panel">
+          <div class="row space">
+            <h2>Exercise Library</h2>
+            <input type="search" id="exerciseSearch" placeholder="Search exercises">
+          </div>
+          <div id="exerciseList"></div>
         </div>
       </section>
 
@@ -235,55 +196,34 @@
         </div>
       </section>
 
+      <section id="view-history" class="view">
+        <div class="panel">
+          <div class="row space">
+            <h2>History</h2>
+          </div>
+          <div id="historyList"></div>
+        </div>
+      </section>
+
       <section id="view-tools" class="view">
-        <div class="panel">
-          <div class="row space">
-            <h2>Warmup Calculator</h2>
-          </div>
-          <div class="row wrap">
-            <input type="number" step="0.5" id="warmupWeight" placeholder="Working weight (kg)">
-            <button class="primary" data-action="calc-warmup">Calculate</button>
-          </div>
-          <div id="warmupResults" class="result-list"></div>
-        </div>
-
-        <div class="panel">
-          <div class="row space">
-            <h2>Plate Calculator</h2>
-          </div>
-          <div class="row wrap">
-            <input type="number" step="0.5" id="plateTarget" placeholder="Target weight (kg)">
-            <input type="number" step="0.5" id="plateBarWeight" placeholder="Bar weight (kg)">
-            <button class="primary" data-action="calc-plates">Calculate</button>
-          </div>
-          <div id="plateResults" class="result-list"></div>
-        </div>
-
-        <div class="panel">
-          <div class="row space">
-            <h2>Export and Backup</h2>
-          </div>
-          <div class="row wrap">
-            <button class="primary" data-action="export-csv">Export CSV</button>
-            <button class="ghost" data-action="export-json">Export JSON Backup</button>
-            <label class="ghost upload">
-              Import JSON
-              <input type="file" id="importJsonInput" accept="application/json">
-            </label>
-          </div>
-          <div class="muted small">
-            Data stays on this device. Photos are stored locally and not included in CSV export.
-          </div>
-        </div>
-
         <div class="panel">
           <div class="row space">
             <h2>Settings</h2>
           </div>
           <div class="grid-2">
             <label>
-              Rest Timer (seconds)
-              <input type="number" step="5" data-setting="restSeconds" id="restSeconds">
+              Rest Timer - Work Set (sec)
+              <input type="number" step="5" data-setting="restSecondsWork" id="restSecondsWork">
+            </label>
+            <label>
+              Rest Timer - Warm Up (sec)
+              <input type="number" step="5" data-setting="restSecondsWarmup" id="restSecondsWarmup">
+            </label>
+          </div>
+          <div class="grid-2">
+            <label>
+              Rest Timer - Drop Set (sec)
+              <input type="number" step="5" data-setting="restSecondsDrop" id="restSecondsDrop">
             </label>
             <label class="switch">
               Auto Rest After Set
@@ -318,9 +258,68 @@
             </select>
           </label>
         </div>
+
+        <div class="tools-grid">
+          <div class="panel">
+            <div class="row space">
+              <h2>Warmup Calculator</h2>
+            </div>
+            <div class="row wrap">
+              <input type="number" step="0.5" id="warmupWeight" placeholder="Working weight (kg)">
+              <button class="primary" data-action="calc-warmup">Calculate</button>
+            </div>
+            <div id="warmupResults" class="result-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="row space">
+              <h2>Plate Calculator</h2>
+            </div>
+            <div class="row wrap">
+              <input type="number" step="0.5" id="plateTarget" placeholder="Target weight (kg)">
+              <input type="number" step="0.5" id="plateBarWeight" placeholder="Bar weight (kg)">
+              <button class="primary" data-action="calc-plates">Calculate</button>
+            </div>
+            <div id="plateResults" class="result-list"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="row space">
+            <h2>Export and Backup</h2>
+          </div>
+          <div class="row wrap">
+            <button class="primary" data-action="export-csv">Export CSV</button>
+            <button class="ghost" data-action="export-json">Export JSON Backup</button>
+            <label class="ghost upload">
+              Import JSON
+              <input type="file" id="importJsonInput" accept="application/json">
+            </label>
+          </div>
+          <div class="muted small">
+            Data stays on this device. Photos are stored locally and not included in CSV export.
+          </div>
+        </div>
+
       </section>
     </main>
 
+    <nav class="bottom-nav">
+      <button class="nav-btn" data-action="nav" data-view="stats">Stats</button>
+      <button class="nav-btn" data-action="nav" data-view="history">History</button>
+      <button class="nav-btn active" data-action="nav" data-view="workouts">Workouts</button>
+      <button class="nav-btn" data-action="nav" data-view="exercises">Exercises</button>
+      <button class="nav-btn" data-action="nav" data-view="tools">Tools</button>
+    </nav>
+  </div>
+
+  <div id="workoutSheet" class="sheet hidden">
+    <div class="sheet-card">
+      <div id="workoutSheetTitle" class="sheet-title">Workout</div>
+      <button class="primary wide" data-action="sheet-start">Start Workout</button>
+      <button class="ghost wide" data-action="sheet-edit">Edit Workout</button>
+      <button class="ghost wide" data-action="sheet-cancel">Cancel</button>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>
