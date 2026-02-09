@@ -138,27 +138,31 @@ function mergeSettings(saved = {}) {
   return merged;
 }
 
-function normalizeRoutine(routine) {
-  const items = Array.isArray(routine.items) ? routine.items : [];
-  return {
-    ...routine,
-    items: items.map((item) => ({
-      ...item,
-      sets: Array.isArray(item.sets) ? item.sets : []
-    }))
-  };
-}
+  function normalizeRoutine(routine) {
+    const items = Array.isArray(routine.items) ? routine.items : [];
+    return {
+      ...routine,
+      items: items.map((item) => ({
+        ...item,
+        sets: Array.isArray(item.sets)
+          ? item.sets.map((set) => ({ ...set, completed: !!set.completed }))
+          : []
+      }))
+    };
+  }
 
-function normalizeWorkout(workout) {
-  const items = Array.isArray(workout.items) ? workout.items : [];
-  return {
-    ...workout,
-    items: items.map((item) => ({
-      ...item,
-      sets: Array.isArray(item.sets) ? item.sets : []
-    }))
-  };
-}
+  function normalizeWorkout(workout) {
+    const items = Array.isArray(workout.items) ? workout.items : [];
+    return {
+      ...workout,
+      items: items.map((item) => ({
+        ...item,
+        sets: Array.isArray(item.sets)
+          ? item.sets.map((set) => ({ ...set, completed: !!set.completed }))
+          : []
+      }))
+    };
+  }
 
 
 let photoDB = null;
@@ -222,9 +226,32 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove("show"), 2000);
 }
 
-function getExercise(id) {
-  return state.exercises.find((ex) => ex.id === id);
-}
+  function getExercise(id) {
+    return state.exercises.find((ex) => ex.id === id);
+  }
+
+  function findExerciseByName(name) {
+    const needle = String(name || "").trim().toLowerCase();
+    if (!needle) return null;
+    return state.exercises.find((ex) => ex.name.toLowerCase() === needle) || null;
+  }
+
+  function createExerciseFromName(name) {
+    const trimmed = String(name || "").trim();
+    if (!trimmed) return null;
+    const exercise = {
+      id: uid(),
+      name: trimmed,
+      category: "",
+      type: "weight"
+    };
+    state.exercises.push(exercise);
+    return exercise;
+  }
+
+  function ensureExercise(name) {
+    return findExerciseByName(name) || createExerciseFromName(name);
+  }
 
 function getActiveWorkout() {
   return state.workouts.find((w) => w.id === state.activeWorkoutId) || null;
@@ -313,13 +340,21 @@ function getRestSeconds(tag = "work") {
   return Math.max(10, Number.isFinite(value) ? value : 0);
 }
 
-function updateTimerUI() {
-  const el = $("#timerDisplay");
-  if (!el) return;
-  const preset = $("#timerPreset")?.value || "work";
-  const display = restTimer.remaining > 0 ? restTimer.remaining : getRestSeconds(preset);
-  el.textContent = formatDuration(display);
-}
+  function updateTimerUI() {
+    const mini = $("#restMini");
+    const display = $("#restCountdown");
+    if (!mini || !display) return;
+    if (!state.settings.autoRest) {
+      mini.classList.add("hidden");
+      return;
+    }
+    if (restTimer.remaining > 0) {
+      display.textContent = formatDuration(restTimer.remaining);
+      mini.classList.remove("hidden");
+      return;
+    }
+    mini.classList.add("hidden");
+  }
 
 function startTimer(seconds) {
   const duration = Math.max(0, Math.round(seconds));
@@ -346,15 +381,17 @@ function stopTimer(clear = true) {
   updateTimerUI();
 }
 
-function setView(view) {
-  ui.view = view;
-  $$(".view").forEach((section) => {
-    section.classList.toggle("active", section.id === `view-${view}`);
-  });
-  $$(".nav-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.view === view);
-  });
-}
+  function setView(view) {
+    const resolvedView = view === "workouts" && getActiveWorkout() ? "session" : view;
+    ui.view = resolvedView;
+    $$(".view").forEach((section) => {
+      section.classList.toggle("active", section.id === `view-${resolvedView}`);
+    });
+    const navView = resolvedView === "session" ? "workouts" : resolvedView;
+    $$(".nav-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.view === navView);
+    });
+  }
 
 function startWorkout(routineId = null) {
   const routine = routineId ? state.routines.find((r) => r.id === routineId) : null;
@@ -369,15 +406,15 @@ function startWorkout(routineId = null) {
     photoIds: [],
     items: []
   };
-  if (routine) {
-    workout.items = routine.items.map((item) => ({
-      id: uid(),
-      exerciseId: item.exerciseId,
-      group: item.group || "",
-      note: item.note || "",
-      sets: (item.sets || []).map((set) => ({ ...set, id: uid() }))
-    }));
-  }
+    if (routine) {
+      workout.items = routine.items.map((item) => ({
+        id: uid(),
+        exerciseId: item.exerciseId,
+        group: item.group || "",
+        note: item.note || "",
+        sets: (item.sets || []).map((set) => ({ ...set, id: uid(), completed: false }))
+      }));
+    }
   state.workouts.unshift(workout);
   state.activeWorkoutId = workout.id;
   saveState();
@@ -387,17 +424,52 @@ function startWorkout(routineId = null) {
   toast("Workout started");
 }
 
-function endWorkout() {
-  const active = getActiveWorkout();
-  if (!active) return;
-  active.endedAt = new Date().toISOString();
-  state.activeWorkoutId = null;
-  saveState();
-  renderLog();
-  renderHistory();
-  setView("workouts");
-  toast("Workout saved");
-}
+  function endWorkout() {
+    const active = getActiveWorkout();
+    if (!active) return;
+    active.endedAt = new Date().toISOString();
+    state.activeWorkoutId = null;
+    saveState();
+    renderLog();
+    renderHistory();
+    setView("workouts");
+    toast("Workout saved");
+  }
+
+  function cancelWorkout() {
+    const active = getActiveWorkout();
+    if (!active) return;
+    state.workouts = state.workouts.filter((w) => w.id !== active.id);
+    state.activeWorkoutId = null;
+    saveState();
+    renderLog();
+    renderHistory();
+    setView("workouts");
+    toast("Workout canceled");
+    closeFinishSheet();
+  }
+
+  function openFinishSheet() {
+    const sheet = $("#finishSheet");
+    if (sheet) sheet.classList.remove("hidden");
+  }
+
+  function closeFinishSheet() {
+    const sheet = $("#finishSheet");
+    if (sheet) sheet.classList.add("hidden");
+  }
+
+  function completeUnfinishedSets() {
+    const active = getActiveWorkout();
+    if (!active) return;
+    active.items.forEach((item) => {
+      item.sets.forEach((set) => {
+        set.completed = true;
+      });
+    });
+    closeFinishSheet();
+    endWorkout();
+  }
 
 function addWorkoutExercise(exerciseId, group = "") {
   const workout = getActiveWorkout();
@@ -459,12 +531,7 @@ function addSetFromCard(button) {
   const exercise = getExercise(item.exerciseId);
   if (!exercise) return;
 
-  const lastSet = item.sets[item.sets.length - 1];
-  if (owner === "workout" && state.settings.autoRest && lastSet) {
-    startTimer(getRestSeconds(lastSet.tag));
-  }
-
-  const set = { id: uid(), type: exercise.type, tag: "work" };
+    const set = { id: uid(), type: exercise.type, tag: "work", completed: false };
   item.sets.push(set);
   saveState();
   owner === "routine" ? renderRoutines() : renderLog();
@@ -507,28 +574,33 @@ function deleteRoutine(routineId) {
   renderRoutines();
 }
 
-function addRoutineItem() {
-  const routine = getEditRoutine();
-  if (!routine) {
-    toast("Create or select a workout");
-    return;
+  function addRoutineItem() {
+    const routine = getEditRoutine();
+    if (!routine) {
+      toast("Create or select a workout");
+      return;
+    }
+    const nameInput = $("#routineExerciseInput");
+    const exerciseName = nameInput?.value.trim();
+    if (!exerciseName) {
+      toast("Add an exercise name");
+      return;
+    }
+    const exercise = ensureExercise(exerciseName);
+    if (!exercise) return;
+    routine.items.push({
+      id: uid(),
+      exerciseId: exercise.id,
+      group: "",
+      note: "",
+      sets: []
+    });
+    if (nameInput) nameInput.value = "";
+    saveState();
+    renderRoutines();
+    renderExercises();
+    renderStats();
   }
-  const exId = $("#routineExerciseSelect")?.value;
-  if (!exId) return;
-  routine.items.push({
-    id: uid(),
-    exerciseId: exId,
-    group: $("#routineGroup")?.value.trim() || "",
-    note: $("#routineNote")?.value.trim() || "",
-    sets: []
-  });
-  const routineGroup = $("#routineGroup");
-  const routineNote = $("#routineNote");
-  if (routineGroup) routineGroup.value = "";
-  if (routineNote) routineNote.value = "";
-  saveState();
-  renderRoutines();
-}
 
 function removeRoutineItem(routineId, itemId) {
   const routine = state.routines.find((r) => r.id === routineId);
@@ -609,12 +681,14 @@ function renderSession() {
   }
   activePanel.classList.remove("hidden");
 
-  const nameInput = $("[data-field='workout-name']");
-  const bwInput = $("[data-field='workout-bodyweight']");
-  const notesInput = $("[data-field='workout-notes']");
-  if (nameInput) nameInput.value = active.name || "";
-  if (bwInput) bwInput.value = Number.isFinite(active.bodyweight) ? active.bodyweight : "";
-  if (notesInput) notesInput.value = active.notes || "";
+    const nameInput = $("[data-field='workout-name']");
+    const bwInput = $("[data-field='workout-bodyweight']");
+    const notesInput = $("[data-field='workout-notes']");
+    const restToggle = $("#restToggle");
+    if (nameInput) nameInput.value = active.name || "";
+    if (bwInput) bwInput.value = Number.isFinite(active.bodyweight) ? active.bodyweight : "";
+    if (notesInput) notesInput.value = active.notes || "";
+    if (restToggle) restToggle.checked = !!state.settings.autoRest;
 
   const addSelect = $("#addExerciseSelect");
   if (addSelect) {
@@ -695,18 +769,19 @@ function renderTagSelect(tag, owner, itemId, setId) {
   `;
 }
 
-function renderSetsHeader(type) {
-  const loadLabel = type === "assisted" ? "Assist" : type === "duration" ? "Time" : "kg";
-  const repsLabel = type === "duration" ? "Distance" : "Reps";
-  return `<div class="set-row header"><div>Set</div><div>Previous</div><div>${loadLabel}</div><div>${repsLabel}</div><div>Tag</div><div></div></div>`;
-}
+  function renderSetsHeader(type, owner) {
+    const loadLabel = type === "assisted" ? "Assist" : type === "duration" ? "Time" : "kg";
+    const repsLabel = type === "duration" ? "Distance" : "Reps";
+    const doneLabel = owner === "workout" ? "<div>Done</div>" : "<div></div>";
+    return `<div class="set-row header"><div>Set</div><div>Previous</div><div>${loadLabel}</div><div>${repsLabel}</div><div>Tag</div>${doneLabel}<div></div></div>`;
+  }
 
-function renderSetRow(set, index, itemId, owner, prevSet) {
-  const tag = set.tag || "work";
-  const prevLabel = formatPreviousSet(prevSet);
-  const baseAttrs = `data-owner="${owner}" data-item-id="${itemId}" data-set-id="${set.id}"`;
-  let loadField = "";
-  let repsField = "";
+  function renderSetRow(set, index, itemId, owner, prevSet) {
+    const tag = set.tag || "work";
+    const prevLabel = formatPreviousSet(prevSet);
+    const baseAttrs = `data-owner="${owner}" data-item-id="${itemId}" data-set-id="${set.id}"`;
+    let loadField = "";
+    let repsField = "";
 
   if (set.type === "duration") {
     loadField = `<input type="text" placeholder="mm:ss" value="${set.durationSec ? formatDuration(set.durationSec) : ""}" data-set-field="duration" ${baseAttrs}>`;
@@ -719,17 +794,22 @@ function renderSetRow(set, index, itemId, owner, prevSet) {
     repsField = `<input type="number" step="1" placeholder="Reps" value="${Number.isFinite(set.reps) ? set.reps : ""}" data-set-field="reps" ${baseAttrs}>`;
   }
 
-  return `
-    <div class="set-row">
-      <div class="set-pill">${index + 1}</div>
-      <div class="set-cell set-prev">${esc(prevLabel)}</div>
-      <div class="set-cell">${loadField}</div>
-      <div class="set-cell">${repsField}</div>
-      <div class="set-cell">${renderTagSelect(tag, owner, itemId, set.id)}</div>
-      <button class="ghost small set-remove" data-action="remove-set" data-owner="${owner}" data-item-id="${itemId}" data-set-id="${set.id}">-</button>
-    </div>
-  `;
-}
+    const doneCell = owner === "workout"
+      ? `<div class="set-check"><input type="checkbox" ${set.completed ? "checked" : ""} data-set-field="complete" ${baseAttrs}></div>`
+      : `<div></div>`;
+
+    return `
+      <div class="set-row${set.completed ? " completed" : ""}">
+        <div class="set-pill">${index + 1}</div>
+        <div class="set-cell set-prev">${esc(prevLabel)}</div>
+        <div class="set-cell">${loadField}</div>
+        <div class="set-cell">${repsField}</div>
+        <div class="set-cell">${renderTagSelect(tag, owner, itemId, set.id)}</div>
+        ${doneCell}
+        <button class="ghost small set-remove" data-action="remove-set" data-owner="${owner}" data-item-id="${itemId}" data-set-id="${set.id}">-</button>
+      </div>
+    `;
+  }
 
 function renderExerciseCard(item, options) {
   const owner = options.owner;
@@ -738,18 +818,19 @@ function renderExerciseCard(item, options) {
   const groupLabel = item.group ? `Superset ${esc(item.group)}` : "Single";
   const meta = `${esc(exercise.category || "General")} · ${formatExerciseType(exercise.type)} · ${groupLabel}`;
   const prevSets = owner === "workout" ? getPreviousSets(item.exerciseId, options.workoutId) : [];
-  const setsHeader = renderSetsHeader(exercise.type);
+    const setsHeader = renderSetsHeader(exercise.type, owner);
   const setsRows = item.sets.map((set, index) => renderSetRow(set, index, item.id, owner, prevSets[index])).join("");
   const setsHtml = item.sets.length ? setsHeader + setsRows : `${setsHeader}<div class="muted small">No sets yet.</div>`;
-  const actions = owner === "routine"
-    ? `
-      <button class="ghost small" data-action="move-routine-item-up" data-routine-id="${options.routineId}" data-item-id="${item.id}">Up</button>
-      <button class="ghost small" data-action="move-routine-item-down" data-routine-id="${options.routineId}" data-item-id="${item.id}">Down</button>
-      <button class="ghost small" data-action="remove-routine-item" data-routine-id="${options.routineId}" data-item-id="${item.id}">Remove</button>
-    `
-    : `
-      <button class="ghost small" data-action="remove-workout-exercise" data-item-id="${item.id}">Remove</button>
-    `;
+    const actions = owner === "routine"
+      ? `
+        <button class="ghost small" data-action="move-routine-item-up" data-routine-id="${options.routineId}" data-item-id="${item.id}">Up</button>
+        <button class="ghost small" data-action="move-routine-item-down" data-routine-id="${options.routineId}" data-item-id="${item.id}">Down</button>
+        <button class="ghost small" data-action="replace-exercise" data-owner="${owner}" data-item-id="${item.id}">Replace</button>
+        <button class="ghost small" data-action="remove-routine-item" data-routine-id="${options.routineId}" data-item-id="${item.id}">Remove</button>
+      `
+      : `
+        <button class="ghost small" data-action="remove-workout-exercise" data-item-id="${item.id}">Remove</button>
+      `;
 
   const replaceOptions = state.exercises
     .slice()
@@ -757,36 +838,32 @@ function renderExerciseCard(item, options) {
     .map((ex) => `<option value="${ex.id}" ${ex.id === item.exerciseId ? "selected" : ""}>${esc(ex.name)}</option>`)
     .join("");
 
-  return `
-    <div class="card exercise-card" data-item-id="${item.id}">
-      <div class="exercise-header">
-        <div>
-          <div class="exercise-title">${esc(exercise.name)}</div>
-          <div class="exercise-meta">${meta}</div>
+    return `
+      <div class="card exercise-card" data-item-id="${item.id}">
+        <div class="exercise-header">
+          <div>
+            <div class="exercise-title">${esc(exercise.name)}</div>
+            <div class="exercise-meta">${meta}</div>
+          </div>
+          <div class="exercise-actions">
+            ${actions}
+          </div>
         </div>
-        <div class="exercise-actions">
-          ${actions}
+        <div class="exercise-note-line">
+          <input type="text" data-field="item-note" data-owner="${owner}" data-item-id="${item.id}" placeholder="Note (optional)" value="${esc(item.note || "")}">
+        </div>
+        <div class="sets">${setsHtml}</div>
+        <div class="add-set">
+          <button class="primary" data-action="add-set" data-owner="${owner}" data-item-id="${item.id}">+ Add Set</button>
+        </div>
+        <div class="replace-row">
+          <select data-field="replace-select" data-owner="${owner}" data-item-id="${item.id}">
+            ${replaceOptions}
+          </select>
         </div>
       </div>
-      <div class="sets">${setsHtml}</div>
-      <div class="add-set">
-        <button class="primary" data-action="add-set" data-owner="${owner}" data-item-id="${item.id}">+ Add Set</button>
-      </div>
-      <div class="exercise-note">
-        <label>
-          Exercise Note
-          <textarea data-field="item-note" data-owner="${owner}" data-item-id="${item.id}" placeholder="Notes for this exercise">${esc(item.note || "")}</textarea>
-        </label>
-      </div>
-      <div class="replace-row">
-        <select data-field="replace-select" data-owner="${owner}" data-item-id="${item.id}">
-          ${replaceOptions}
-        </select>
-        <button class="ghost" data-action="replace-exercise" data-owner="${owner}" data-item-id="${item.id}">Replace</button>
-      </div>
-    </div>
-  `;
-}
+    `;
+  }
 
 function renderWorkoutExercise(item, workout) {
   return renderExerciseCard(item, { owner: "workout", workoutId: workout.id });
@@ -824,42 +901,139 @@ function closeWorkoutSheet() {
   ui.selectedRoutineId = null;
 }
 
-function renderHistory() {
-  const list = $("#historyList");
-  if (!list) return;
-  const history = state.workouts
-    .filter((w) => w.id !== state.activeWorkoutId)
-    .slice()
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  if (!history.length) {
-    list.innerHTML = "<div class=\"muted small\">No saved workouts yet.</div>";
-    return;
-  }
-  list.innerHTML = history.map((workout) => {
-    const volume = workoutVolume(workout);
-    const exerciseCount = workout.items.length;
-    return `
-      <div class="result-item">
-        <div>
-          <div class="title">${esc(workout.name || "Workout")}</div>
-          <div class="muted small">${formatDate(workout.createdAt)} · ${exerciseCount} exercises</div>
+  function renderHistory() {
+    const list = $("#historyList");
+    if (!list) return;
+    const history = state.workouts
+      .filter((w) => w.id !== state.activeWorkoutId)
+      .slice()
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (!history.length) {
+      list.innerHTML = "<div class=\"muted small\">No saved workouts yet.</div>";
+      return;
+    }
+    list.innerHTML = history.map((workout) => {
+      const volume = workoutVolume(workout);
+      const exerciseCount = workout.items.length;
+      return `
+        <div class="result-item history-item" data-action="history-details" data-workout-id="${workout.id}">
+          <div>
+            <div class="title">${esc(workout.name || "Workout")}</div>
+            <div class="muted small">${formatDate(workout.createdAt)} · ${exerciseCount} exercises</div>
+          </div>
+          <div class="history-actions">
+            <div class="title">${volume.toFixed(0)} kg</div>
+            <button class="ghost icon-btn" data-action="history-delete" data-workout-id="${workout.id}" aria-label="Delete workout">⋯</button>
+          </div>
         </div>
-        <div class="title">${volume.toFixed(0)} kg</div>
-      </div>
-    `;
-  }).join("");
-}
+      `;
+    }).join("");
+  }
 
-function workoutVolume(workout) {
-  let volume = 0;
-  workout.items.forEach((item) => {
-    item.sets.forEach((set) => {
-      if (set.type === "duration") return;
-      volume += setVolume(set, workout.bodyweight);
+  function workoutVolume(workout) {
+    let volume = 0;
+    workout.items.forEach((item) => {
+      item.sets.forEach((set) => {
+        if (set.type === "duration") return;
+        volume += setVolume(set, workout.bodyweight);
+      });
     });
-  });
-  return volume;
-}
+    return volume;
+  }
+
+  function workoutTotals(workout) {
+    let sets = 0;
+    let reps = 0;
+    let weight = 0;
+    let hasDuration = false;
+    workout.items.forEach((item) => {
+      item.sets.forEach((set) => {
+        sets += 1;
+        if (set.type === "duration") {
+          hasDuration = true;
+          if (set.durationSec) reps += set.durationSec;
+          return;
+        }
+        if (set.reps) reps += set.reps;
+        weight += setVolume(set, workout.bodyweight);
+      });
+    });
+    return { sets, reps, weight, hasDuration };
+  }
+
+  function formatHistorySet(set, workout) {
+    if (set.type === "duration") {
+      const time = set.durationSec ? formatDuration(set.durationSec) : "-";
+      const distance = Number.isFinite(set.distance) ? `${set.distance} km` : "";
+      return distance ? `${time} · ${distance}` : time;
+    }
+    if (set.type === "assisted") {
+      const assist = Number.isFinite(set.assist) ? `${set.assist} kg` : "-";
+      const reps = Number.isFinite(set.reps) ? `${set.reps} reps` : "-";
+      return `${assist} x ${reps}`;
+    }
+    const weight = Number.isFinite(set.weight) ? set.weight : effectiveWeight(set, workout.bodyweight);
+    const reps = Number.isFinite(set.reps) ? set.reps : "-";
+    return `${weight || "-"} kg x ${reps}`;
+  }
+
+  function openHistorySheet(workoutId) {
+    const workout = state.workouts.find((w) => w.id === workoutId);
+    if (!workout) return;
+    const details = $("#historyDetails");
+    if (!details) return;
+    const durationSec = workout.endedAt
+      ? Math.max(0, Math.round((new Date(workout.endedAt) - new Date(workout.createdAt)) / 1000))
+      : 0;
+    const totals = workoutTotals(workout);
+    const repsLabel = totals.hasDuration ? formatDuration(totals.reps) : `${totals.reps}`;
+    const weightLabel = totals.weight ? `${totals.weight.toFixed(0)} kg` : "-";
+
+    const exerciseHtml = workout.items.map((item) => {
+      const ex = getExercise(item.exerciseId);
+      const setLines = item.sets.length
+        ? item.sets.map((set, idx) => `<div class="history-set">Set ${idx + 1}: ${formatHistorySet(set, workout)}</div>`).join("")
+        : "<div class=\"muted small\">No sets logged.</div>";
+      return `
+        <div class="history-exercise">
+          <div class="title">${esc(ex?.name || "Exercise")}</div>
+          <div class="muted small">${formatExerciseType(ex?.type || "weight")}</div>
+          <div class="history-set-list">${setLines}</div>
+        </div>
+      `;
+    }).join("");
+
+    details.innerHTML = `
+      <div class="history-summary">
+        <div class="result-item"><div>Duration</div><div>${durationSec ? formatDuration(durationSec) : "-"}</div></div>
+        <div class="result-item"><div>Exercises</div><div>${workout.items.length}</div></div>
+        <div class="result-item"><div>Sets</div><div>${totals.sets}</div></div>
+        <div class="result-item"><div>Total Reps</div><div>${repsLabel}</div></div>
+        <div class="result-item"><div>Total Weight</div><div>${weightLabel}</div></div>
+      </div>
+      <div class="history-exercises">${exerciseHtml}</div>
+    `;
+
+    const sheet = $("#historySheet");
+    if (sheet) sheet.classList.remove("hidden");
+  }
+
+  function closeHistorySheet() {
+    const sheet = $("#historySheet");
+    if (sheet) sheet.classList.add("hidden");
+  }
+
+  function deleteWorkout(workoutId) {
+    const workout = state.workouts.find((w) => w.id === workoutId);
+    if (!workout) return;
+    if (!confirm(`Delete ${workout.name || "this workout"}?`)) return;
+    state.workouts = state.workouts.filter((w) => w.id !== workoutId);
+    if (state.activeWorkoutId === workoutId) state.activeWorkoutId = null;
+    saveState();
+    renderHistory();
+    renderStats();
+    closeHistorySheet();
+  }
 
 function renderRoutines() {
   const routineList = $("#routineList");
@@ -911,20 +1085,16 @@ function renderRoutines() {
     }
   }
 
-  const routineExerciseSelect = $("#routineExerciseSelect");
-  if (routineExerciseSelect) {
-    if (state.exercises.length) {
-      routineExerciseSelect.disabled = false;
-      routineExerciseSelect.innerHTML = state.exercises
+    const exerciseNameList = $("#exerciseNameList");
+    if (exerciseNameList) {
+      exerciseNameList.innerHTML = state.exercises
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map((ex) => `<option value="${ex.id}">${esc(ex.name)}</option>`)
+        .map((ex) => `<option value="${esc(ex.name)}"></option>`)
         .join("");
-    } else {
-      routineExerciseSelect.disabled = true;
-      routineExerciseSelect.innerHTML = "<option value=\"\">Add exercises first</option>";
     }
-  }
+    const routineExerciseInput = $("#routineExerciseInput");
+    if (routineExerciseInput) routineExerciseInput.disabled = false;
 
   const builder = $("#routineItems");
   const routine = getEditRoutine();
@@ -940,8 +1110,8 @@ function renderRoutines() {
     }
   }
 
-  const addButton = document.querySelector("[data-action='add-routine-item']");
-  if (addButton) addButton.disabled = !state.exercises.length;
+    const addButton = document.querySelector("[data-action='add-routine-item']");
+    if (addButton) addButton.disabled = false;
 
   renderLandingWorkouts();
 }
@@ -982,51 +1152,56 @@ function renderExercises() {
     : "<div class=\"muted small\">No exercises found.</div>";
 }
 
-function computeExerciseStats(exerciseId) {
-  const exercise = getExercise(exerciseId);
-  if (!exercise) return null;
+  function computeExerciseStats(exerciseId) {
+    const exercise = getExercise(exerciseId);
+    if (!exercise) return null;
 
-  let maxWeight = 0;
-  let maxReps = 0;
-  let maxOneRm = 0;
-  let totalVolume = 0;
-  const progression = [];
+    let maxWeight = 0;
+    let maxReps = 0;
+    let maxOneRm = 0;
+    let totalVolume = 0;
+    let totalReps = 0;
+    let totalWeight = 0;
+    const progression = [];
 
   state.workouts.forEach((workout) => {
     let dayVolume = 0;
     let dayOneRm = 0;
     workout.items.forEach((item) => {
-      if (item.exerciseId !== exerciseId) return;
-      item.sets.forEach((set) => {
-        if (exercise.type === "duration") {
-          if (set.durationSec) {
-            totalVolume += set.durationSec;
-            dayVolume += set.durationSec;
-            maxReps = Math.max(maxReps, set.durationSec);
+        if (item.exerciseId !== exerciseId) return;
+        item.sets.forEach((set) => {
+          if (exercise.type === "duration") {
+            if (set.durationSec) {
+              totalVolume += set.durationSec;
+              dayVolume += set.durationSec;
+              totalReps += set.durationSec;
+              maxReps = Math.max(maxReps, set.durationSec);
+            }
+            return;
           }
-          return;
-        }
-        if (!set.reps) return;
-        const weight = effectiveWeight(set, workout.bodyweight);
-        if (!weight) return;
-        maxWeight = Math.max(maxWeight, weight);
-        maxReps = Math.max(maxReps, set.reps);
-        const oneRm = calcOneRm(weight, set.reps);
-        maxOneRm = Math.max(maxOneRm, oneRm);
-        dayOneRm = Math.max(dayOneRm, oneRm);
-        const volume = weight * set.reps;
-        totalVolume += volume;
-        dayVolume += volume;
+          if (!set.reps) return;
+          const weight = effectiveWeight(set, workout.bodyweight);
+          if (!weight) return;
+          maxWeight = Math.max(maxWeight, weight);
+          maxReps = Math.max(maxReps, set.reps);
+          const oneRm = calcOneRm(weight, set.reps);
+          maxOneRm = Math.max(maxOneRm, oneRm);
+          dayOneRm = Math.max(dayOneRm, oneRm);
+          const volume = weight * set.reps;
+          totalVolume += volume;
+          totalWeight += volume;
+          totalReps += set.reps;
+          dayVolume += volume;
+        });
       });
+      if (dayVolume > 0) {
+        progression.push({ date: workout.createdAt, volume: dayVolume, oneRm: dayOneRm });
+      }
     });
-    if (dayVolume > 0) {
-      progression.push({ date: workout.createdAt, volume: dayVolume, oneRm: dayOneRm });
-    }
-  });
 
-  progression.sort((a, b) => new Date(a.date) - new Date(b.date));
-  return { exercise, maxWeight, maxReps, maxOneRm, totalVolume, progression };
-}
+    progression.sort((a, b) => new Date(a.date) - new Date(b.date));
+    return { exercise, maxWeight, maxReps, maxOneRm, totalVolume, totalReps, totalWeight, progression };
+  }
 
 function renderStats() {
   const select = $("#statsExerciseSelect");
@@ -1047,15 +1222,16 @@ function renderStats() {
     }
   }
 
-  if (!ui.statsExerciseId) {
-    $("#stat1rm").textContent = "-";
-    $("#statMaxWeight").textContent = "-";
-    $("#statMaxReps").textContent = "-";
-    $("#statVolume").textContent = "-";
-    renderLineChart($("#volumeChart"), [], "#b197ff");
-    renderLineChart($("#oneRmChart"), [], "#b197ff");
-    return;
-  }
+    if (!ui.statsExerciseId) {
+      $("#stat1rm").textContent = "-";
+      $("#statMaxWeight").textContent = "-";
+      $("#statMaxReps").textContent = "-";
+      $("#statVolume").textContent = "-";
+      $("#statTotalReps").textContent = "-";
+      renderLineChart($("#volumeChart"), [], "#b197ff");
+      renderLineChart($("#oneRmChart"), [], "#b197ff");
+      return;
+    }
   const stats = computeExerciseStats(ui.statsExerciseId);
   if (!stats) return;
 
@@ -1063,12 +1239,15 @@ function renderStats() {
 
   $("#stat1rm").textContent = isDuration ? "-" : `${stats.maxOneRm.toFixed(1)} kg`;
   $("#statMaxWeight").textContent = isDuration ? "-" : `${stats.maxWeight.toFixed(1)} kg`;
-  $("#statMaxReps").textContent = isDuration
-    ? formatDuration(stats.maxReps)
-    : `${stats.maxReps}`;
-  $("#statVolume").textContent = isDuration
-    ? `${formatDuration(stats.totalVolume)}`
-    : `${stats.totalVolume.toFixed(0)} kg`;
+    $("#statMaxReps").textContent = isDuration
+      ? formatDuration(stats.maxReps)
+      : `${stats.maxReps}`;
+    $("#statVolume").textContent = isDuration
+      ? "-"
+      : `${stats.totalWeight.toFixed(0)} kg`;
+    $("#statTotalReps").textContent = isDuration
+      ? `${formatDuration(stats.totalReps)}`
+      : `${stats.totalReps}`;
 
   const volumeData = stats.progression.map((p) => ({ label: formatDate(p.date), value: p.volume }));
   const oneRmData = stats.progression.map((p) => ({ label: formatDate(p.date), value: p.oneRm }));
@@ -1333,9 +1512,13 @@ async function renderPhotoStrip(photoIds) {
 }
 
 function updateSetting(key, value, element) {
-  if (key === "autoRest") {
-    state.settings.autoRest = element.checked;
-  } else if (key === "warmupPercents") {
+    if (key === "autoRest") {
+      state.settings.autoRest = element.checked;
+      const restToggle = $("#restToggle");
+      if (restToggle) restToggle.checked = state.settings.autoRest;
+      if (!state.settings.autoRest) stopTimer();
+      updateTimerUI();
+    } else if (key === "warmupPercents") {
     state.settings.warmupPercents = value
       .split(",")
       .map((v) => parseFloat(v.trim()))
@@ -1358,9 +1541,13 @@ function updateSetting(key, value, element) {
   } else if (key === "restSeconds") {
     state.settings.restSecondsWork = Math.max(10, parseInt(value, 10) || 90);
     updateTimerUI();
-  } else if (key === "barWeight") {
-    state.settings.barWeight = parseFloat(value) || 20;
-  } else if (key === "bodyweight") {
+    } else if (key === "barWeight") {
+      state.settings.barWeight = parseFloat(value) || 20;
+      const barInput = $("#barWeight");
+      if (barInput) barInput.value = state.settings.barWeight;
+      const plateBar = $("#plateBarWeight");
+      if (plateBar) plateBar.value = state.settings.barWeight;
+    } else if (key === "bodyweight") {
     state.settings.bodyweight = parseFloat(value) || 0;
   } else if (key === "oneRmFormula") {
     state.settings.oneRmFormula = value;
@@ -1395,11 +1582,20 @@ function updateSetFromControl(target) {
   const set = item.sets.find((entry) => entry.id === setId);
   if (!set) return true;
 
-  if (field === "tag") {
-    set.tag = target.value;
-    saveState();
-    return true;
-  }
+    if (field === "tag") {
+      set.tag = target.value;
+      saveState();
+      return true;
+    }
+
+    if (field === "complete") {
+      set.completed = !!target.checked;
+      saveState();
+      if (set.completed && state.settings.autoRest) {
+        startTimer(getRestSeconds(set.tag));
+      }
+      return true;
+    }
 
   if (field === "duration") {
     set.durationSec = parseDuration(target.value);
@@ -1454,15 +1650,23 @@ function handleInputEvents() {
       }
       return;
     }
-    if (target.id === "exerciseSearch") {
-      ui.exerciseSearch = target.value;
-      renderExercises();
-      return;
-    }
-    if (target.dataset.field === "workout-name") {
-      const workout = getActiveWorkout();
-      if (workout) workout.name = target.value;
-      saveState();
+      if (target.id === "exerciseSearch") {
+        ui.exerciseSearch = target.value;
+        renderExercises();
+        return;
+      }
+      if (target.id === "restToggle") {
+        updateSetting("autoRest", target.checked, target);
+        return;
+      }
+      if (target.id === "plateBarWeight") {
+        updateSetting("barWeight", target.value, target);
+        return;
+      }
+      if (target.dataset.field === "workout-name") {
+        const workout = getActiveWorkout();
+        if (workout) workout.name = target.value;
+        saveState();
       return;
     }
     if (target.dataset.field === "workout-bodyweight") {
@@ -1504,27 +1708,37 @@ function handleInputEvents() {
       handlePhotoUpload(target.files);
       target.value = "";
     }
-    if (target.id === "importJsonInput") {
-      importJson(target.files[0]);
-      target.value = "";
-    }
-    if (target.id === "timerPreset") {
-      updateTimerUI();
-    }
-  });
+      if (target.id === "importJsonInput") {
+        importJson(target.files[0]);
+        target.value = "";
+      }
+    });
 
-  document.addEventListener("click", (event) => {
-    if (event.target.id === "workoutSheet") {
-      closeWorkoutSheet();
-      return;
-    }
-    const button = event.target.closest("[data-action]");
-    if (!button) return;
-    const action = button.dataset.action;
-    if (action === "nav") {
-      setView(button.dataset.view);
-      return;
-    }
+    document.addEventListener("click", (event) => {
+      if (event.target.id === "workoutSheet") {
+        closeWorkoutSheet();
+        return;
+      }
+      if (event.target.id === "finishSheet") {
+        closeFinishSheet();
+        return;
+      }
+      if (event.target.id === "historySheet") {
+        closeHistorySheet();
+        return;
+      }
+      const button = event.target.closest("[data-action]");
+      if (!button) return;
+      const action = button.dataset.action;
+      if (action === "nav") {
+        const next = button.dataset.view;
+        if (next === "workouts" && getActiveWorkout()) {
+          setView("session");
+        } else {
+          setView(next);
+        }
+        return;
+      }
     if (action === "start-quick") {
       startWorkout();
       return;
@@ -1593,15 +1807,38 @@ function handleInputEvents() {
       removeSet(button.dataset.itemId, button.dataset.setId, button.dataset.owner || "workout");
       return;
     }
-    if (action === "timer-start") {
-      const tag = $("#timerPreset")?.value || "work";
-      startTimer(getRestSeconds(tag));
-      return;
-    }
-    if (action === "timer-stop") {
-      stopTimer();
-      return;
-    }
+      if (action === "timer-stop") {
+        stopTimer();
+        return;
+      }
+      if (action === "finish-workout") {
+        openFinishSheet();
+        return;
+      }
+      if (action === "finish-complete") {
+        completeUnfinishedSets();
+        return;
+      }
+      if (action === "finish-cancel-workout") {
+        cancelWorkout();
+        return;
+      }
+      if (action === "finish-close") {
+        closeFinishSheet();
+        return;
+      }
+      if (action === "history-details") {
+        openHistorySheet(button.dataset.workoutId);
+        return;
+      }
+      if (action === "history-delete") {
+        deleteWorkout(button.dataset.workoutId);
+        return;
+      }
+      if (action === "history-close") {
+        closeHistorySheet();
+        return;
+      }
     if (action === "create-routine") {
       const name = prompt("Workout name?");
       if (!name) return;
@@ -1622,12 +1859,13 @@ function handleInputEvents() {
       addRoutineItem();
       return;
     }
-    if (action === "replace-exercise") {
-      const select = button.parentElement?.querySelector("select");
-      const exerciseId = select?.value;
-      replaceExercise(button.dataset.owner || "workout", button.dataset.itemId, exerciseId);
-      return;
-    }
+      if (action === "replace-exercise") {
+        const card = button.closest(".exercise-card");
+        const select = card?.querySelector("select[data-field='replace-select']");
+        const exerciseId = select?.value;
+        replaceExercise(button.dataset.owner || "workout", button.dataset.itemId, exerciseId);
+        return;
+      }
     if (action === "remove-routine-item") {
       removeRoutineItem(button.dataset.routineId, button.dataset.itemId);
       return;
@@ -1738,7 +1976,7 @@ function registerServiceWorker() {
   }
 }
 
-function setupInstallPrompt() {
+  function setupInstallPrompt() {
   const btn = $("#installBtn");
   if (!btn) return;
   let deferredPrompt = null;
@@ -1788,6 +2026,15 @@ function updateCloudUI() {
   if (!supabaseClient) {
     status.textContent = "Cloud sync unavailable";
     return;
+  }
+
+  function updateLatestUpdateStamp() {
+    const el = $("#latestUpdate");
+    if (!el) return;
+    const raw = document.lastModified;
+    const parsed = raw ? new Date(raw) : null;
+    const date = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
+    el.textContent = `Updated ${date.toLocaleString()}`;
   }
   if (cloud.user) {
     status.textContent = `Signed in as ${cloud.user.email || "user"}`;
@@ -1887,15 +2134,16 @@ function scheduleCloudSync() {
   }, 1200);
 }
 
-function init() {
-  handleInputEvents();
-  setView(ui.view);
-  renderAll();
-  renderTools();
-  initSupabase();
-  registerServiceWorker();
-  setupInstallPrompt();
-}
+  function init() {
+    handleInputEvents();
+    setView(ui.view);
+    renderAll();
+    renderTools();
+    initSupabase();
+    updateLatestUpdateStamp();
+    registerServiceWorker();
+    setupInstallPrompt();
+  }
 
 document.addEventListener("DOMContentLoaded", init);
 
