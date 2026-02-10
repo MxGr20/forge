@@ -41,17 +41,7 @@
           <div id="activeWorkoutPanel" class="panel hidden">
             <div class="row space active-header">
               <div class="active-title">Workout</div>
-              <div class="row">
-                <label class="switch rest-toggle">
-                  Rest Timer
-                  <input type="checkbox" id="restToggle">
-                </label>
-                <div id="restMini" class="rest-mini hidden">
-                  <span id="restCountdown">00:00</span>
-                  <button class="ghost small" data-action="timer-stop">Stop</button>
-                </div>
-                <button class="success" data-action="finish-workout">Finish</button>
-              </div>
+              <button class="success" data-action="finish-workout">Finish</button>
             </div>
 
             <div id="activeWorkout">
@@ -68,8 +58,14 @@
 
             <label>
               Notes
-              <textarea data-field="workout-notes" placeholder="Notes, cues, or how it felt"></textarea>
+              <input type="text" data-field="workout-notes" placeholder="Notes, cues, or how it felt">
             </label>
+
+            <div id="restMini" class="rest-inline">
+              <div class="rest-inline-label">Rest Timer</div>
+              <span id="restCountdown">00:00</span>
+              <button class="ghost small" data-action="timer-stop">Stop</button>
+            </div>
 
             <label class="upload">
               Progress Photos
@@ -77,21 +73,19 @@
             </label>
             <div id="photoStrip" class="photo-strip"></div>
 
-              <div class="add-exercise card">
-                <div class="row space">
-                  <div>
-                    <div class="title">Add Exercise</div>
-                    <div class="muted">Choose from your library or create a new one.</div>
-                  </div>
-                </div>
-                <div class="row wrap">
-                  <select id="addExerciseSelect"></select>
-                  <input type="text" id="addExerciseGroup" placeholder="Group (A, B, C)">
-                  <button class="primary" data-action="add-workout-exercise">Add</button>
+            <div id="workoutExercises"></div>
+            <div class="add-exercise card">
+              <div class="row space">
+                <div>
+                  <div class="title">Add Exercise</div>
+                  <div class="muted">Choose from your library or create a new one.</div>
                 </div>
               </div>
-
-            <div id="workoutExercises"></div>
+              <div class="row wrap">
+                <select id="addExerciseSelect"></select>
+                <button class="primary" data-action="add-workout-exercise">Add</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -228,10 +222,6 @@
               Rest Timer - Drop Set (sec)
               <input type="number" step="5" data-setting="restSecondsDrop" id="restSecondsDrop">
             </label>
-            <label class="switch">
-              Auto Rest After Set
-              <input type="checkbox" data-setting="autoRest" id="autoRest">
-            </label>
           </div>
           <div class="grid-2">
             <label>
@@ -337,6 +327,7 @@
         <div id="workoutSheetTitle" class="sheet-title">Workout</div>
         <button class="primary wide" data-action="sheet-start">Start Workout</button>
         <button class="ghost wide" data-action="sheet-edit">Edit Workout</button>
+        <button class="danger wide" data-action="sheet-delete">Delete Workout</button>
         <button class="ghost wide" data-action="sheet-cancel">Cancel</button>
       </div>
     </div>
@@ -357,6 +348,45 @@
           <button class="ghost icon-btn" data-action="history-close">✕</button>
         </div>
         <div id="historyDetails"></div>
+      </div>
+    </div>
+
+    <div id="replaceSheet" class="sheet hidden">
+      <div class="sheet-card">
+        <div class="row space">
+          <div id="replaceSheetTitle" class="sheet-title">Replace Exercise</div>
+          <button class="ghost icon-btn" data-action="replace-close">✕</button>
+        </div>
+        <input type="search" id="replaceSearch" placeholder="Search exercises">
+        <div id="replaceList" class="result-list"></div>
+        <button class="ghost wide" data-action="replace-close">Cancel</button>
+      </div>
+    </div>
+
+    <div id="exerciseEditSheet" class="sheet hidden">
+      <div class="sheet-card">
+        <div class="row space">
+          <div class="sheet-title">Edit Exercise</div>
+          <button class="ghost icon-btn" data-action="exercise-edit-close">✕</button>
+        </div>
+        <label>
+          Exercise Name
+          <input type="text" id="editExerciseName" placeholder="Exercise name">
+        </label>
+        <label>
+          Category
+          <input type="text" id="editExerciseCategory" placeholder="Category">
+        </label>
+        <label>
+          Type
+          <select id="editExerciseType">
+            <option value="weight">Weight</option>
+            <option value="assisted">Assisted Bodyweight</option>
+            <option value="duration">Duration</option>
+          </select>
+        </label>
+        <button class="primary wide" data-action="exercise-edit-save">Save Exercise</button>
+        <button class="ghost wide" data-action="exercise-edit-close">Cancel</button>
       </div>
     </div>
 

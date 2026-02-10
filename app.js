@@ -84,7 +84,10 @@ const ui = {
   editRoutineId: null,
   statsExerciseId: null,
   exerciseSearch: "",
-  selectedRoutineId: null
+  selectedRoutineId: null,
+  replaceTarget: null,
+  replaceSearch: "",
+  editExerciseId: null
 };
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -345,9 +348,10 @@ const restTimer = {
 };
 
 function getRestSeconds(tag = "work") {
-  const key = tag === "warmup"
+  const normalizedTag = String(tag || "work").toLowerCase();
+  const key = normalizedTag === "warmup" || normalizedTag === "warm-up"
     ? "restSecondsWarmup"
-    : tag === "drop"
+    : normalizedTag === "drop" || normalizedTag === "dropset" || normalizedTag === "drop-set"
       ? "restSecondsDrop"
       : "restSecondsWork";
   const value = state.settings[key];
@@ -358,16 +362,13 @@ function getRestSeconds(tag = "work") {
     const mini = $("#restMini");
     const display = $("#restCountdown");
     if (!mini || !display) return;
-    if (!state.settings.autoRest) {
-      mini.classList.add("hidden");
-      return;
-    }
     if (restTimer.remaining > 0) {
       display.textContent = formatDuration(restTimer.remaining);
-      mini.classList.remove("hidden");
+      mini.classList.add("active");
       return;
     }
-    mini.classList.add("hidden");
+    display.textContent = "00:00";
+    mini.classList.remove("active");
   }
 
 function startTimer(seconds) {
@@ -485,7 +486,7 @@ function startWorkout(routineId = null) {
     endWorkout();
   }
 
-function addWorkoutExercise(exerciseId, group = "") {
+function addWorkoutExercise(exerciseId) {
   const workout = getActiveWorkout();
   if (!workout) return;
   const exercise = getExercise(exerciseId);
@@ -493,12 +494,10 @@ function addWorkoutExercise(exerciseId, group = "") {
   workout.items.push({
     id: uid(),
     exerciseId: exercise.id,
-    group: group || "",
+    group: "",
     note: "",
     sets: []
   });
-  const groupInput = $("#addExerciseGroup");
-  if (groupInput) groupInput.value = "";
   saveState();
   renderLog();
 }
@@ -531,6 +530,183 @@ function replaceExercise(owner, itemId, newExerciseId) {
   }
   saveState();
   owner === "routine" ? renderRoutines() : renderLog();
+}
+
+function getReplaceTargetItem() {
+  if (!ui.replaceTarget) return null;
+  const { owner, itemId } = ui.replaceTarget;
+  const { items } = getItemCollection(owner);
+  if (!items) return null;
+  return items.find((entry) => entry.id === itemId) || null;
+}
+
+function renderReplaceSheet() {
+  const sheet = $("#replaceSheet");
+  const list = $("#replaceList");
+  const title = $("#replaceSheetTitle");
+  if (!sheet || !list || !title) return;
+  if (!ui.replaceTarget) {
+    list.innerHTML = "";
+    title.textContent = "Replace Exercise";
+    return;
+  }
+  const item = getReplaceTargetItem();
+  if (!item) {
+    closeReplaceSheet();
+    return;
+  }
+  const currentExercise = getExercise(item.exerciseId);
+  title.textContent = currentExercise
+    ? `Replace ${currentExercise.name}`
+    : "Replace Exercise";
+  const term = ui.replaceSearch.trim().toLowerCase();
+  const options = state.exercises
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .filter((ex) => {
+      if (!term) return true;
+      const hay = `${ex.name} ${ex.category || ""}`.toLowerCase();
+      return hay.includes(term);
+    });
+  if (!options.length) {
+    list.innerHTML = "<div class=\"muted small\">No exercises found.</div>";
+    return;
+  }
+  list.innerHTML = options.map((ex) => {
+    return `
+      <button type="button" class="result-item replace-option" data-action="replace-choose" data-exercise-id="${ex.id}">
+        <div class="title">${esc(ex.name)}</div>
+        <div class="muted small">${esc(ex.category || "General")} · ${formatExerciseType(ex.type)}</div>
+      </button>
+    `;
+  }).join("");
+}
+
+function openReplaceSheet(owner, itemId) {
+  ui.replaceTarget = { owner, itemId };
+  ui.replaceSearch = "";
+  const search = $("#replaceSearch");
+  if (search) search.value = "";
+  renderReplaceSheet();
+  const sheet = $("#replaceSheet");
+  if (sheet) sheet.classList.remove("hidden");
+}
+
+function closeReplaceSheet() {
+  ui.replaceTarget = null;
+  ui.replaceSearch = "";
+  const search = $("#replaceSearch");
+  if (search) search.value = "";
+  const sheet = $("#replaceSheet");
+  if (sheet) sheet.classList.add("hidden");
+}
+
+function chooseReplacement(exerciseId) {
+  if (!ui.replaceTarget || !exerciseId) return;
+  replaceExercise(ui.replaceTarget.owner, ui.replaceTarget.itemId, exerciseId);
+  closeReplaceSheet();
+}
+
+function openExerciseEditSheet(exerciseId) {
+  const exercise = state.exercises.find((ex) => ex.id === exerciseId);
+  if (!exercise) return;
+  ui.editExerciseId = exercise.id;
+  const name = $("#editExerciseName");
+  const category = $("#editExerciseCategory");
+  const type = $("#editExerciseType");
+  if (name) name.value = exercise.name || "";
+  if (category) category.value = exercise.category || "";
+  if (type) type.value = exercise.type || "weight";
+  const sheet = $("#exerciseEditSheet");
+  if (sheet) sheet.classList.remove("hidden");
+}
+
+function closeExerciseEditSheet() {
+  ui.editExerciseId = null;
+  const sheet = $("#exerciseEditSheet");
+  if (sheet) sheet.classList.add("hidden");
+}
+
+function saveExerciseEdit() {
+  if (!ui.editExerciseId) return;
+  const exercise = state.exercises.find((ex) => ex.id === ui.editExerciseId);
+  if (!exercise) return;
+  const name = $("#editExerciseName")?.value.trim() || "";
+  const category = $("#editExerciseCategory")?.value.trim() || "";
+  const type = $("#editExerciseType")?.value || "weight";
+  if (!name) {
+    toast("Exercise needs a name");
+    return;
+  }
+  if (type !== exercise.type && exerciseInUse(exercise.id)) {
+    toast("Type can't be changed while exercise is in use");
+    return;
+  }
+  exercise.name = name;
+  exercise.category = category;
+  exercise.type = type;
+  saveState();
+  renderExercises();
+  renderRoutines();
+  renderLog();
+  renderStats();
+  renderHistory();
+  renderReplaceSheet();
+  closeExerciseEditSheet();
+  toast("Exercise updated");
+}
+
+function normalizeSetTag(tag) {
+  const normalized = String(tag || "work").toLowerCase();
+  if (normalized === "warm-up") return "warmup";
+  if (normalized === "drop-set") return "drop";
+  if (normalized === "dropset") return "drop";
+  if (normalized === "failure") return "failure";
+  if (normalized === "warmup") return "warmup";
+  if (normalized === "drop") return "drop";
+  return "work";
+}
+
+function nextSetTag(tag) {
+  const order = ["work", "warmup", "failure", "drop"];
+  const current = normalizeSetTag(tag);
+  const idx = order.indexOf(current);
+  return order[(idx + 1) % order.length];
+}
+
+function setTagShort(tag) {
+  const current = normalizeSetTag(tag);
+  if (current === "warmup") return "WU";
+  if (current === "failure") return "F";
+  if (current === "drop") return "D";
+  return "W";
+}
+
+function setTagLabel(tag) {
+  const current = normalizeSetTag(tag);
+  if (current === "warmup") return "Warm-up";
+  if (current === "failure") return "Failure";
+  if (current === "drop") return "Drop";
+  return "Work";
+}
+
+function cycleSetTag(owner, itemId, setId) {
+  const { items } = getItemCollection(owner);
+  if (!items) return;
+  const item = items.find((entry) => entry.id === itemId);
+  if (!item) return;
+  const set = item.sets.find((entry) => entry.id === setId);
+  if (!set) return;
+  set.tag = nextSetTag(set.tag);
+  saveState();
+  if (owner === "routine") {
+    renderRoutines();
+    return;
+  }
+  if (set.completed) {
+    startTimer(getRestSeconds(set.tag));
+  }
+  renderLog();
 }
 
 function addSetFromCard(button) {
@@ -698,11 +874,9 @@ function renderSession() {
     const nameInput = $("[data-field='workout-name']");
     const bwInput = $("[data-field='workout-bodyweight']");
     const notesInput = $("[data-field='workout-notes']");
-    const restToggle = $("#restToggle");
     if (nameInput) nameInput.value = active.name || "";
     if (bwInput) bwInput.value = Number.isFinite(active.bodyweight) ? active.bodyweight : "";
     if (notesInput) notesInput.value = active.notes || "";
-    if (restToggle) restToggle.checked = !!state.settings.autoRest;
 
   const addSelect = $("#addExerciseSelect");
   if (addSelect) {
@@ -769,29 +943,15 @@ function formatPreviousSet(set) {
   return `${weight} x ${reps}`;
 }
 
-function renderTagSelect(tag, owner, itemId, setId) {
-  const options = [
-    { value: "work", label: "Work" },
-    { value: "warmup", label: "Warm-up" },
-    { value: "failure", label: "Failure" },
-    { value: "drop", label: "Drop" }
-  ];
-  return `
-    <select data-set-field="tag" data-owner="${owner}" data-item-id="${itemId}" data-set-id="${setId}">
-      ${options.map((opt) => `<option value="${opt.value}" ${tag === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
-    </select>
-  `;
-}
-
   function renderSetsHeader(type, owner) {
     const loadLabel = type === "assisted" ? "Assist" : type === "duration" ? "Time" : "kg";
     const repsLabel = type === "duration" ? "Distance" : "Reps";
-    const doneLabel = owner === "workout" ? "<div>Done</div>" : "<div></div>";
-    return `<div class="set-row header"><div>Set</div><div>Previous</div><div>${loadLabel}</div><div>${repsLabel}</div><div>Tag</div>${doneLabel}<div></div></div>`;
+    const doneLabel = owner === "workout" ? "<div>Done</div>" : "";
+    return `<div class="set-row owner-${owner} header"><div>Set</div><div>Previous</div><div>${loadLabel}</div><div>${repsLabel}</div>${doneLabel}<div></div></div>`;
   }
 
   function renderSetRow(set, index, itemId, owner, prevSet) {
-    const tag = set.tag || "work";
+    const tag = normalizeSetTag(set.tag || "work");
     const prevLabel = formatPreviousSet(prevSet);
     const baseAttrs = `data-owner="${owner}" data-item-id="${itemId}" data-set-id="${set.id}"`;
     let loadField = "";
@@ -810,15 +970,17 @@ function renderTagSelect(tag, owner, itemId, setId) {
 
     const doneCell = owner === "workout"
       ? `<div class="set-check"><input type="checkbox" ${set.completed ? "checked" : ""} data-set-field="complete" ${baseAttrs}></div>`
-      : `<div></div>`;
+      : "";
 
     return `
-      <div class="set-row${set.completed ? " completed" : ""}">
-        <div class="set-pill">${index + 1}</div>
+      <div class="set-row owner-${owner}${set.completed ? " completed" : ""}">
+        <button type="button" class="set-pill set-tag-toggle tag-${tag}" data-action="cycle-set-tag" data-owner="${owner}" data-item-id="${itemId}" data-set-id="${set.id}" title="Tag: ${setTagLabel(tag)}">
+          <span class="set-pill-num">${index + 1}</span>
+          <span class="set-pill-tag">${setTagShort(tag)}</span>
+        </button>
         <div class="set-cell set-prev">${esc(prevLabel)}</div>
         <div class="set-cell">${loadField}</div>
         <div class="set-cell">${repsField}</div>
-        <div class="set-cell">${renderTagSelect(tag, owner, itemId, set.id)}</div>
         ${doneCell}
         <button class="ghost small set-remove" data-action="remove-set" data-owner="${owner}" data-item-id="${itemId}" data-set-id="${set.id}">-</button>
       </div>
@@ -829,12 +991,14 @@ function renderExerciseCard(item, options) {
   const owner = options.owner;
   const exercise = getExercise(item.exerciseId);
   if (!exercise) return "";
-  const groupLabel = item.group ? `Superset ${esc(item.group)}` : "Single";
-  const meta = `${esc(exercise.category || "General")} · ${formatExerciseType(exercise.type)} · ${groupLabel}`;
+  const meta = `${esc(exercise.category || "General")} · ${formatExerciseType(exercise.type)}`;
   const prevSets = owner === "workout" ? getPreviousSets(item.exerciseId, options.workoutId) : [];
     const setsHeader = renderSetsHeader(exercise.type, owner);
   const setsRows = item.sets.map((set, index) => renderSetRow(set, index, item.id, owner, prevSets[index])).join("");
   const setsHtml = item.sets.length ? setsHeader + setsRows : `${setsHeader}<div class="muted small">No sets yet.</div>`;
+  const tagHelp = item.sets.length
+    ? "<div class=\"muted small set-tag-help\">Tap set number to cycle tag (W, WU, F, D).</div>"
+    : "";
     const actions = owner === "routine"
       ? `
         <button class="ghost small" data-action="move-routine-item-up" data-routine-id="${options.routineId}" data-item-id="${item.id}">Up</button>
@@ -843,14 +1007,9 @@ function renderExerciseCard(item, options) {
         <button class="ghost small" data-action="remove-routine-item" data-routine-id="${options.routineId}" data-item-id="${item.id}">Remove</button>
       `
       : `
+        <button class="ghost small" data-action="replace-exercise" data-owner="${owner}" data-item-id="${item.id}">Replace</button>
         <button class="ghost small" data-action="remove-workout-exercise" data-item-id="${item.id}">Remove</button>
       `;
-
-  const replaceOptions = state.exercises
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((ex) => `<option value="${ex.id}" ${ex.id === item.exerciseId ? "selected" : ""}>${esc(ex.name)}</option>`)
-    .join("");
 
     return `
       <div class="card exercise-card" data-item-id="${item.id}">
@@ -867,13 +1026,9 @@ function renderExerciseCard(item, options) {
           <input type="text" data-field="item-note" data-owner="${owner}" data-item-id="${item.id}" placeholder="Note (optional)" value="${esc(item.note || "")}">
         </div>
         <div class="sets">${setsHtml}</div>
+        ${tagHelp}
         <div class="add-set">
           <button class="primary" data-action="add-set" data-owner="${owner}" data-item-id="${item.id}">+ Add Set</button>
-        </div>
-        <div class="replace-row">
-          <select data-field="replace-select" data-owner="${owner}" data-item-id="${item.id}">
-            ${replaceOptions}
-          </select>
         </div>
       </div>
     `;
@@ -1156,7 +1311,10 @@ function renderExercises() {
               <div class="title">${esc(ex.name)}</div>
               <div class="muted small">${esc(ex.category || "General")} · ${formatExerciseType(ex.type)}</div>
             </div>
-            <button class="ghost small" data-action="delete-exercise" data-exercise-id="${ex.id}">Delete</button>
+            <div class="row">
+              <button class="ghost small" data-action="edit-exercise" data-exercise-id="${ex.id}">Edit</button>
+              <button class="ghost small" data-action="delete-exercise" data-exercise-id="${ex.id}">Delete</button>
+            </div>
           </div>
           ${ex.instructions ? `<div class=\"muted small\">${esc(ex.instructions)}</div>` : ""}
           ${video}
@@ -1305,7 +1463,8 @@ function renderTools() {
   if ($("#restSecondsWork")) $("#restSecondsWork").value = state.settings.restSecondsWork;
   if ($("#restSecondsWarmup")) $("#restSecondsWarmup").value = state.settings.restSecondsWarmup;
   if ($("#restSecondsDrop")) $("#restSecondsDrop").value = state.settings.restSecondsDrop;
-  $("#autoRest").checked = !!state.settings.autoRest;
+  const autoRest = $("#autoRest");
+  if (autoRest) autoRest.checked = !!state.settings.autoRest;
   $("#warmupPercents").value = state.settings.warmupPercents.join(", ");
   $("#barWeight").value = state.settings.barWeight;
   $("#plates").value = state.settings.plates.join(", ");
@@ -1527,9 +1686,7 @@ async function renderPhotoStrip(photoIds) {
 
 function updateSetting(key, value, element) {
     if (key === "autoRest") {
-      state.settings.autoRest = element.checked;
-      const restToggle = $("#restToggle");
-      if (restToggle) restToggle.checked = state.settings.autoRest;
+      state.settings.autoRest = !!element?.checked;
       if (!state.settings.autoRest) stopTimer();
       updateTimerUI();
     } else if (key === "warmupPercents") {
@@ -1605,7 +1762,7 @@ function updateSetFromControl(target) {
     if (field === "complete") {
       set.completed = !!target.checked;
       saveState();
-      if (set.completed && state.settings.autoRest) {
+      if (set.completed) {
         startTimer(getRestSeconds(set.tag));
       }
       return true;
@@ -1664,13 +1821,14 @@ function handleInputEvents() {
       }
       return;
     }
-      if (target.id === "exerciseSearch") {
+    if (target.id === "exerciseSearch") {
         ui.exerciseSearch = target.value;
         renderExercises();
         return;
       }
-      if (target.id === "restToggle") {
-        updateSetting("autoRest", target.checked, target);
+      if (target.id === "replaceSearch") {
+        ui.replaceSearch = target.value;
+        renderReplaceSheet();
         return;
       }
       if (target.id === "plateBarWeight") {
@@ -1696,10 +1854,6 @@ function handleInputEvents() {
     }
     if (target.dataset.field === "item-note") {
       updateItemField(target.dataset.owner || "workout", target.dataset.itemId, "note", target.value);
-      return;
-    }
-    if (target.dataset.field === "item-group") {
-      updateItemField(target.dataset.owner || "workout", target.dataset.itemId, "group", target.value);
       return;
     }
     if (target.dataset.setting) {
@@ -1739,6 +1893,14 @@ function handleInputEvents() {
       }
       if (event.target.id === "historySheet") {
         closeHistorySheet();
+        return;
+      }
+      if (event.target.id === "replaceSheet") {
+        closeReplaceSheet();
+        return;
+      }
+      if (event.target.id === "exerciseEditSheet") {
+        closeExerciseEditSheet();
         return;
       }
       const button = event.target.closest("[data-action]");
@@ -1789,6 +1951,17 @@ function handleInputEvents() {
       closeWorkoutSheet();
       return;
     }
+    if (action === "sheet-delete") {
+      const routineId = ui.selectedRoutineId;
+      if (!routineId) return;
+      const routine = state.routines.find((entry) => entry.id === routineId);
+      if (!routine) return;
+      if (!confirm(`Delete ${routine.name || "this workout"}?`)) return;
+      deleteRoutine(routineId);
+      closeWorkoutSheet();
+      toast("Workout deleted");
+      return;
+    }
     if (action === "start-routine") {
       const routineId = button.dataset.routineId || $("#startRoutineSelect")?.value || null;
       if (!routineId) {
@@ -1804,9 +1977,8 @@ function handleInputEvents() {
     }
     if (action === "add-workout-exercise") {
       const exerciseId = $("#addExerciseSelect")?.value;
-      const group = $("#addExerciseGroup")?.value.trim();
       if (!exerciseId) return;
-      addWorkoutExercise(exerciseId, group);
+      addWorkoutExercise(exerciseId);
       return;
     }
     if (action === "remove-workout-exercise") {
@@ -1821,6 +1993,10 @@ function handleInputEvents() {
       removeSet(button.dataset.itemId, button.dataset.setId, button.dataset.owner || "workout");
       return;
     }
+      if (action === "cycle-set-tag") {
+        cycleSetTag(button.dataset.owner || "workout", button.dataset.itemId, button.dataset.setId);
+        return;
+      }
       if (action === "timer-stop") {
         stopTimer();
         return;
@@ -1874,10 +2050,15 @@ function handleInputEvents() {
       return;
     }
       if (action === "replace-exercise") {
-        const card = button.closest(".exercise-card");
-        const select = card?.querySelector("select[data-field='replace-select']");
-        const exerciseId = select?.value;
-        replaceExercise(button.dataset.owner || "workout", button.dataset.itemId, exerciseId);
+        openReplaceSheet(button.dataset.owner || "workout", button.dataset.itemId);
+        return;
+      }
+      if (action === "replace-close") {
+        closeReplaceSheet();
+        return;
+      }
+      if (action === "replace-choose") {
+        chooseReplacement(button.dataset.exerciseId);
         return;
       }
     if (action === "remove-routine-item") {
@@ -1903,6 +2084,18 @@ function handleInputEvents() {
     }
     if (action === "create-exercise") {
       createExercise();
+      return;
+    }
+    if (action === "edit-exercise") {
+      openExerciseEditSheet(button.dataset.exerciseId);
+      return;
+    }
+    if (action === "exercise-edit-save") {
+      saveExerciseEdit();
+      return;
+    }
+    if (action === "exercise-edit-close") {
+      closeExerciseEditSheet();
       return;
     }
     if (action === "delete-exercise") {
