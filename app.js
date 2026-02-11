@@ -2518,6 +2518,9 @@ function setMultiSelectSelection(multiId, values) {
 function multiSelectMuscleKind(multiId) {
   if (multiId === "exercise-primary" || multiId === "edit-exercise-primary") return "primary";
   if (multiId === "exercise-detailed" || multiId === "edit-exercise-detailed") return "detailed";
+  if (multiId === "stats-muscles") {
+    return ui.muscleDimension === "detailed" ? "detailed" : "primary";
+  }
   return null;
 }
 
@@ -2564,7 +2567,7 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
 
   root.innerHTML = `
     <div class="multi-select${dropdownOpen ? " open" : ""}" data-multi-id="${multiId}">
-      <div class="multi-control" data-action="multi-open" data-multi-id="${multiId}">
+      <div class="multi-control" data-action="multi-focus" data-multi-id="${multiId}">
         ${chips}
         <input
           type="text"
@@ -2586,6 +2589,25 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
   `;
 }
 
+function openMultiSelect(multiId) {
+  if (!multiId) return;
+  ui.activeMultiSelect = multiId;
+  if (multiId === "stats-muscles") {
+    renderMuscleGroupSection();
+  } else {
+    renderExerciseMuscleSelectors();
+  }
+}
+
+function refreshMultiSelect(multiId) {
+  if (multiId === "stats-muscles") {
+    ui.muscleSelectionInitialized = true;
+    renderStats();
+  } else {
+    renderExerciseMuscleSelectors();
+  }
+}
+
 function renderExerciseMuscleSelectors() {
   renderMultiSelectControl({
     rootId: "exercisePrimaryMusclesSelect",
@@ -2593,7 +2615,7 @@ function renderExerciseMuscleSelectors() {
     selected: ui.exercisePrimarySelection,
     query: ui.exercisePrimaryQuery,
     options: collectExerciseMuscleOptions("primary"),
-    placeholder: "Search primary muscles"
+    placeholder: "Search or add primary muscles"
   });
   renderMultiSelectControl({
     rootId: "exerciseDetailedMusclesSelect",
@@ -2601,7 +2623,7 @@ function renderExerciseMuscleSelectors() {
     selected: ui.exerciseDetailedSelection,
     query: ui.exerciseDetailedQuery,
     options: collectExerciseMuscleOptions("detailed"),
-    placeholder: "Search detailed muscles"
+    placeholder: "Search or add detailed muscles"
   });
   renderMultiSelectControl({
     rootId: "editExercisePrimaryMusclesSelect",
@@ -2609,7 +2631,7 @@ function renderExerciseMuscleSelectors() {
     selected: ui.editExercisePrimarySelection,
     query: ui.editExercisePrimaryQuery,
     options: collectExerciseMuscleOptions("primary"),
-    placeholder: "Search primary muscles"
+    placeholder: "Search or add primary muscles"
   });
   renderMultiSelectControl({
     rootId: "editExerciseDetailedMusclesSelect",
@@ -2617,7 +2639,7 @@ function renderExerciseMuscleSelectors() {
     selected: ui.editExerciseDetailedSelection,
     query: ui.editExerciseDetailedQuery,
     options: collectExerciseMuscleOptions("detailed"),
-    placeholder: "Search detailed muscles"
+    placeholder: "Search or add detailed muscles"
   });
 }
 
@@ -2871,7 +2893,7 @@ function renderMuscleGroupSection() {
     selected: ui.selectedMuscles,
     query: ui.muscleSearchQuery,
     options: availableMuscles,
-    placeholder: "Search muscles to track"
+    placeholder: "Search or add muscles to track"
   });
 
   const data = computeMuscleVolumeSeries(
@@ -3433,11 +3455,7 @@ function handleInputEvents() {
       const multiId = target.dataset.multiInput;
       ui.activeMultiSelect = multiId;
       setMultiSelectQuery(multiId, target.value);
-      if (multiId === "stats-muscles") {
-        renderMuscleGroupSection();
-      } else {
-        renderExerciseMuscleSelectors();
-      }
+      openMultiSelect(multiId);
       focusMultiInput(multiId);
       return;
     }
@@ -3516,7 +3534,8 @@ function handleInputEvents() {
     const multiId = target.dataset.multiInput;
     if (!multiId) return;
 
-    if ((event.key === "Enter" || event.key === ",") && canCreateMultiSelectOption(multiId)) {
+    const createKey = event.key === "Enter" || event.key === "," || event.key === "Tab";
+    if (createKey && canCreateMultiSelectOption(multiId)) {
       const value = normalizeMuscleTagValue(target.value);
       if (!value) return;
       event.preventDefault();
@@ -3529,13 +3548,7 @@ function handleInputEvents() {
         rememberMuscleTags(kind, [value]);
         saveState();
       }
-      setMultiSelectQuery(multiId, "");
-      if (multiId === "stats-muscles") {
-        ui.muscleSelectionInitialized = true;
-        renderStats();
-      } else {
-        renderExerciseMuscleSelectors();
-      }
+      refreshMultiSelect(multiId);
       focusMultiInput(multiId);
       return;
     }
@@ -3545,12 +3558,7 @@ function handleInputEvents() {
       if (!current.length) return;
       event.preventDefault();
       setMultiSelectSelection(multiId, current.slice(0, -1));
-      if (multiId === "stats-muscles") {
-        ui.muscleSelectionInitialized = true;
-        renderStats();
-      } else {
-        renderExerciseMuscleSelectors();
-      }
+      refreshMultiSelect(multiId);
       focusMultiInput(multiId);
     }
   });
@@ -3593,10 +3601,20 @@ function handleInputEvents() {
       const button = event.target.closest("[data-action]");
       if (!button) return;
       const action = button.dataset.action;
+      if (action === "multi-focus") {
+        const multiId = button.dataset.multiId || null;
+        if (!multiId) return;
+        openMultiSelect(multiId);
+        focusMultiInput(multiId);
+        return;
+      }
       if (action === "multi-open") {
         const multiId = button.dataset.multiId || null;
+        if (!multiId) return;
         ui.activeMultiSelect = ui.activeMultiSelect === multiId ? null : multiId;
-        if (multiId === "stats-muscles") {
+        if (ui.activeMultiSelect) {
+          openMultiSelect(multiId);
+        } else if (multiId === "stats-muscles") {
           renderMuscleGroupSection();
         } else {
           renderExerciseMuscleSelectors();
@@ -3614,12 +3632,7 @@ function handleInputEvents() {
           : [...current, value];
         setMultiSelectSelection(multiId, next);
         ui.activeMultiSelect = multiId;
-        if (multiId === "stats-muscles") {
-          ui.muscleSelectionInitialized = true;
-          renderStats();
-        } else {
-          renderExerciseMuscleSelectors();
-        }
+        refreshMultiSelect(multiId);
         focusMultiInput(multiId);
         return;
       }
@@ -3638,12 +3651,7 @@ function handleInputEvents() {
           saveState();
         }
         ui.activeMultiSelect = multiId;
-        if (multiId === "stats-muscles") {
-          ui.muscleSelectionInitialized = true;
-          renderStats();
-        } else {
-          renderExerciseMuscleSelectors();
-        }
+        refreshMultiSelect(multiId);
         focusMultiInput(multiId);
         return;
       }
@@ -3655,12 +3663,7 @@ function handleInputEvents() {
         const next = current.filter((entry) => entry !== value);
         setMultiSelectSelection(multiId, next);
         ui.activeMultiSelect = multiId;
-        if (multiId === "stats-muscles") {
-          ui.muscleSelectionInitialized = true;
-          renderStats();
-        } else {
-          renderExerciseMuscleSelectors();
-        }
+        refreshMultiSelect(multiId);
         focusMultiInput(multiId);
         return;
       }

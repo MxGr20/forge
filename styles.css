@@ -1318,6 +1318,12 @@ input[data-field="workout-name"] {
   background: rgb(var(--brand-rgb) / 0.16);
 }
 
+.multi-option-create {
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .multi-empty {
   padding: 0.625rem 0.75rem;
   font-size: 0.8125rem;
