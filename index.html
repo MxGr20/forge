@@ -134,6 +134,16 @@
           </div>
           <div class="grid-2">
             <label>
+              Primary Muscle Groups
+              <input type="text" id="exercisePrimaryMuscles" placeholder="e.g., Chest, Triceps">
+            </label>
+            <label>
+              Detailed Muscle Groups
+              <input type="text" id="exerciseDetailedMuscles" placeholder="e.g., Upper Chest, Lateral Delts">
+            </label>
+          </div>
+          <div class="grid-2">
+            <label>
               Type
               <select id="exerciseType">
                 <option value="weight">Weight</option>
@@ -157,38 +167,114 @@
       <section id="view-stats" class="view">
         <div class="panel">
           <div class="row space">
-            <h2>Statistics</h2>
+            <h2>Exercise Performance</h2>
             <select id="statsExerciseSelect"></select>
           </div>
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-label">Best 1RM</div>
-                <div id="stat1rm" class="stat-value">-</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-label">Max Weight</div>
-                <div id="statMaxWeight" class="stat-value">-</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-label">Max Reps</div>
-                <div id="statMaxReps" class="stat-value">-</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-label">Total Weight</div>
-                <div id="statVolume" class="stat-value">-</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-label">Total Reps</div>
-                <div id="statTotalReps" class="stat-value">-</div>
-              </div>
+          <div class="row wrap stats-controls">
+            <label class="inline-control">
+              Metric
+              <select id="statsMetricSelect"></select>
+            </label>
+            <label class="inline-control">
+              Range
+              <select id="statsMonthsSelect"></select>
+            </label>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Weight (All Workouts)</div>
+              <div id="statTotalWeightAll" class="stat-value">-</div>
             </div>
-          <div class="chart-card">
-            <div class="chart-title">Volume Progression</div>
-            <div id="volumeChart" class="chart"></div>
+            <div class="stat-card">
+              <div class="stat-label">Total Reps (All Workouts)</div>
+              <div id="statTotalRepsAll" class="stat-value">-</div>
+            </div>
           </div>
           <div class="chart-card">
-            <div class="chart-title">1RM Progression</div>
-            <div id="oneRmChart" class="chart"></div>
+            <div class="chart-title" id="exerciseMetricTitle">Exercise Progression</div>
+            <div id="exerciseMetricChart" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="row space">
+            <h2>Muscle Group Sets</h2>
+          </div>
+          <div class="row wrap stats-controls">
+            <label class="inline-control">
+              Group By
+              <select id="muscleGroupingSelect">
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="year">Year</option>
+              </select>
+            </label>
+            <label class="inline-control">
+              Range
+              <select id="muscleMonthsSelect"></select>
+            </label>
+            <label class="inline-control">
+              Muscle Source
+              <select id="muscleDimensionSelect">
+                <option value="primary">Primary</option>
+                <option value="detailed">Detailed</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Muscles to Track (multi-select)
+            <select id="muscleFilterSelect" multiple size="6"></select>
+          </label>
+          <div class="muted small">Select one or more muscles to compare sets over time.</div>
+          <div class="chart-card">
+            <div class="chart-title">Sets by Muscle Group</div>
+            <div id="muscleVolumeChart" class="chart"></div>
+            <div id="muscleChartLegend" class="chart-legend"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="row space">
+            <h2>Body Measurements</h2>
+            <button class="primary" data-action="save-body-measurement">Save</button>
+          </div>
+          <div class="grid-2">
+            <label>
+              Body Weight (kg)
+              <input type="number" step="0.1" id="measureBodyWeight" placeholder="101.3">
+            </label>
+            <label>
+              Muscle Weight (kg)
+              <input type="number" step="0.1" id="measureMuscleWeight" placeholder="81.5">
+            </label>
+          </div>
+          <div class="grid-2">
+            <label>
+              Bone Weight (kg)
+              <input type="number" step="0.1" id="measureBoneWeight" placeholder="4.2">
+            </label>
+            <label>
+              Body Fat (%)
+              <input type="number" step="0.1" id="measureBodyFat" placeholder="15.5">
+            </label>
+          </div>
+          <div class="grid-2">
+            <label>
+              TBW (%)
+              <input type="number" step="0.1" id="measureTbw" placeholder="61.0">
+            </label>
+            <label>
+              BMI
+              <input type="number" step="0.1" id="measureBmi" placeholder="26.1">
+            </label>
+          </div>
+          <div id="bodyMeasurementMeta" class="muted small"></div>
+          <div class="chart-card">
+            <div class="row space">
+              <div class="chart-title">Body Measurement Trend</div>
+              <select id="measurementMetricSelect"></select>
+            </div>
+            <div id="measurementChart" class="chart"></div>
           </div>
         </div>
       </section>
@@ -197,6 +283,11 @@
         <div class="panel">
           <div class="row space">
             <h2>History</h2>
+          </div>
+          <div id="historyFilters" class="history-filters">
+            <button class="ghost small active" data-action="history-filter" data-filter="all">All</button>
+            <button class="ghost small" data-action="history-filter" data-filter="workouts">Workouts</button>
+            <button class="ghost small" data-action="history-filter" data-filter="measurements">Body Measurements</button>
           </div>
           <div id="historyList"></div>
         </div>
@@ -225,10 +316,6 @@
           </div>
           <div class="grid-2">
             <label>
-              Warmup Percents (comma)
-              <input type="text" data-setting="warmupPercents" id="warmupPercents">
-            </label>
-            <label>
               Default Bodyweight (kg)
               <input type="number" step="0.1" data-setting="bodyweight" id="bodyweight">
             </label>
@@ -243,12 +330,9 @@
               <input type="text" data-setting="plates" id="plates">
             </label>
           </div>
-          <label>
-            1RM Formula
-            <select data-setting="oneRmFormula" id="oneRmFormula">
-              <option value="epley">Epley</option>
-              <option value="brzycki">Brzycki</option>
-            </select>
+          <label class="switch">
+            Include Bar Weight In Plate Calculator
+            <input type="checkbox" data-setting="includeBarWeightInCalc" id="includeBarWeightInCalc">
           </label>
         </div>
 
@@ -268,29 +352,15 @@
           </div>
         </div>
 
-        <div class="tools-grid">
-          <div class="panel">
-            <div class="row space">
-              <h2>Warmup Calculator</h2>
-            </div>
-            <div class="row wrap">
-              <input type="number" step="0.5" id="warmupWeight" placeholder="Working weight (kg)">
-              <button class="primary" data-action="calc-warmup">Calculate</button>
-            </div>
-            <div id="warmupResults" class="result-list"></div>
+        <div class="panel">
+          <div class="row space">
+            <h2>Plate Calculator</h2>
           </div>
-
-          <div class="panel">
-            <div class="row space">
-              <h2>Plate Calculator</h2>
-            </div>
-            <div class="row wrap">
-              <input type="number" step="0.5" id="plateTarget" placeholder="Target weight (kg)">
-              <input type="number" step="0.5" id="plateBarWeight" placeholder="Bar weight (kg)">
-              <button class="primary" data-action="calc-plates">Calculate</button>
-            </div>
-            <div id="plateResults" class="result-list"></div>
+          <div class="row wrap">
+            <input type="number" step="0.5" id="plateTarget" placeholder="Target weight (kg)">
+            <button class="primary" data-action="calc-plates">Calculate</button>
           </div>
+          <div id="plateResults" class="result-list"></div>
         </div>
 
         <div class="panel">
@@ -344,7 +414,7 @@
     <div id="historySheet" class="sheet hidden">
       <div class="sheet-card">
         <div class="row space">
-          <div class="sheet-title">Workout Details</div>
+          <div class="sheet-title" id="historySheetTitle">Workout Details</div>
           <button class="ghost icon-btn" data-action="history-close">✕</button>
         </div>
         <div id="historyDetails"></div>
@@ -376,6 +446,14 @@
         <label>
           Category
           <input type="text" id="editExerciseCategory" placeholder="Category">
+        </label>
+        <label>
+          Primary Muscle Groups
+          <input type="text" id="editExercisePrimaryMuscles" placeholder="e.g., Chest, Triceps">
+        </label>
+        <label>
+          Detailed Muscle Groups
+          <input type="text" id="editExerciseDetailedMuscles" placeholder="e.g., Upper Chest, Lateral Delts">
         </label>
         <label>
           Type

@@ -67,15 +67,15 @@ const DEFAULT_STATE = {
     restSecondsWarmup: 60,
     restSecondsDrop: 45,
     autoRest: true,
-    warmupPercents: [40, 60, 80],
     barWeight: 20,
     plates: [25, 20, 15, 10, 5, 2.5, 1.25],
     bodyweight: 75,
-    oneRmFormula: "epley"
+    includeBarWeightInCalc: true
   },
   exercises: SEED_EXERCISES,
   routines: [],
   workouts: [],
+  bodyMeasurements: [],
   activeWorkoutId: null
 };
 
@@ -83,12 +83,39 @@ const ui = {
   view: "workouts",
   editRoutineId: null,
   statsExerciseId: null,
+  statsMetric: "heaviestWeight",
+  statsMonthsBack: 6,
+  muscleGrouping: "week",
+  muscleMonthsBack: 1,
+  muscleDimension: "primary",
+  selectedMuscles: [],
   exerciseSearch: "",
   selectedRoutineId: null,
   replaceTarget: null,
   replaceSearch: "",
-  editExerciseId: null
+  editExerciseId: null,
+  historyFilter: "all",
+  measurementMetric: "bodyWeight"
 };
+
+const BODY_MEASUREMENT_FIELDS = [
+  { key: "bodyWeight", label: "Body Weight", unit: "kg", decimals: 1, color: "#4dabf7" },
+  { key: "muscleWeight", label: "Muscle Weight", unit: "kg", decimals: 1, color: "#20c997" },
+  { key: "boneWeight", label: "Bone Weight", unit: "kg", decimals: 1, color: "#ffd43b" },
+  { key: "bodyFat", label: "Body Fat", unit: "%", decimals: 1, color: "#ff6b6b" },
+  { key: "tbw", label: "TBW", unit: "%", decimals: 1, color: "#74c0fc" },
+  { key: "bmi", label: "BMI", unit: "", decimals: 1, color: "#c77dff" }
+];
+
+const EXERCISE_STATS_METRICS = [
+  { key: "heaviestWeight", label: "Heaviest Weight Lifted", color: "#4dabf7", unit: "kg" },
+  { key: "oneRmBrzycki", label: "Projected / True 1RM (Brzycki)", color: "#b197ff", unit: "kg" },
+  { key: "bestSetVolume", label: "Best Set Volume", color: "#51cf66", unit: "kg" },
+  { key: "bestSessionVolume", label: "Best Session Volume", color: "#ffd43b", unit: "kg" },
+  { key: "mostReps", label: "Most Reps Done", color: "#ff8787", unit: "reps" }
+];
+
+const MUSCLE_CHART_COLORS = ["#4dabf7", "#51cf66", "#ffd43b", "#ff8787", "#b197ff", "#20c997", "#ffa94d", "#74c0fc"];
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -107,19 +134,28 @@ function uid() {
 
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+  if (!raw) {
+    const fresh = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    fresh.exercises = normalizeExercises(fresh.exercises);
+    return fresh;
+  }
   try {
     const saved = JSON.parse(raw);
     const merged = JSON.parse(JSON.stringify(DEFAULT_STATE));
     merged.settings = mergeSettings(saved.settings || {});
-    merged.exercises = stripLegacyExercises(saved.exercises);
+    merged.exercises = normalizeExercises(saved.exercises);
     merged.routines = Array.isArray(saved.routines) ? saved.routines.map(normalizeRoutine) : [];
     merged.workouts = Array.isArray(saved.workouts) ? saved.workouts.map(normalizeWorkout) : [];
+    merged.bodyMeasurements = Array.isArray(saved.bodyMeasurements)
+      ? saved.bodyMeasurements.map(normalizeBodyMeasurement).filter(Boolean)
+      : [];
     merged.activeWorkoutId = saved.activeWorkoutId || null;
     merged.lastModified = saved.lastModified || 0;
     return merged;
   } catch (err) {
-    return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    const fallback = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    fallback.exercises = normalizeExercises(fallback.exercises);
+    return fallback;
   }
 }
 
@@ -144,6 +180,37 @@ function stripLegacyExercises(exercises) {
   return exercises.filter((exercise) => !LEGACY_SEEDED_IDS.has(exercise.id));
 }
 
+function normalizeMuscleGroupText(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry || "").trim()).filter(Boolean).join(", ");
+  }
+  return String(value || "").trim();
+}
+
+function normalizeExercise(exercise) {
+  if (!exercise || typeof exercise !== "object") return null;
+  const normalizedType = exercise.type === "assisted" || exercise.type === "duration" ? exercise.type : "weight";
+  return {
+    ...exercise,
+    id: exercise.id || uid(),
+    name: String(exercise.name || "").trim(),
+    category: String(exercise.category || "").trim(),
+    type: normalizedType,
+    primaryMuscleGroups: normalizeMuscleGroupText(
+      exercise.primaryMuscleGroups || exercise.primaryMuscles || exercise.primaryMuscleGroup
+    ),
+    detailedMuscleGroups: normalizeMuscleGroupText(
+      exercise.detailedMuscleGroups || exercise.detailedMuscles || exercise.detailMuscleGroup
+    )
+  };
+}
+
+function normalizeExercises(exercises) {
+  return stripLegacyExercises(exercises)
+    .map(normalizeExercise)
+    .filter((exercise) => exercise && exercise.name);
+}
+
 function mergeSettings(saved = {}) {
   const merged = { ...DEFAULT_STATE.settings, ...saved };
   const legacyRest = saved.restSeconds;
@@ -152,6 +219,7 @@ function mergeSettings(saved = {}) {
     if (!Number.isFinite(saved.restSecondsWarmup)) merged.restSecondsWarmup = Math.max(10, Math.round(legacyRest * 0.7));
     if (!Number.isFinite(saved.restSecondsDrop)) merged.restSecondsDrop = Math.max(10, Math.round(legacyRest * 0.5));
   }
+  merged.includeBarWeightInCalc = saved.includeBarWeightInCalc !== false;
   return merged;
 }
 
@@ -180,6 +248,20 @@ function mergeSettings(saved = {}) {
       }))
     };
   }
+
+function normalizeBodyMeasurement(entry) {
+  if (!entry || typeof entry !== "object") return null;
+  const createdAt = entry.createdAt || new Date().toISOString();
+  const normalized = {
+    id: entry.id || uid(),
+    createdAt
+  };
+  BODY_MEASUREMENT_FIELDS.forEach((field) => {
+    const value = parseFloat(entry[field.key]);
+    normalized[field.key] = Number.isFinite(value) ? value : null;
+  });
+  return normalized;
+}
 
 
 let photoDB = null;
@@ -260,7 +342,9 @@ function toast(msg) {
       id: uid(),
       name: trimmed,
       category: "",
-      type: "weight"
+      type: "weight",
+      primaryMuscleGroups: "",
+      detailedMuscleGroups: ""
     };
     state.exercises.push(exercise);
     return exercise;
@@ -291,6 +375,34 @@ function formatDateTime(iso) {
   return d.toLocaleString();
 }
 
+function findBodyMeasurementField(fieldKey) {
+  return BODY_MEASUREMENT_FIELDS.find((field) => field.key === fieldKey) || BODY_MEASUREMENT_FIELDS[0];
+}
+
+function formatMeasurementValue(fieldKey, value) {
+  const field = findBodyMeasurementField(fieldKey);
+  if (!Number.isFinite(value)) return "-";
+  const formatted = value.toFixed(field.decimals);
+  return field.unit ? `${formatted}${field.unit === "%" ? "%" : ` ${field.unit}`}` : formatted;
+}
+
+function getSortedBodyMeasurements() {
+  return state.bodyMeasurements
+    .slice()
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+}
+
+function getLatestBodyMeasurement() {
+  const sorted = getSortedBodyMeasurements();
+  return sorted[sorted.length - 1] || null;
+}
+
+function getLatestBodyWeight() {
+  const sorted = getSortedBodyMeasurements().slice().reverse();
+  const latestWithWeight = sorted.find((entry) => Number.isFinite(entry.bodyWeight));
+  return latestWithWeight ? latestWithWeight.bodyWeight : null;
+}
+
 function formatExerciseType(type) {
   if (type === "assisted") return "Assisted";
   if (type === "duration") return "Duration";
@@ -319,10 +431,6 @@ function parseDuration(value) {
 
 function calcOneRm(weight, reps) {
   if (!weight || !reps) return 0;
-  if (state.settings.oneRmFormula === "brzycki") {
-    if (reps >= 37) return 0;
-    return weight * (36 / (37 - reps));
-  }
   return weight * (1 + reps / 30);
 }
 
@@ -411,12 +519,13 @@ function stopTimer(clear = true) {
 function startWorkout(routineId = null) {
   const routine = routineId ? state.routines.find((r) => r.id === routineId) : null;
   const now = new Date().toISOString();
+  const latestBodyWeight = getLatestBodyWeight();
   const workout = {
     id: uid(),
     name: routine ? routine.name : "Workout",
     createdAt: now,
     routineId: routine ? routine.id : null,
-    bodyweight: state.settings.bodyweight,
+    bodyweight: Number.isFinite(latestBodyWeight) ? latestBodyWeight : state.settings.bodyweight,
     notes: "",
     photoIds: [],
     items: []
@@ -565,7 +674,7 @@ function renderReplaceSheet() {
     .sort((a, b) => a.name.localeCompare(b.name))
     .filter((ex) => {
       if (!term) return true;
-      const hay = `${ex.name} ${ex.category || ""}`.toLowerCase();
+      const hay = `${ex.name} ${ex.category || ""} ${ex.primaryMuscleGroups || ""} ${ex.detailedMuscleGroups || ""}`.toLowerCase();
       return hay.includes(term);
     });
   if (!options.length) {
@@ -613,9 +722,13 @@ function openExerciseEditSheet(exerciseId) {
   ui.editExerciseId = exercise.id;
   const name = $("#editExerciseName");
   const category = $("#editExerciseCategory");
+  const primaryMuscles = $("#editExercisePrimaryMuscles");
+  const detailedMuscles = $("#editExerciseDetailedMuscles");
   const type = $("#editExerciseType");
   if (name) name.value = exercise.name || "";
   if (category) category.value = exercise.category || "";
+  if (primaryMuscles) primaryMuscles.value = exercise.primaryMuscleGroups || "";
+  if (detailedMuscles) detailedMuscles.value = exercise.detailedMuscleGroups || "";
   if (type) type.value = exercise.type || "weight";
   const sheet = $("#exerciseEditSheet");
   if (sheet) sheet.classList.remove("hidden");
@@ -633,6 +746,8 @@ function saveExerciseEdit() {
   if (!exercise) return;
   const name = $("#editExerciseName")?.value.trim() || "";
   const category = $("#editExerciseCategory")?.value.trim() || "";
+  const primaryMuscleGroups = $("#editExercisePrimaryMuscles")?.value.trim() || "";
+  const detailedMuscleGroups = $("#editExerciseDetailedMuscles")?.value.trim() || "";
   const type = $("#editExerciseType")?.value || "weight";
   if (!name) {
     toast("Exercise needs a name");
@@ -644,6 +759,8 @@ function saveExerciseEdit() {
   }
   exercise.name = name;
   exercise.category = category;
+  exercise.primaryMuscleGroups = primaryMuscleGroups;
+  exercise.detailedMuscleGroups = detailedMuscleGroups;
   exercise.type = type;
   saveState();
   renderExercises();
@@ -821,6 +938,8 @@ function getEditRoutine() {
 function createExercise() {
   const name = $("#exerciseName")?.value.trim();
   const category = $("#exerciseCategory")?.value.trim();
+  const primaryMuscleGroups = $("#exercisePrimaryMuscles")?.value.trim() || "";
+  const detailedMuscleGroups = $("#exerciseDetailedMuscles")?.value.trim() || "";
   const type = $("#exerciseType")?.value || "weight";
   if (!name) {
     toast("Exercise needs a name");
@@ -830,13 +949,22 @@ function createExercise() {
     id: uid(),
     name,
     category,
-    type
+    type,
+    primaryMuscleGroups,
+    detailedMuscleGroups
   };
   state.exercises.push(exercise);
   $("#exerciseName").value = "";
   $("#exerciseCategory").value = "";
+  const primaryInput = $("#exercisePrimaryMuscles");
+  const detailedInput = $("#exerciseDetailedMuscles");
+  if (primaryInput) primaryInput.value = "";
+  if (detailedInput) detailedInput.value = "";
   saveState();
   renderExercises();
+  renderRoutines();
+  renderLog();
+  renderStats();
   toast("Exercise added");
 }
 
@@ -854,6 +982,9 @@ function deleteExercise(exerciseId) {
   state.exercises = state.exercises.filter((ex) => ex.id !== exerciseId);
   saveState();
   renderExercises();
+  renderRoutines();
+  renderLog();
+  renderStats();
 }
 function renderLog() {
   renderLandingWorkouts();
@@ -906,7 +1037,7 @@ function renderSession() {
     if (!active.items.length) {
       container.innerHTML = "<div class=\"empty\">Add an exercise to start logging.</div>";
     } else {
-      container.innerHTML = active.items.map((item) => renderWorkoutExercise(item, active)).join("");
+      container.innerHTML = active.items.map((item) => renderWorkoutExercise(item)).join("");
     }
   }
 
@@ -914,45 +1045,15 @@ function renderSession() {
   renderPhotoStrip(active.photoIds || []);
 }
 
-function getPreviousSets(exerciseId, workoutId) {
-  const sorted = state.workouts
-    .slice()
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  for (const workout of sorted) {
-    if (workout.id === workoutId) continue;
-    const item = workout.items.find((entry) => entry.exerciseId === exerciseId);
-    if (item) return item.sets || [];
-  }
-  return [];
-}
-
-function formatPreviousSet(set) {
-  if (!set) return "-";
-  if (set.type === "duration") {
-    const time = set.durationSec ? formatDuration(set.durationSec) : "-";
-    const distance = Number.isFinite(set.distance) ? `${set.distance} km` : "";
-    return distance ? `${time} · ${distance}` : time;
-  }
-  if (set.type === "assisted") {
-    const assist = Number.isFinite(set.assist) ? `${set.assist} kg` : "-";
-    const reps = Number.isFinite(set.reps) ? `${set.reps} reps` : "-";
-    return `${assist} x ${reps}`;
-  }
-  const weight = Number.isFinite(set.weight) ? `${set.weight} kg` : "-";
-  const reps = Number.isFinite(set.reps) ? `${set.reps} reps` : "-";
-  return `${weight} x ${reps}`;
-}
-
   function renderSetsHeader(type, owner) {
     const loadLabel = type === "assisted" ? "Assist" : type === "duration" ? "Time" : "kg";
     const repsLabel = type === "duration" ? "Distance" : "Reps";
     const doneLabel = owner === "workout" ? "<div>Done</div>" : "";
-    return `<div class="set-row owner-${owner} header"><div>Set</div><div>Previous</div><div>${loadLabel}</div><div>${repsLabel}</div>${doneLabel}<div></div></div>`;
+    return `<div class="set-row owner-${owner} header"><div>Set</div><div>${loadLabel}</div><div>${repsLabel}</div>${doneLabel}<div></div></div>`;
   }
 
-  function renderSetRow(set, index, itemId, owner, prevSet) {
+  function renderSetRow(set, index, itemId, owner) {
     const tag = normalizeSetTag(set.tag || "work");
-    const prevLabel = formatPreviousSet(prevSet);
     const baseAttrs = `data-owner="${owner}" data-item-id="${itemId}" data-set-id="${set.id}"`;
     let loadField = "";
     let repsField = "";
@@ -978,7 +1079,6 @@ function formatPreviousSet(set) {
           <span class="set-pill-num">${index + 1}</span>
           <span class="set-pill-tag">${setTagShort(tag)}</span>
         </button>
-        <div class="set-cell set-prev">${esc(prevLabel)}</div>
         <div class="set-cell">${loadField}</div>
         <div class="set-cell">${repsField}</div>
         ${doneCell}
@@ -992,9 +1092,8 @@ function renderExerciseCard(item, options) {
   const exercise = getExercise(item.exerciseId);
   if (!exercise) return "";
   const meta = `${esc(exercise.category || "General")} · ${formatExerciseType(exercise.type)}`;
-  const prevSets = owner === "workout" ? getPreviousSets(item.exerciseId, options.workoutId) : [];
-    const setsHeader = renderSetsHeader(exercise.type, owner);
-  const setsRows = item.sets.map((set, index) => renderSetRow(set, index, item.id, owner, prevSets[index])).join("");
+  const setsHeader = renderSetsHeader(exercise.type, owner);
+  const setsRows = item.sets.map((set, index) => renderSetRow(set, index, item.id, owner)).join("");
   const setsHtml = item.sets.length ? setsHeader + setsRows : `${setsHeader}<div class="muted small">No sets yet.</div>`;
   const tagHelp = item.sets.length
     ? "<div class=\"muted small set-tag-help\">Tap set number to cycle tag (W, WU, F, D).</div>"
@@ -1034,8 +1133,8 @@ function renderExerciseCard(item, options) {
     `;
   }
 
-function renderWorkoutExercise(item, workout) {
-  return renderExerciseCard(item, { owner: "workout", workoutId: workout.id });
+function renderWorkoutExercise(item) {
+  return renderExerciseCard(item, { owner: "workout" });
 }
 
 function renderLandingWorkouts() {
@@ -1070,34 +1169,76 @@ function closeWorkoutSheet() {
   ui.selectedRoutineId = null;
 }
 
-  function renderHistory() {
-    const list = $("#historyList");
-    if (!list) return;
-    const history = state.workouts
-      .filter((w) => w.id !== state.activeWorkoutId)
-      .slice()
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    if (!history.length) {
-      list.innerHTML = "<div class=\"muted small\">No saved workouts yet.</div>";
-      return;
-    }
-    list.innerHTML = history.map((workout) => {
-      const volume = workoutVolume(workout);
-      const exerciseCount = workout.items.length;
-      return `
-        <div class="result-item history-item" data-action="history-details" data-workout-id="${workout.id}">
-          <div>
-            <div class="title">${esc(workout.name || "Workout")}</div>
-            <div class="muted small">${formatDate(workout.createdAt)} · ${exerciseCount} exercises</div>
-          </div>
-          <div class="history-actions">
-            <div class="title">${volume.toFixed(0)} kg</div>
-            <button class="ghost icon-btn" data-action="history-delete" data-workout-id="${workout.id}" aria-label="Delete workout">⋯</button>
-          </div>
-        </div>
-      `;
-    }).join("");
+function getHistoryEntries() {
+  const workoutEntries = state.workouts
+    .filter((workout) => workout.id !== state.activeWorkoutId)
+    .map((workout) => ({ type: "workout", createdAt: workout.createdAt, workout }));
+  const measurementEntries = state.bodyMeasurements
+    .map((measurement) => ({ type: "measurement", createdAt: measurement.createdAt, measurement }));
+  let merged = [...workoutEntries, ...measurementEntries];
+  if (ui.historyFilter === "workouts") {
+    merged = merged.filter((entry) => entry.type === "workout");
+  } else if (ui.historyFilter === "measurements") {
+    merged = merged.filter((entry) => entry.type === "measurement");
   }
+  return merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+function renderWorkoutHistoryItem(workout) {
+  const volume = workoutVolume(workout);
+  const exerciseCount = workout.items.length;
+  return `
+    <div class="result-item history-item" data-action="history-details" data-entry-type="workout" data-workout-id="${workout.id}">
+      <div>
+        <div class="title">${esc(workout.name || "Workout")}</div>
+        <div class="muted small">${formatDate(workout.createdAt)} · ${exerciseCount} exercises</div>
+      </div>
+      <div class="history-actions">
+        <div class="title">${volume.toFixed(0)} kg</div>
+        <button class="ghost icon-btn" data-action="history-delete" data-entry-type="workout" data-workout-id="${workout.id}" aria-label="Delete workout">⋯</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderMeasurementHistoryItem(measurement) {
+  const primary = Number.isFinite(measurement.bodyWeight)
+    ? `${measurement.bodyWeight.toFixed(1)} kg`
+    : "No weight";
+  return `
+    <div class="result-item history-item history-measurement" data-action="history-details" data-entry-type="measurement" data-measurement-id="${measurement.id}">
+      <div>
+        <div class="title">Body Measurements</div>
+        <div class="muted small">${formatDate(measurement.createdAt)}</div>
+      </div>
+      <div class="history-actions">
+        <div class="title">${primary}</div>
+        <button class="ghost icon-btn" data-action="history-delete" data-entry-type="measurement" data-measurement-id="${measurement.id}" aria-label="Delete measurement">⋯</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderHistory() {
+  const list = $("#historyList");
+  if (!list) return;
+  const filters = $("#historyFilters");
+  if (filters) {
+    $$("button[data-filter]", filters).forEach((button) => {
+      button.classList.toggle("active", button.dataset.filter === ui.historyFilter);
+    });
+  }
+  const entries = getHistoryEntries();
+  if (!entries.length) {
+    list.innerHTML = "<div class=\"muted small\">No history entries yet.</div>";
+    return;
+  }
+  list.innerHTML = entries.map((entry) => (
+    entry.type === "workout"
+      ? renderWorkoutHistoryItem(entry.workout)
+      : renderMeasurementHistoryItem(entry.measurement)
+  )).join("");
+}
 
   function workoutVolume(workout) {
     let volume = 0;
@@ -1146,9 +1287,11 @@ function closeWorkoutSheet() {
     return `${weight || "-"} kg x ${reps}`;
   }
 
-  function openHistorySheet(workoutId) {
+function openWorkoutHistorySheet(workoutId) {
     const workout = state.workouts.find((w) => w.id === workoutId);
     if (!workout) return;
+    const title = $("#historySheetTitle");
+    if (title) title.textContent = "Workout Details";
     const details = $("#historyDetails");
     if (!details) return;
     const durationSec = workout.endedAt
@@ -1187,22 +1330,62 @@ function closeWorkoutSheet() {
     if (sheet) sheet.classList.remove("hidden");
   }
 
-  function closeHistorySheet() {
-    const sheet = $("#historySheet");
-    if (sheet) sheet.classList.add("hidden");
-  }
+function openBodyMeasurementHistorySheet(measurementId) {
+  const measurement = state.bodyMeasurements.find((entry) => entry.id === measurementId);
+  if (!measurement) return;
+  const title = $("#historySheetTitle");
+  if (title) title.textContent = "Body Measurement Details";
+  const details = $("#historyDetails");
+  if (!details) return;
+  const rows = BODY_MEASUREMENT_FIELDS.map((field) => {
+    return `<div class="result-item"><div>${field.label}</div><div>${formatMeasurementValue(field.key, measurement[field.key])}</div></div>`;
+  }).join("");
+  details.innerHTML = `
+    <div class="history-detail-grid">
+      <div class="result-item"><div>Date</div><div>${formatDateTime(measurement.createdAt)}</div></div>
+      ${rows}
+    </div>
+  `;
+  const sheet = $("#historySheet");
+  if (sheet) sheet.classList.remove("hidden");
+}
 
-  function deleteWorkout(workoutId) {
-    const workout = state.workouts.find((w) => w.id === workoutId);
-    if (!workout) return;
-    if (!confirm(`Delete ${workout.name || "this workout"}?`)) return;
-    state.workouts = state.workouts.filter((w) => w.id !== workoutId);
-    if (state.activeWorkoutId === workoutId) state.activeWorkoutId = null;
-    saveState();
-    renderHistory();
-    renderStats();
-    closeHistorySheet();
+function openHistorySheet(type, id) {
+  if (type === "measurement") {
+    openBodyMeasurementHistorySheet(id);
+    return;
   }
+  openWorkoutHistorySheet(id);
+}
+
+function closeHistorySheet() {
+  const sheet = $("#historySheet");
+  if (sheet) sheet.classList.add("hidden");
+}
+
+function deleteWorkout(workoutId) {
+  const workout = state.workouts.find((w) => w.id === workoutId);
+  if (!workout) return;
+  if (!confirm(`Delete ${workout.name || "this workout"}?`)) return;
+  state.workouts = state.workouts.filter((w) => w.id !== workoutId);
+  if (state.activeWorkoutId === workoutId) state.activeWorkoutId = null;
+  saveState();
+  renderHistory();
+  renderStats();
+  closeHistorySheet();
+}
+
+function deleteBodyMeasurement(measurementId) {
+  const measurement = state.bodyMeasurements.find((entry) => entry.id === measurementId);
+  if (!measurement) return;
+  if (!confirm("Delete this body measurement entry?")) return;
+  state.bodyMeasurements = state.bodyMeasurements.filter((entry) => entry.id !== measurementId);
+  saveState();
+  renderHistory();
+  renderStats();
+  renderTools();
+  closeHistorySheet();
+}
 
 function renderRoutines() {
   const routineList = $("#routineList");
@@ -1292,7 +1475,15 @@ function renderExercises() {
   const exercises = state.exercises
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
-    .filter((ex) => ex.name.toLowerCase().includes(term) || (ex.category || "").toLowerCase().includes(term));
+    .filter((ex) => {
+      const haystack = [
+        ex.name,
+        ex.category || "",
+        ex.primaryMuscleGroups || "",
+        ex.detailedMuscleGroups || ""
+      ].join(" ").toLowerCase();
+      return haystack.includes(term);
+    });
 
   if (!state.exercises.length) {
     list.innerHTML = "<div class=\"empty\">No exercises yet. Add your first exercise to get started.</div>";
@@ -1310,6 +1501,8 @@ function renderExercises() {
             <div>
               <div class="title">${esc(ex.name)}</div>
               <div class="muted small">${esc(ex.category || "General")} · ${formatExerciseType(ex.type)}</div>
+              <div class="muted small">Primary: ${esc(ex.primaryMuscleGroups || "Unassigned")}</div>
+              <div class="muted small">Detailed: ${esc(ex.detailedMuscleGroups || "Unassigned")}</div>
             </div>
             <div class="row">
               <button class="ghost small" data-action="edit-exercise" data-exercise-id="${ex.id}">Edit</button>
@@ -1324,108 +1517,104 @@ function renderExercises() {
     : "<div class=\"muted small\">No exercises found.</div>";
 }
 
-  function computeExerciseStats(exerciseId) {
-    const exercise = getExercise(exerciseId);
-    if (!exercise) return null;
+function getExerciseStatsMetric(metricKey) {
+  return EXERCISE_STATS_METRICS.find((metric) => metric.key === metricKey) || EXERCISE_STATS_METRICS[0];
+}
 
-    let maxWeight = 0;
-    let maxReps = 0;
-    let maxOneRm = 0;
-    let totalVolume = 0;
-    let totalReps = 0;
-    let totalWeight = 0;
-    const progression = [];
+function populateMonthRangeSelect(select, selectedValue, fallbackValue = 6) {
+  if (!select) return fallbackValue;
+  const options = Array.from({ length: 12 }, (_, idx) => {
+    const months = idx + 1;
+    const suffix = months === 1 ? "" : "s";
+    return `<option value="${months}">Last ${months} month${suffix}</option>`;
+  }).join("");
+  select.innerHTML = options;
+  const numeric = Math.min(12, Math.max(1, parseInt(selectedValue, 10) || fallbackValue));
+  select.value = String(numeric);
+  return numeric;
+}
 
-  state.workouts.forEach((workout) => {
-    let dayVolume = 0;
-    let dayOneRm = 0;
+function getMonthsBackCutoff(monthsBack) {
+  const months = Math.min(12, Math.max(1, parseInt(monthsBack, 10) || 1));
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setMonth(cutoff.getMonth() - months);
+  return cutoff;
+}
+
+function calcBrzyckiOneRm(weight, reps) {
+  if (!Number.isFinite(weight) || weight <= 0 || !Number.isFinite(reps) || reps <= 0) return 0;
+  if (reps === 1) return weight;
+  if (reps >= 37) return 0;
+  return weight * (36 / (37 - reps));
+}
+
+function getExercisePerformanceData(exerciseId) {
+  const sessions = [];
+  let totalWeight = 0;
+  let totalReps = 0;
+  const workouts = state.workouts
+    .slice()
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  workouts.forEach((workout) => {
+    const session = {
+      heaviestWeight: 0,
+      oneRmBrzycki: 0,
+      bestSetVolume: 0,
+      bestSessionVolume: 0,
+      mostReps: 0
+    };
+    let hasExercise = false;
     workout.items.forEach((item) => {
-        if (item.exerciseId !== exerciseId) return;
-        item.sets.forEach((set) => {
-          if (exercise.type === "duration") {
-            if (set.durationSec) {
-              totalVolume += set.durationSec;
-              dayVolume += set.durationSec;
-              totalReps += set.durationSec;
-              maxReps = Math.max(maxReps, set.durationSec);
-            }
-            return;
+      if (item.exerciseId !== exerciseId) return;
+      hasExercise = true;
+      item.sets.forEach((set) => {
+        if (set.type === "duration") {
+          const duration = Number.isFinite(set.durationSec) ? set.durationSec : 0;
+          if (duration > 0) {
+            totalReps += duration;
+            session.mostReps = Math.max(session.mostReps, duration);
           }
-          if (!set.reps) return;
-          const weight = effectiveWeight(set, workout.bodyweight);
-          if (!weight) return;
-          maxWeight = Math.max(maxWeight, weight);
-          maxReps = Math.max(maxReps, set.reps);
-          const oneRm = calcOneRm(weight, set.reps);
-          maxOneRm = Math.max(maxOneRm, oneRm);
-          dayOneRm = Math.max(dayOneRm, oneRm);
-          const volume = weight * set.reps;
-          totalVolume += volume;
-          totalWeight += volume;
-          totalReps += set.reps;
-          dayVolume += volume;
-        });
+          return;
+        }
+        const reps = Number.isFinite(set.reps) ? set.reps : 0;
+        if (reps <= 0) return;
+        totalReps += reps;
+        session.mostReps = Math.max(session.mostReps, reps);
+        const weight = effectiveWeight(set, workout.bodyweight);
+        if (!Number.isFinite(weight) || weight <= 0) return;
+        session.heaviestWeight = Math.max(session.heaviestWeight, weight);
+        const setVolume = weight * reps;
+        session.bestSetVolume = Math.max(session.bestSetVolume, setVolume);
+        session.bestSessionVolume += setVolume;
+        totalWeight += setVolume;
+        session.oneRmBrzycki = Math.max(session.oneRmBrzycki, calcBrzyckiOneRm(weight, reps));
       });
-      if (dayVolume > 0) {
-        progression.push({ date: workout.createdAt, volume: dayVolume, oneRm: dayOneRm });
-      }
     });
-
-    progression.sort((a, b) => new Date(a.date) - new Date(b.date));
-    return { exercise, maxWeight, maxReps, maxOneRm, totalVolume, totalReps, totalWeight, progression };
-  }
-
-function renderStats() {
-  const select = $("#statsExerciseSelect");
-  if (select) {
-    if (!state.exercises.length) {
-      select.innerHTML = "<option value=\"\">Add exercises first</option>";
-      select.disabled = true;
-      ui.statsExerciseId = null;
-    } else {
-      select.disabled = false;
-      select.innerHTML = state.exercises
-        .slice()
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((ex) => `<option value="${ex.id}">${esc(ex.name)}</option>`)
-        .join("");
-      if (!ui.statsExerciseId) ui.statsExerciseId = state.exercises[0]?.id || null;
-      if (ui.statsExerciseId) select.value = ui.statsExerciseId;
+    if (hasExercise) {
+      sessions.push({
+        date: workout.createdAt,
+        ...session
+      });
     }
-  }
+  });
 
-    if (!ui.statsExerciseId) {
-      $("#stat1rm").textContent = "-";
-      $("#statMaxWeight").textContent = "-";
-      $("#statMaxReps").textContent = "-";
-      $("#statVolume").textContent = "-";
-      $("#statTotalReps").textContent = "-";
-      renderLineChart($("#volumeChart"), [], "#b197ff");
-      renderLineChart($("#oneRmChart"), [], "#b197ff");
-      return;
-    }
-  const stats = computeExerciseStats(ui.statsExerciseId);
-  if (!stats) return;
+  return { sessions, totalWeight, totalReps };
+}
 
-  const isDuration = stats.exercise.type === "duration";
-
-  $("#stat1rm").textContent = isDuration ? "-" : `${stats.maxOneRm.toFixed(1)} kg`;
-  $("#statMaxWeight").textContent = isDuration ? "-" : `${stats.maxWeight.toFixed(1)} kg`;
-    $("#statMaxReps").textContent = isDuration
-      ? formatDuration(stats.maxReps)
-      : `${stats.maxReps}`;
-    $("#statVolume").textContent = isDuration
-      ? "-"
-      : `${stats.totalWeight.toFixed(0)} kg`;
-    $("#statTotalReps").textContent = isDuration
-      ? `${formatDuration(stats.totalReps)}`
-      : `${stats.totalReps}`;
-
-  const volumeData = stats.progression.map((p) => ({ label: formatDate(p.date), value: p.volume }));
-  const oneRmData = stats.progression.map((p) => ({ label: formatDate(p.date), value: p.oneRm }));
-
-  renderLineChart($("#volumeChart"), volumeData, "#b197ff");
-  renderLineChart($("#oneRmChart"), isDuration ? [] : oneRmData, "#7a5cff");
+function buildChartAxis(labels) {
+  if (!labels.length) return "";
+  const first = labels[0];
+  const mid = labels[Math.floor((labels.length - 1) / 2)];
+  const last = labels[labels.length - 1];
+  return `
+    <div class="chart-axis">
+      <span>${esc(first)}</span>
+      <span>${esc(mid)}</span>
+      <span>${esc(last)}</span>
+    </div>
+  `;
 }
 
 function renderLineChart(container, data, color) {
@@ -1445,18 +1634,337 @@ function renderLineChart(container, data, color) {
   const points = data.map((d, i) => {
     const x = pad + step * i;
     const y = height - pad - ((d.value - min) / span) * (height - pad * 2);
-    return `${x},${y}`;
-  }).join(" ");
-  const last = data[data.length - 1];
-  const lastX = pad + step * (data.length - 1);
-  const lastY = height - pad - ((last.value - min) / span) * (height - pad * 2);
+    return { x, y };
+  });
+  const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const circles = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.8" fill="${color}" />`).join("");
 
   container.innerHTML = `
     <svg viewBox="0 0 ${width} ${height}" width="100%" height="160" preserveAspectRatio="none">
-      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx="${lastX}" cy="${lastY}" r="4" fill="${color}" />
+      <polyline points="${polyline}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      ${circles}
     </svg>
+    ${buildChartAxis(data.map((entry) => entry.label))}
   `;
+}
+
+function renderMultiLineChart(container, labels, series) {
+  if (!container) return;
+  if (!labels.length || !series.length) {
+    container.innerHTML = "<div class=\"muted small\">No data yet.</div>";
+    return;
+  }
+  const width = 320;
+  const height = 160;
+  const pad = 20;
+  const values = series.flatMap((entry) => entry.values);
+  const max = Math.max(...values, 1);
+  const step = labels.length > 1 ? (width - pad * 2) / (labels.length - 1) : 0;
+
+  const lines = series.map((entry) => {
+    const points = entry.values.map((value, idx) => {
+      const x = pad + step * idx;
+      const y = height - pad - ((value || 0) / max) * (height - pad * 2);
+      return { x, y };
+    });
+    const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
+    const circles = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.2" fill="${entry.color}" />`).join("");
+    return `<polyline points="${polyline}" fill="none" stroke="${entry.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />${circles}`;
+  }).join("");
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" width="100%" height="160" preserveAspectRatio="none">
+      ${lines}
+    </svg>
+    ${buildChartAxis(labels)}
+  `;
+}
+
+function parseMuscleGroups(value) {
+  return String(value || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function getExerciseMuscleGroups(exercise, dimension) {
+  const source = dimension === "detailed" ? exercise?.detailedMuscleGroups : exercise?.primaryMuscleGroups;
+  const groups = parseMuscleGroups(source);
+  return groups.length ? groups : ["Unassigned"];
+}
+
+function getPeriodStart(date, grouping) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  if (grouping === "year") {
+    start.setMonth(0, 1);
+    return start;
+  }
+  if (grouping === "month") {
+    start.setDate(1);
+    return start;
+  }
+  const day = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - day);
+  return start;
+}
+
+function formatPeriodLabel(periodStart, grouping) {
+  if (grouping === "year") return `${periodStart.getFullYear()}`;
+  if (grouping === "month") {
+    return periodStart.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  }
+  return `Wk ${periodStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+}
+
+function toDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function collectAvailableMuscles(dimension) {
+  const muscles = new Set();
+  state.workouts.forEach((workout) => {
+    workout.items.forEach((item) => {
+      const exercise = getExercise(item.exerciseId);
+      getExerciseMuscleGroups(exercise, dimension).forEach((group) => muscles.add(group));
+    });
+  });
+  if (!muscles.size) muscles.add("Unassigned");
+  return Array.from(muscles).sort((a, b) => a.localeCompare(b));
+}
+
+function computeMuscleVolumeSeries(grouping, monthsBack, dimension, selectedMuscles) {
+  const cutoff = getMonthsBackCutoff(monthsBack);
+  const buckets = new Map();
+  const workouts = state.workouts
+    .slice()
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  workouts.forEach((workout) => {
+    const workoutDate = new Date(workout.createdAt);
+    if (workoutDate < cutoff) return;
+    workout.items.forEach((item) => {
+      const setCount = item.sets.length;
+      if (!setCount) return;
+      const exercise = getExercise(item.exerciseId);
+      const muscles = getExerciseMuscleGroups(exercise, dimension);
+      const periodStart = getPeriodStart(workoutDate, grouping);
+      const key = toDateKey(periodStart);
+      if (!buckets.has(key)) {
+        buckets.set(key, {
+          date: periodStart,
+          label: formatPeriodLabel(periodStart, grouping),
+          counts: {}
+        });
+      }
+      const bucket = buckets.get(key);
+      muscles.forEach((muscle) => {
+        bucket.counts[muscle] = (bucket.counts[muscle] || 0) + setCount;
+      });
+    });
+  });
+
+  const ordered = Array.from(buckets.values()).sort((a, b) => a.date - b.date);
+  const labels = ordered.map((entry) => entry.label);
+  const series = selectedMuscles.map((muscle, idx) => ({
+    name: muscle,
+    color: MUSCLE_CHART_COLORS[idx % MUSCLE_CHART_COLORS.length],
+    values: ordered.map((entry) => entry.counts[muscle] || 0)
+  })).filter((entry) => entry.values.some((value) => value > 0));
+  return { labels, series };
+}
+
+function renderMuscleGroupSection() {
+  const groupingSelect = $("#muscleGroupingSelect");
+  if (groupingSelect) groupingSelect.value = ui.muscleGrouping;
+  const monthsSelect = $("#muscleMonthsSelect");
+  ui.muscleMonthsBack = populateMonthRangeSelect(monthsSelect, ui.muscleMonthsBack, 1);
+  const dimensionSelect = $("#muscleDimensionSelect");
+  if (dimensionSelect) dimensionSelect.value = ui.muscleDimension;
+
+  const availableMuscles = collectAvailableMuscles(ui.muscleDimension);
+  const validSelection = ui.selectedMuscles.filter((muscle) => availableMuscles.includes(muscle));
+  if (!validSelection.length) {
+    ui.selectedMuscles = availableMuscles.slice(0, Math.min(4, availableMuscles.length));
+  } else {
+    ui.selectedMuscles = validSelection;
+  }
+
+  const filterSelect = $("#muscleFilterSelect");
+  if (filterSelect) {
+    filterSelect.innerHTML = availableMuscles
+      .map((muscle) => `<option value="${esc(muscle)}" ${ui.selectedMuscles.includes(muscle) ? "selected" : ""}>${esc(muscle)}</option>`)
+      .join("");
+  }
+
+  const data = computeMuscleVolumeSeries(
+    ui.muscleGrouping,
+    ui.muscleMonthsBack,
+    ui.muscleDimension,
+    ui.selectedMuscles
+  );
+  renderMultiLineChart($("#muscleVolumeChart"), data.labels, data.series);
+
+  const legend = $("#muscleChartLegend");
+  if (legend) {
+    legend.innerHTML = data.series.length
+      ? data.series.map((entry) => {
+        return `<div class="legend-item"><span class="legend-swatch" style="background:${entry.color};"></span><span>${esc(entry.name)}</span></div>`;
+      }).join("")
+      : "<div class=\"muted small\">No muscle data in selected range.</div>";
+  }
+}
+
+function renderStats() {
+  const exerciseSelect = $("#statsExerciseSelect");
+  if (exerciseSelect) {
+    if (!state.exercises.length) {
+      exerciseSelect.innerHTML = "<option value=\"\">Add exercises first</option>";
+      exerciseSelect.disabled = true;
+      ui.statsExerciseId = null;
+    } else {
+      const sortedExercises = state.exercises
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name));
+      if (!sortedExercises.some((exercise) => exercise.id === ui.statsExerciseId)) {
+        ui.statsExerciseId = sortedExercises[0]?.id || null;
+      }
+      exerciseSelect.disabled = false;
+      exerciseSelect.innerHTML = sortedExercises
+        .map((exercise) => `<option value="${exercise.id}">${esc(exercise.name)}</option>`)
+        .join("");
+      if (ui.statsExerciseId) exerciseSelect.value = ui.statsExerciseId;
+    }
+  }
+
+  const metricSelect = $("#statsMetricSelect");
+  if (metricSelect) {
+    metricSelect.innerHTML = EXERCISE_STATS_METRICS
+      .map((metric) => `<option value="${metric.key}">${metric.label}</option>`)
+      .join("");
+    if (!EXERCISE_STATS_METRICS.some((metric) => metric.key === ui.statsMetric)) {
+      ui.statsMetric = EXERCISE_STATS_METRICS[0].key;
+    }
+    metricSelect.value = ui.statsMetric;
+  }
+
+  const statsMonthsSelect = $("#statsMonthsSelect");
+  ui.statsMonthsBack = populateMonthRangeSelect(statsMonthsSelect, ui.statsMonthsBack, 6);
+  const selectedMetric = getExerciseStatsMetric(ui.statsMetric);
+  const chartTitle = $("#exerciseMetricTitle");
+  if (chartTitle) {
+    chartTitle.textContent = `${selectedMetric.label} · Last ${ui.statsMonthsBack} month${ui.statsMonthsBack === 1 ? "" : "s"}`;
+  }
+
+  const totalWeightEl = $("#statTotalWeightAll");
+  const totalRepsEl = $("#statTotalRepsAll");
+  if (!ui.statsExerciseId) {
+    if (totalWeightEl) totalWeightEl.textContent = "-";
+    if (totalRepsEl) totalRepsEl.textContent = "-";
+    renderLineChart($("#exerciseMetricChart"), [], selectedMetric.color);
+  } else {
+    const performance = getExercisePerformanceData(ui.statsExerciseId);
+    if (totalWeightEl) {
+      totalWeightEl.textContent = performance.totalWeight > 0
+        ? `${performance.totalWeight.toFixed(0)} kg`
+        : "-";
+    }
+    if (totalRepsEl) {
+      totalRepsEl.textContent = performance.totalReps > 0
+        ? `${performance.totalReps.toFixed(0)}`
+        : "-";
+    }
+
+    const cutoff = getMonthsBackCutoff(ui.statsMonthsBack);
+    const chartData = performance.sessions
+      .filter((session) => new Date(session.date) >= cutoff)
+      .map((session) => ({
+        date: session.date,
+        label: formatDate(session.date),
+        value: Number.isFinite(session[selectedMetric.key]) ? session[selectedMetric.key] : 0
+      }))
+      .filter((entry) => entry.value > 0);
+    renderLineChart($("#exerciseMetricChart"), chartData, selectedMetric.color);
+  }
+
+  renderMuscleGroupSection();
+  renderBodyMeasurementSection();
+}
+
+function measurementInputId(fieldKey) {
+  return `measure${fieldKey.charAt(0).toUpperCase()}${fieldKey.slice(1)}`;
+}
+
+function getBodyMeasurementDraft() {
+  const draft = {};
+  let hasValue = false;
+  BODY_MEASUREMENT_FIELDS.forEach((field) => {
+    const input = $(`#${measurementInputId(field.key)}`);
+    const value = parseFloat(input?.value || "");
+    draft[field.key] = Number.isFinite(value) ? value : null;
+    if (Number.isFinite(value)) hasValue = true;
+  });
+  return { draft, hasValue };
+}
+
+function renderBodyMeasurementSection() {
+  const latest = getLatestBodyMeasurement();
+  BODY_MEASUREMENT_FIELDS.forEach((field) => {
+    const input = $(`#${measurementInputId(field.key)}`);
+    if (!input) return;
+    if (document.activeElement === input) return;
+    const value = latest?.[field.key];
+    input.value = Number.isFinite(value) ? value.toFixed(field.decimals) : "";
+  });
+
+  const meta = $("#bodyMeasurementMeta");
+  if (meta) {
+    meta.textContent = latest
+      ? `Latest entry: ${formatDateTime(latest.createdAt)}`
+      : "No body measurements logged yet.";
+  }
+
+  const metricSelect = $("#measurementMetricSelect");
+  if (metricSelect) {
+    metricSelect.innerHTML = BODY_MEASUREMENT_FIELDS
+      .map((field) => `<option value="${field.key}">${field.label}</option>`)
+      .join("");
+    if (!BODY_MEASUREMENT_FIELDS.some((field) => field.key === ui.measurementMetric)) {
+      ui.measurementMetric = BODY_MEASUREMENT_FIELDS[0].key;
+    }
+    metricSelect.value = ui.measurementMetric;
+  }
+
+  const metric = findBodyMeasurementField(ui.measurementMetric);
+  const chartData = getSortedBodyMeasurements()
+    .filter((entry) => Number.isFinite(entry[metric.key]))
+    .map((entry) => ({ label: formatDate(entry.createdAt), value: entry[metric.key] }));
+  renderLineChart($("#measurementChart"), chartData, metric.color);
+}
+
+function saveBodyMeasurement() {
+  const { draft, hasValue } = getBodyMeasurementDraft();
+  if (!hasValue) {
+    toast("Enter at least one body measurement");
+    return;
+  }
+  const entry = {
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    ...draft
+  };
+  state.bodyMeasurements.push(entry);
+  if (Number.isFinite(entry.bodyWeight)) {
+    state.settings.bodyweight = entry.bodyWeight;
+  }
+  saveState();
+  renderStats();
+  renderHistory();
+  renderTools();
+  toast("Body measurements saved");
 }
 
 function renderTools() {
@@ -1465,51 +1973,31 @@ function renderTools() {
   if ($("#restSecondsDrop")) $("#restSecondsDrop").value = state.settings.restSecondsDrop;
   const autoRest = $("#autoRest");
   if (autoRest) autoRest.checked = !!state.settings.autoRest;
-  $("#warmupPercents").value = state.settings.warmupPercents.join(", ");
-  $("#barWeight").value = state.settings.barWeight;
-  $("#plates").value = state.settings.plates.join(", ");
-  $("#bodyweight").value = state.settings.bodyweight;
-  $("#oneRmFormula").value = state.settings.oneRmFormula;
-  $("#plateBarWeight").value = state.settings.barWeight;
-}
-
-function getWeightIncrement() {
-  const plates = state.settings.plates.length ? state.settings.plates : [2.5];
-  const min = Math.min(...plates);
-  return min * 2;
-}
-
-function roundToIncrement(weight, increment) {
-  return Math.round(weight / increment) * increment;
-}
-
-function calcWarmup() {
-  const input = parseFloat($("#warmupWeight").value);
-  if (!Number.isFinite(input)) {
-    toast("Enter a working weight");
-    return;
+  const barWeightInput = $("#barWeight");
+  if (barWeightInput) barWeightInput.value = state.settings.barWeight;
+  const platesInput = $("#plates");
+  if (platesInput) platesInput.value = state.settings.plates.join(", ");
+  const latestBodyWeight = getLatestBodyWeight();
+  const bodyweightInput = $("#bodyweight");
+  if (bodyweightInput) {
+    const fallback = Number.isFinite(latestBodyWeight) ? latestBodyWeight : state.settings.bodyweight;
+    bodyweightInput.value = Number.isFinite(fallback) ? fallback : "";
   }
-  const increment = getWeightIncrement();
-  const results = state.settings.warmupPercents.map((percent) => {
-    const weight = roundToIncrement(input * (percent / 100), increment);
-    return { percent, weight };
-  });
-  const list = $("#warmupResults");
-  list.innerHTML = results.map((r) => {
-    return `<div class="result-item"><div>${r.percent}%</div><div>${r.weight.toFixed(1)} kg</div></div>`;
-  }).join("");
+  const includeBar = $("#includeBarWeightInCalc");
+  if (includeBar) includeBar.checked = state.settings.includeBarWeightInCalc !== false;
 }
 
 function calcPlates() {
   const target = parseFloat($("#plateTarget").value);
-  const bar = parseFloat($("#plateBarWeight").value || state.settings.barWeight);
   if (!Number.isFinite(target)) {
     toast("Enter target weight");
     return;
   }
+  const includeBar = state.settings.includeBarWeightInCalc !== false;
+  const bar = includeBar ? (parseFloat(state.settings.barWeight) || 0) : 0;
   const perSide = (target - bar) / 2;
   if (perSide < 0) {
-    toast("Target is below bar weight");
+    toast(includeBar ? "Target is below bar weight" : "Target is too low");
     return;
   }
   const plates = state.settings.plates.slice().sort((a, b) => b - a);
@@ -1523,13 +2011,14 @@ function calcPlates() {
     }
   });
   const list = $("#plateResults");
+  const modeLabel = includeBar ? `Including ${bar.toFixed(1)} kg bar` : "Bar weight excluded";
   if (!counts.length) {
-    list.innerHTML = "<div class=\"muted small\">No plates needed.</div>";
+    list.innerHTML = `<div class="muted small">${modeLabel} · No plates needed.</div>`;
     return;
   }
-  list.innerHTML = counts.map((c) => {
+  list.innerHTML = `<div class="muted small">${modeLabel}</div>${counts.map((c) => {
     return `<div class="result-item"><div>${c.plate} kg</div><div>${c.count} per side</div></div>`;
-  }).join("");
+  }).join("")}`;
 }
 function exportCsv() {
   const rows = [];
@@ -1685,15 +2174,10 @@ async function renderPhotoStrip(photoIds) {
 }
 
 function updateSetting(key, value, element) {
-    if (key === "autoRest") {
-      state.settings.autoRest = !!element?.checked;
-      if (!state.settings.autoRest) stopTimer();
-      updateTimerUI();
-    } else if (key === "warmupPercents") {
-    state.settings.warmupPercents = value
-      .split(",")
-      .map((v) => parseFloat(v.trim()))
-      .filter((v) => Number.isFinite(v));
+  if (key === "autoRest") {
+    state.settings.autoRest = !!element?.checked;
+    if (!state.settings.autoRest) stopTimer();
+    updateTimerUI();
   } else if (key === "plates") {
     state.settings.plates = value
       .split(",")
@@ -1712,16 +2196,14 @@ function updateSetting(key, value, element) {
   } else if (key === "restSeconds") {
     state.settings.restSecondsWork = Math.max(10, parseInt(value, 10) || 90);
     updateTimerUI();
-    } else if (key === "barWeight") {
-      state.settings.barWeight = parseFloat(value) || 20;
-      const barInput = $("#barWeight");
-      if (barInput) barInput.value = state.settings.barWeight;
-      const plateBar = $("#plateBarWeight");
-      if (plateBar) plateBar.value = state.settings.barWeight;
-    } else if (key === "bodyweight") {
+  } else if (key === "barWeight") {
+    state.settings.barWeight = parseFloat(value) || 20;
+    const barInput = $("#barWeight");
+    if (barInput) barInput.value = state.settings.barWeight;
+  } else if (key === "bodyweight") {
     state.settings.bodyweight = parseFloat(value) || 0;
-  } else if (key === "oneRmFormula") {
-    state.settings.oneRmFormula = value;
+  } else if (key === "includeBarWeightInCalc") {
+    state.settings.includeBarWeightInCalc = !!element?.checked;
   }
   saveState();
 }
@@ -1826,13 +2308,9 @@ function handleInputEvents() {
         renderExercises();
         return;
       }
-      if (target.id === "replaceSearch") {
+    if (target.id === "replaceSearch") {
         ui.replaceSearch = target.value;
         renderReplaceSheet();
-        return;
-      }
-      if (target.id === "plateBarWeight") {
-        updateSetting("barWeight", target.value, target);
         return;
       }
       if (target.dataset.field === "workout-name") {
@@ -1867,20 +2345,59 @@ function handleInputEvents() {
     if (target.id === "statsExerciseSelect") {
       ui.statsExerciseId = target.value;
       renderStats();
+      return;
+    }
+    if (target.id === "statsMetricSelect") {
+      ui.statsMetric = target.value;
+      renderStats();
+      return;
+    }
+    if (target.id === "statsMonthsSelect") {
+      ui.statsMonthsBack = Math.min(12, Math.max(1, parseInt(target.value, 10) || 6));
+      renderStats();
+      return;
+    }
+    if (target.id === "muscleGroupingSelect") {
+      ui.muscleGrouping = target.value || "week";
+      renderStats();
+      return;
+    }
+    if (target.id === "muscleMonthsSelect") {
+      ui.muscleMonthsBack = Math.min(12, Math.max(1, parseInt(target.value, 10) || 1));
+      renderStats();
+      return;
+    }
+    if (target.id === "muscleDimensionSelect") {
+      ui.muscleDimension = target.value || "primary";
+      ui.selectedMuscles = [];
+      renderStats();
+      return;
+    }
+    if (target.id === "muscleFilterSelect") {
+      ui.selectedMuscles = Array.from(target.selectedOptions).map((option) => option.value);
+      renderStats();
+      return;
+    }
+    if (target.id === "measurementMetricSelect") {
+      ui.measurementMetric = target.value;
+      renderBodyMeasurementSection();
+      return;
     }
     if (target.id === "routineSelect") {
       ui.editRoutineId = target.value;
       renderRoutines();
+      return;
     }
     if (target.id === "workoutPhotos") {
       handlePhotoUpload(target.files);
       target.value = "";
+      return;
     }
-      if (target.id === "importJsonInput") {
-        importJson(target.files[0]);
-        target.value = "";
-      }
-    });
+    if (target.id === "importJsonInput") {
+      importJson(target.files[0]);
+      target.value = "";
+    }
+  });
 
     document.addEventListener("click", (event) => {
       if (event.target.id === "workoutSheet") {
@@ -2018,11 +2535,23 @@ function handleInputEvents() {
         return;
       }
       if (action === "history-details") {
-        openHistorySheet(button.dataset.workoutId);
+        const entryType = button.dataset.entryType || "workout";
+        const entryId = entryType === "measurement" ? button.dataset.measurementId : button.dataset.workoutId;
+        openHistorySheet(entryType, entryId);
         return;
       }
       if (action === "history-delete") {
-        deleteWorkout(button.dataset.workoutId);
+        const entryType = button.dataset.entryType || "workout";
+        if (entryType === "measurement") {
+          deleteBodyMeasurement(button.dataset.measurementId);
+        } else {
+          deleteWorkout(button.dataset.workoutId);
+        }
+        return;
+      }
+      if (action === "history-filter") {
+        ui.historyFilter = button.dataset.filter || "all";
+        renderHistory();
         return;
       }
       if (action === "history-close") {
@@ -2110,8 +2639,8 @@ function handleInputEvents() {
       exportJson();
       return;
     }
-    if (action === "calc-warmup") {
-      calcWarmup();
+    if (action === "save-body-measurement") {
+      saveBodyMeasurement();
       return;
     }
     if (action === "calc-plates") {
@@ -2157,9 +2686,12 @@ function importJson(file) {
 function loadStateFromImport(parsed) {
   const merged = JSON.parse(JSON.stringify(DEFAULT_STATE));
   merged.settings = mergeSettings(parsed.settings || {});
-  merged.exercises = stripLegacyExercises(parsed.exercises);
+  merged.exercises = normalizeExercises(parsed.exercises);
   merged.routines = Array.isArray(parsed.routines) ? parsed.routines.map(normalizeRoutine) : [];
   merged.workouts = Array.isArray(parsed.workouts) ? parsed.workouts.map(normalizeWorkout) : [];
+  merged.bodyMeasurements = Array.isArray(parsed.bodyMeasurements)
+    ? parsed.bodyMeasurements.map(normalizeBodyMeasurement).filter(Boolean)
+    : [];
   merged.activeWorkoutId = parsed.activeWorkoutId || null;
   merged.lastModified = parsed.lastModified || 0;
   return merged;
