@@ -831,7 +831,6 @@ function renderReplaceSheet() {
     return `
       <button type="button" class="result-item replace-option" data-action="replace-choose" data-exercise-id="${ex.id}">
         <div class="title">${esc(ex.name)}</div>
-        <div class="muted small">${esc(ex.category || "General")} · ${formatExerciseType(ex.type)}</div>
       </button>
     `;
   }).join("");
@@ -1751,7 +1750,6 @@ function renderExercises() {
           <div class="row space">
             <div>
               <div class="title">${esc(ex.name)}</div>
-              <div class="muted small">${esc(ex.category || "General")} · ${formatExerciseType(ex.type)}</div>
               <div class="muted small">Primary: ${esc(ex.primaryMuscleGroups || "Unassigned")}</div>
               <div class="muted small">Detailed: ${esc(ex.detailedMuscleGroups || "Unassigned")}</div>
             </div>
@@ -2623,6 +2621,13 @@ function canCreateMultiSelectOption(multiId) {
   return !!multiSelectMuscleKind(multiId);
 }
 
+function isExerciseMuscleMultiSelect(multiId) {
+  return multiId === "exercise-primary"
+    || multiId === "exercise-detailed"
+    || multiId === "edit-exercise-primary"
+    || multiId === "edit-exercise-detailed";
+}
+
 function getMultiSelectOptions(multiId) {
   if (multiId === "stats-muscles") {
     return collectAvailableMuscles(ui.muscleDimension);
@@ -2668,7 +2673,9 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
   const trimmedQuery = normalizeMuscleTagValue(safeQuery);
   const allowCreate = canCreateMultiSelectOption(multiId);
   const normalizedOptionSet = new Set(options.map((option) => option.toLowerCase()));
+  const requiresQuery = isExerciseMuscleMultiSelect(multiId);
   const filteredOptions = options.filter((option) => option.toLowerCase().includes(safeQuery.toLowerCase()));
+  const visibleOptions = requiresQuery && !trimmedQuery ? [] : filteredOptions;
   const dropdownOpen = ui.activeMultiSelect === multiId;
   const chips = selected.map((value) => `
     <span class="multi-chip">
@@ -2676,8 +2683,8 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
       <button type="button" class="multi-chip-remove" data-action="multi-remove" data-multi-id="${multiId}" data-value="${esc(value)}" aria-label="Remove ${esc(value)}">×</button>
     </span>
   `).join("");
-  const optionsHtml = filteredOptions.length
-    ? filteredOptions.map((option) => {
+  const optionsHtml = visibleOptions.length
+    ? visibleOptions.map((option) => {
       const selectedClass = selected.includes(option) ? " selected" : "";
       const kind = multiSelectMuscleKind(multiId);
       const removable = isRemovableMuscleOption(kind, option);
@@ -2685,13 +2692,13 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
         ? `<button type="button" class="multi-option-remove" data-action="multi-delete-option" data-multi-id="${multiId}" data-value="${esc(option)}" aria-label="Remove ${esc(option)} from options">×</button>`
         : "";
       return `
-        <div class="multi-option-row${selectedClass}">
-          <button type="button" class="multi-option${selectedClass}" data-action="multi-toggle" data-multi-id="${multiId}" data-value="${esc(option)}">${esc(option)}</button>
+        <div class="multi-option-row${selectedClass}" data-action="multi-toggle" data-multi-id="${multiId}" data-value="${esc(option)}">
+          <span class="multi-option-label">${esc(option)}</span>
           ${removeButton}
         </div>
       `;
     }).join("")
-    : "<div class=\"multi-empty\">No matches</div>";
+    : `<div class="multi-empty">${requiresQuery && !trimmedQuery ? "Type to search or add tags" : "No matches"}</div>`;
   const canCreate = allowCreate
     && trimmedQuery
     && !normalizedOptionSet.has(trimmedQuery.toLowerCase())
