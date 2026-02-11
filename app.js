@@ -75,6 +75,10 @@ const DEFAULT_STATE = {
   routines: [],
   workouts: [],
   bodyMeasurements: [],
+  muscleTagLibrary: {
+    primary: [],
+    detailed: []
+  },
   activeWorkoutId: null
 };
 
@@ -144,9 +148,13 @@ const ui = {
   measurementMetric: "bodyWeight",
   exercisePrimarySelection: [],
   exerciseDetailedSelection: [],
+  editExercisePrimarySelection: [],
+  editExerciseDetailedSelection: [],
   muscleSearchQuery: "",
   exercisePrimaryQuery: "",
   exerciseDetailedQuery: "",
+  editExercisePrimaryQuery: "",
+  editExerciseDetailedQuery: "",
   activeMultiSelect: null,
   muscleSelectionInitialized: false
 };
@@ -230,6 +238,7 @@ function loadState() {
     merged.bodyMeasurements = Array.isArray(saved.bodyMeasurements)
       ? saved.bodyMeasurements.map(normalizeBodyMeasurement).filter(Boolean)
       : [];
+    merged.muscleTagLibrary = normalizeMuscleTagLibrary(saved.muscleTagLibrary);
     merged.activeWorkoutId = saved.activeWorkoutId || null;
     merged.lastModified = saved.lastModified || 0;
     return merged;
@@ -266,6 +275,31 @@ function normalizeMuscleGroupText(value) {
     return value.map((entry) => String(entry || "").trim()).filter(Boolean).join(", ");
   }
   return String(value || "").trim();
+}
+
+function normalizeMuscleTagValue(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeMuscleTagLibrary(library) {
+  const safe = library && typeof library === "object" ? library : {};
+  const normalizeList = (list) => uniqueSorted((Array.isArray(list) ? list : []).map(normalizeMuscleTagValue));
+  return {
+    primary: normalizeList(safe.primary),
+    detailed: normalizeList(safe.detailed)
+  };
+}
+
+function rememberMuscleTags(kind, tags) {
+  if (kind !== "primary" && kind !== "detailed") return;
+  const current = state.muscleTagLibrary?.[kind] || [];
+  const merged = uniqueSorted([...current, ...tags.map(normalizeMuscleTagValue)]);
+  if (!state.muscleTagLibrary) {
+    state.muscleTagLibrary = { primary: [], detailed: [] };
+  }
+  state.muscleTagLibrary[kind] = merged;
 }
 
 function normalizeExercise(exercise) {
@@ -819,21 +853,22 @@ function openExerciseEditSheet(exerciseId) {
   if (!exercise) return;
   ui.editExerciseId = exercise.id;
   const name = $("#editExerciseName");
-  const category = $("#editExerciseCategory");
-  const primaryMuscles = $("#editExercisePrimaryMuscles");
-  const detailedMuscles = $("#editExerciseDetailedMuscles");
-  const type = $("#editExerciseType");
   if (name) name.value = exercise.name || "";
-  if (category) category.value = exercise.category || "";
-  if (primaryMuscles) primaryMuscles.value = exercise.primaryMuscleGroups || "";
-  if (detailedMuscles) detailedMuscles.value = exercise.detailedMuscleGroups || "";
-  if (type) type.value = exercise.type || "weight";
+  ui.editExercisePrimarySelection = uniqueSorted(parseMuscleGroups(exercise.primaryMuscleGroups));
+  ui.editExerciseDetailedSelection = uniqueSorted(parseMuscleGroups(exercise.detailedMuscleGroups));
+  ui.editExercisePrimaryQuery = "";
+  ui.editExerciseDetailedQuery = "";
+  renderExerciseMuscleSelectors();
   const sheet = $("#exerciseEditSheet");
   if (sheet) sheet.classList.remove("hidden");
 }
 
 function closeExerciseEditSheet() {
   ui.editExerciseId = null;
+  ui.editExercisePrimarySelection = [];
+  ui.editExerciseDetailedSelection = [];
+  ui.editExercisePrimaryQuery = "";
+  ui.editExerciseDetailedQuery = "";
   const sheet = $("#exerciseEditSheet");
   if (sheet) sheet.classList.add("hidden");
 }
@@ -843,23 +878,17 @@ function saveExerciseEdit() {
   const exercise = state.exercises.find((ex) => ex.id === ui.editExerciseId);
   if (!exercise) return;
   const name = $("#editExerciseName")?.value.trim() || "";
-  const category = $("#editExerciseCategory")?.value.trim() || "";
-  const primaryMuscleGroups = $("#editExercisePrimaryMuscles")?.value.trim() || "";
-  const detailedMuscleGroups = $("#editExerciseDetailedMuscles")?.value.trim() || "";
-  const type = $("#editExerciseType")?.value || "weight";
+  const primaryMuscleGroups = ui.editExercisePrimarySelection.join(", ");
+  const detailedMuscleGroups = ui.editExerciseDetailedSelection.join(", ");
   if (!name) {
     toast("Exercise needs a name");
     return;
   }
-  if (type !== exercise.type && exerciseInUse(exercise.id)) {
-    toast("Type can't be changed while exercise is in use");
-    return;
-  }
   exercise.name = name;
-  exercise.category = category;
   exercise.primaryMuscleGroups = primaryMuscleGroups;
   exercise.detailedMuscleGroups = detailedMuscleGroups;
-  exercise.type = type;
+  rememberMuscleTags("primary", ui.editExercisePrimarySelection);
+  rememberMuscleTags("detailed", ui.editExerciseDetailedSelection);
   saveState();
   renderExercises();
   renderRoutines();
@@ -1048,6 +1077,8 @@ function createExercise() {
     detailedMuscleGroups
   };
   state.exercises.push(exercise);
+  rememberMuscleTags("primary", ui.exercisePrimarySelection);
+  rememberMuscleTags("detailed", ui.exerciseDetailedSelection);
   $("#exerciseName").value = "";
   ui.exercisePrimarySelection = [];
   ui.exerciseDetailedSelection = [];
@@ -2170,10 +2201,9 @@ function renderExercisePerformanceStageC(container, metric, chartData, color, sn
 
 function renderAdaptiveExercisePerformance(metric, chartData, cutoffDate, fallbackSessions = []) {
   const chartEl = $("#exerciseMetricChart");
-  const insightsEl = $("#exerciseMetricInsights");
   const rangeEl = $("#exerciseMetricRange");
   const summaryEl = $("#exerciseMetricSummary");
-  if (!chartEl || !insightsEl || !rangeEl || !summaryEl) return;
+  if (!chartEl || !rangeEl || !summaryEl) return;
 
   const snapshot = computeExercisePerformanceSnapshot(chartData, metric);
   const stage = snapshot.count <= 1 ? "a" : snapshot.count < 5 ? "b" : "c";
@@ -2196,61 +2226,6 @@ function renderAdaptiveExercisePerformance(metric, chartData, cutoffDate, fallba
       ? `Early trend from ${snapshot.count} sessions. Trend visible after 5 sessions.`
       : "Mature trend view with average line, PR, and tooltips.";
 
-  const directionClass = snapshot.direction === "up"
-    ? "up"
-    : snapshot.direction === "down"
-      ? "down"
-      : "flat";
-  const changeSummary = snapshot.count > 1
-    ? `${performanceDirectionGlyph(snapshot.direction)} ${formatSignedPercent(snapshot.pctChange)}`
-    : "Need more sessions";
-  const comparedTo = chartData[0]?.date
-    ? `Compared to ${formatDate(chartData[0].date)}`
-    : latestEntry?.date
-      ? `Latest logged on ${formatDate(latestEntry.date)}`
-      : "No baseline yet";
-  const bestText = Number.isFinite(snapshot.bestValue)
-    ? formatExerciseMetricValue(metric, snapshot.bestValue)
-    : "-";
-  const avgText = Number.isFinite(snapshot.average)
-    ? formatExerciseMetricValue(metric, snapshot.average)
-    : "-";
-  const monthlyText = Number.isFinite(snapshot.monthlyAverage)
-    ? formatExerciseMetricValue(metric, snapshot.monthlyAverage)
-    : "-";
-  const goalText = Number.isFinite(snapshot.nextGoal)
-    ? formatExerciseMetricValue(metric, snapshot.nextGoal)
-    : "-";
-
-  insightsEl.innerHTML = `
-    <div class="performance-anchor-grid">
-      <div class="performance-anchor">
-        <div class="performance-anchor-label">Did I Improve?</div>
-        <div class="performance-anchor-value ${directionClass}">${esc(changeSummary)}</div>
-      </div>
-      <div class="performance-anchor">
-        <div class="performance-anchor-label">Compared To</div>
-        <div class="performance-anchor-value">${esc(comparedTo)}</div>
-      </div>
-      <div class="performance-anchor">
-        <div class="performance-anchor-label">Best So Far</div>
-        <div class="performance-anchor-value">${esc(bestText)}${snapshot.latestIsPr ? " · PR" : ""}</div>
-      </div>
-      <div class="performance-anchor">
-        <div class="performance-anchor-label">Next Aim</div>
-        <div class="performance-anchor-value">${esc(goalText)}</div>
-      </div>
-      <div class="performance-anchor">
-        <div class="performance-anchor-label">Session Average</div>
-        <div class="performance-anchor-value">${esc(avgText)}</div>
-      </div>
-      <div class="performance-anchor">
-        <div class="performance-anchor-label">Monthly Avg${snapshot.monthlyLabel ? ` (${esc(snapshot.monthlyLabel)})` : ""}</div>
-        <div class="performance-anchor-value">${esc(monthlyText)}</div>
-      </div>
-    </div>
-  `;
-
   if (stage === "a") {
     renderExercisePerformanceStageA(chartEl, metric, latestEntry, snapshot);
   } else if (stage === "b") {
@@ -2263,7 +2238,15 @@ function renderAdaptiveExercisePerformance(metric, chartData, cutoffDate, fallba
     ? `${performanceDirectionLabel(snapshot.direction)} by ${formatSignedDelta(metric, snapshot.delta)}.`
     : "No trend yet.";
   const prCopy = snapshot.latestIsPr && snapshot.count > 1 ? "New personal best." : "";
-  rangeEl.textContent = `Visualized range: ${formatDateRange(startDate, endDate)} · ${stageHint} ${interpretation} ${prCopy}`.trim();
+  const sessionsLabel = `${snapshot.count} session${snapshot.count === 1 ? "" : "s"}`;
+  const rangeParts = [
+    `Visualized range: ${formatDateRange(startDate, endDate)}`,
+    sessionsLabel,
+    stageHint,
+    interpretation,
+    prCopy
+  ].filter(Boolean);
+  rangeEl.textContent = rangeParts.join(" · ");
   summaryEl.textContent = snapshot.screenReaderSummary;
 }
 
@@ -2396,11 +2379,14 @@ function renderMultiLineChart(container, labels, series, options = {}) {
     return;
   }
   const width = 340;
-  const height = 180;
-  const left = 38;
-  const right = 10;
-  const top = 12;
-  const bottom = 22;
+  const height = Math.max(120, Number.isFinite(options.height) ? options.height : 180);
+  const showYLabels = options.showYLabels !== false;
+  const showGrid = options.showGrid !== false;
+  const yLabel = String(options.yLabel || "");
+  const left = Number.isFinite(options.left) ? options.left : (showYLabels ? 38 : 14);
+  const right = Number.isFinite(options.right) ? options.right : 10;
+  const top = Number.isFinite(options.top) ? options.top : 12;
+  const bottom = Number.isFinite(options.bottom) ? options.bottom : 22;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
   const values = series.flatMap((entry) => entry.values.map((value) => Number.isFinite(value) ? value : 0));
@@ -2416,12 +2402,17 @@ function renderMultiLineChart(container, labels, series, options = {}) {
 
   const gridLines = axis.ticks.map((tick) => {
     const y = top + ((axis.max - tick) / span) * plotHeight;
+    const tickLabel = options.tickFormatter
+      ? options.tickFormatter(tick)
+      : `${Math.round(tick)}`;
     return `
-      <line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}" stroke="${gridStroke}" stroke-width="1" stroke-dasharray="2 3" />
-      <text x="${left - 6}" y="${y + 3}" fill="${axisColor}" font-size="10" text-anchor="end">${Math.round(tick)}</text>
+      ${showGrid ? `<line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}" stroke="${gridStroke}" stroke-width="1" stroke-dasharray="2 3" />` : ""}
+      ${showYLabels ? `<text x="${left - 6}" y="${y + 3}" fill="${axisColor}" font-size="10" text-anchor="end">${esc(tickLabel)}</text>` : ""}
     `;
   }).join("");
 
+  const lineWidth = Number.isFinite(options.lineWidth) ? options.lineWidth : 2.1;
+  const dotRadius = Number.isFinite(options.dotRadius) ? options.dotRadius : 2.2;
   const lines = series.map((entry) => {
     const points = entry.values.map((value, idx) => {
       const safe = Number.isFinite(value) ? value : 0;
@@ -2430,16 +2421,17 @@ function renderMultiLineChart(container, labels, series, options = {}) {
       return { x, y };
     });
     const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
-    const circles = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.2" fill="${entry.color}" />`).join("");
-    return `<polyline points="${polyline}" fill="none" stroke="${entry.color}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />${circles}`;
+    const circles = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="${dotRadius}" fill="${entry.color}" />`).join("");
+    return `<polyline points="${polyline}" fill="none" stroke="${entry.color}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round" />${circles}`;
   }).join("");
 
   container.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" width="100%" height="180" preserveAspectRatio="none">
+    <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="none">
+      ${yLabel ? `<text x="${left}" y="${Math.max(10, top - 3)}" fill="${axisColor}" font-size="10">${esc(yLabel)}</text>` : ""}
       ${gridLines}
       ${lines}
     </svg>
-    ${buildChartAxis(labels, 4)}
+    ${buildChartAxis(labels, options.axisSlots || 4)}
   `;
 }
 
@@ -2457,11 +2449,12 @@ function uniqueSorted(values) {
 
 function collectExerciseMuscleOptions(kind) {
   const seed = kind === "detailed" ? DETAILED_MUSCLE_OPTIONS : PRIMARY_MUSCLE_OPTIONS;
+  const remembered = state.muscleTagLibrary?.[kind] || [];
   const existing = state.exercises.flatMap((exercise) => {
     const raw = kind === "detailed" ? exercise.detailedMuscleGroups : exercise.primaryMuscleGroups;
     return parseMuscleGroups(raw);
   });
-  return uniqueSorted([...seed, ...existing]);
+  return uniqueSorted([...seed, ...remembered, ...existing]);
 }
 
 function getMultiSelectState(multiId) {
@@ -2470,6 +2463,12 @@ function getMultiSelectState(multiId) {
   }
   if (multiId === "exercise-detailed") {
     return { selected: ui.exerciseDetailedSelection, query: ui.exerciseDetailedQuery };
+  }
+  if (multiId === "edit-exercise-primary") {
+    return { selected: ui.editExercisePrimarySelection, query: ui.editExercisePrimaryQuery };
+  }
+  if (multiId === "edit-exercise-detailed") {
+    return { selected: ui.editExerciseDetailedSelection, query: ui.editExerciseDetailedQuery };
   }
   return { selected: ui.selectedMuscles, query: ui.muscleSearchQuery };
 }
@@ -2482,6 +2481,14 @@ function setMultiSelectQuery(multiId, value) {
   }
   if (multiId === "exercise-detailed") {
     ui.exerciseDetailedQuery = query;
+    return;
+  }
+  if (multiId === "edit-exercise-primary") {
+    ui.editExercisePrimaryQuery = query;
+    return;
+  }
+  if (multiId === "edit-exercise-detailed") {
+    ui.editExerciseDetailedQuery = query;
     return;
   }
   ui.muscleSearchQuery = query;
@@ -2497,7 +2504,25 @@ function setMultiSelectSelection(multiId, values) {
     ui.exerciseDetailedSelection = normalized;
     return;
   }
+  if (multiId === "edit-exercise-primary") {
+    ui.editExercisePrimarySelection = normalized;
+    return;
+  }
+  if (multiId === "edit-exercise-detailed") {
+    ui.editExerciseDetailedSelection = normalized;
+    return;
+  }
   ui.selectedMuscles = normalized;
+}
+
+function multiSelectMuscleKind(multiId) {
+  if (multiId === "exercise-primary" || multiId === "edit-exercise-primary") return "primary";
+  if (multiId === "exercise-detailed" || multiId === "edit-exercise-detailed") return "detailed";
+  return null;
+}
+
+function canCreateMultiSelectOption(multiId) {
+  return !!multiSelectMuscleKind(multiId);
 }
 
 function focusMultiInput(multiId) {
@@ -2512,6 +2537,9 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
   const root = $(`#${rootId}`);
   if (!root) return;
   const safeQuery = String(query || "");
+  const trimmedQuery = normalizeMuscleTagValue(safeQuery);
+  const allowCreate = canCreateMultiSelectOption(multiId);
+  const normalizedOptionSet = new Set(options.map((option) => option.toLowerCase()));
   const filteredOptions = options.filter((option) => option.toLowerCase().includes(safeQuery.toLowerCase()));
   const dropdownOpen = ui.activeMultiSelect === multiId;
   const chips = selected.map((value) => `
@@ -2526,6 +2554,13 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
       return `<button type="button" class="multi-option${selectedClass}" data-action="multi-toggle" data-multi-id="${multiId}" data-value="${esc(option)}">${esc(option)}</button>`;
     }).join("")
     : "<div class=\"multi-empty\">No matches</div>";
+  const canCreate = allowCreate
+    && trimmedQuery
+    && !normalizedOptionSet.has(trimmedQuery.toLowerCase())
+    && !selected.some((entry) => entry.toLowerCase() === trimmedQuery.toLowerCase());
+  const createHtml = canCreate
+    ? `<button type="button" class="multi-option multi-option-create" data-action="multi-create" data-multi-id="${multiId}" data-value="${esc(trimmedQuery)}">Add "${esc(trimmedQuery)}"</button>`
+    : "";
 
   root.innerHTML = `
     <div class="multi-select${dropdownOpen ? " open" : ""}" data-multi-id="${multiId}">
@@ -2544,6 +2579,7 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
         </button>
       </div>
       <div class="multi-dropdown${dropdownOpen ? "" : " hidden"}">
+        ${createHtml}
         ${optionsHtml}
       </div>
     </div>
@@ -2564,6 +2600,22 @@ function renderExerciseMuscleSelectors() {
     multiId: "exercise-detailed",
     selected: ui.exerciseDetailedSelection,
     query: ui.exerciseDetailedQuery,
+    options: collectExerciseMuscleOptions("detailed"),
+    placeholder: "Search detailed muscles"
+  });
+  renderMultiSelectControl({
+    rootId: "editExercisePrimaryMusclesSelect",
+    multiId: "edit-exercise-primary",
+    selected: ui.editExercisePrimarySelection,
+    query: ui.editExercisePrimaryQuery,
+    options: collectExerciseMuscleOptions("primary"),
+    placeholder: "Search primary muscles"
+  });
+  renderMultiSelectControl({
+    rootId: "editExerciseDetailedMusclesSelect",
+    multiId: "edit-exercise-detailed",
+    selected: ui.editExerciseDetailedSelection,
+    query: ui.editExerciseDetailedQuery,
     options: collectExerciseMuscleOptions("detailed"),
     placeholder: "Search detailed muscles"
   });
@@ -2607,7 +2659,13 @@ function toDateKey(date) {
 }
 
 function collectAvailableMuscles(dimension) {
+  const seedOptions = dimension === "detailed" ? DETAILED_MUSCLE_OPTIONS : PRIMARY_MUSCLE_OPTIONS;
+  const remembered = state.muscleTagLibrary?.[dimension] || [];
   const muscles = new Set();
+  [...seedOptions, ...remembered].forEach((group) => muscles.add(group));
+  state.exercises.forEach((exercise) => {
+    getExerciseMuscleGroups(exercise, dimension).forEach((group) => muscles.add(group));
+  });
   state.workouts.forEach((workout) => {
     workout.items.forEach((item) => {
       const exercise = getExercise(item.exerciseId);
@@ -2666,6 +2724,124 @@ function computeMuscleVolumeSeries(grouping, monthsBack, dimension, selectedMusc
   return { labels, series, fromDate, toDate, cutoff };
 }
 
+function formatSetCount(value, withUnit = true) {
+  const safe = Number.isFinite(value) ? Math.round(value) : 0;
+  const text = safe.toLocaleString();
+  return withUnit ? `${text} sets` : text;
+}
+
+function renderAdaptiveMuscleVolumeChart(container, labels, series, options = {}) {
+  if (!container) {
+    return {
+      stage: "a",
+      status: "no-container",
+      selectedCount: 0,
+      periodCount: 0,
+      nonZeroCount: 0,
+      totalSets: 0,
+      latestSets: 0,
+      bestSets: 0,
+      bestLabel: ""
+    };
+  }
+
+  const selectedCount = Number.isFinite(options.selectedCount) ? options.selectedCount : 0;
+  const hasSeries = labels.length > 0 && series.length > 0;
+  const totalsByPeriod = labels.map((_label, idx) => {
+    return series.reduce((sum, entry) => sum + (Number.isFinite(entry.values[idx]) ? entry.values[idx] : 0), 0);
+  });
+  const nonZeroCount = totalsByPeriod.filter((value) => value > 0).length;
+  const totalSets = totalsByPeriod.reduce((sum, value) => sum + value, 0);
+  const latestSets = totalsByPeriod[totalsByPeriod.length - 1] || 0;
+  const bestSets = totalsByPeriod.length ? Math.max(...totalsByPeriod) : 0;
+  const bestIndex = totalsByPeriod.findIndex((value) => Math.abs(value - bestSets) < 1e-9);
+  const bestLabel = bestIndex >= 0 ? labels[bestIndex] : "";
+  const stage = nonZeroCount <= 1 ? "a" : nonZeroCount < 5 ? "b" : "c";
+
+  container.classList.add("adaptive-performance-chart");
+  container.classList.remove("performance-stage-a", "performance-stage-b", "performance-stage-c");
+  container.classList.add(`performance-stage-${stage}`);
+
+  if (!selectedCount) {
+    container.innerHTML = `
+      <div class="performance-empty">
+        <div class="performance-empty-kicker">Muscle Sets</div>
+        <div class="performance-empty-value">0 sets</div>
+        <div class="muted small">Select one or more muscles to track sets.</div>
+      </div>
+    `;
+    return {
+      stage: "a",
+      status: "selection-required",
+      selectedCount,
+      periodCount: labels.length,
+      nonZeroCount,
+      totalSets,
+      latestSets,
+      bestSets,
+      bestLabel
+    };
+  }
+
+  if (!hasSeries || nonZeroCount === 0) {
+    container.innerHTML = `
+      <div class="performance-empty">
+        <div class="performance-empty-kicker">Muscle Sets</div>
+        <div class="performance-empty-value">0 sets</div>
+        <div class="muted small">No logged muscle sets in this range.</div>
+        <div class="muted small">Log workouts to see muscle set trends.</div>
+      </div>
+    `;
+    return {
+      stage: "a",
+      status: "no-data",
+      selectedCount,
+      periodCount: labels.length,
+      nonZeroCount,
+      totalSets,
+      latestSets,
+      bestSets,
+      bestLabel
+    };
+  }
+
+  if (stage === "b") {
+    renderMultiLineChart(container, labels, series, {
+      integerOnly: true,
+      tickCount: 4,
+      height: 132,
+      showYLabels: false,
+      axisSlots: 2,
+      lineWidth: 2.3,
+      dotRadius: 2.4,
+      yLabel: "sets"
+    });
+  } else {
+    renderMultiLineChart(container, labels, series, {
+      integerOnly: true,
+      tickCount: 6,
+      height: 186,
+      showYLabels: true,
+      axisSlots: 4,
+      lineWidth: 2.2,
+      dotRadius: 2.3,
+      yLabel: "sets"
+    });
+  }
+
+  return {
+    stage,
+    status: "ok",
+    selectedCount,
+    periodCount: labels.length,
+    nonZeroCount,
+    totalSets,
+    latestSets,
+    bestSets,
+    bestLabel
+  };
+}
+
 function renderMuscleGroupSection() {
   const groupingSelect = $("#muscleGroupingSelect");
   if (groupingSelect) groupingSelect.value = ui.muscleGrouping;
@@ -2683,7 +2859,7 @@ function renderMuscleGroupSection() {
   if (!ui.muscleSelectionInitialized) {
     ui.selectedMuscles = validSelection.length
       ? validSelection
-      : availableMuscles.slice(0, Math.min(4, availableMuscles.length));
+      : availableMuscles.slice();
     ui.muscleSelectionInitialized = true;
   } else {
     ui.selectedMuscles = validSelection;
@@ -2704,14 +2880,40 @@ function renderMuscleGroupSection() {
     ui.muscleDimension,
     ui.selectedMuscles
   );
-  renderMultiLineChart($("#muscleVolumeChart"), data.labels, data.series, { integerOnly: true });
+  const chartSnapshot = renderAdaptiveMuscleVolumeChart($("#muscleVolumeChart"), data.labels, data.series, {
+    selectedCount: ui.selectedMuscles.length
+  });
+
+  const summaryEl = $("#muscleChartSummary");
+  if (summaryEl) {
+    if (chartSnapshot.status === "selection-required") {
+      summaryEl.textContent = "No muscles selected. Choose one or more muscles to track sets.";
+    } else if (chartSnapshot.status === "no-data") {
+      summaryEl.textContent = "No muscle sets logged for the selected range and muscle filters.";
+    } else if (chartSnapshot.stage === "a") {
+      summaryEl.textContent = `Latest logged sets: ${formatSetCount(chartSnapshot.latestSets)}. Log more periods to unlock trends.`;
+    } else if (chartSnapshot.stage === "b") {
+      summaryEl.textContent = `Early trend across ${chartSnapshot.nonZeroCount} logged periods. Peak sets ${formatSetCount(chartSnapshot.bestSets)}${chartSnapshot.bestLabel ? ` (${chartSnapshot.bestLabel})` : ""}.`;
+    } else {
+      summaryEl.textContent = `Set trend across ${chartSnapshot.periodCount} periods. Peak period ${formatSetCount(chartSnapshot.bestSets)}${chartSnapshot.bestLabel ? ` (${chartSnapshot.bestLabel})` : ""}.`;
+    }
+  }
 
   const rangeEl = $("#muscleChartRange");
   if (rangeEl) {
     const start = data.fromDate || data.cutoff;
     const end = data.toDate || new Date();
     const sourceLabel = ui.muscleDimension === "detailed" ? "Detailed muscles" : "Primary muscles";
-    rangeEl.textContent = `Visualized range: ${formatDateRange(start, end)} · ${sourceLabel}`;
+    const stageHint = chartSnapshot.status === "selection-required"
+      ? "Select muscles to track sets"
+      : chartSnapshot.status === "no-data"
+        ? "No logged muscle sets in this range"
+        : chartSnapshot.stage === "a"
+          ? "Trend visible after 5 logged periods"
+          : chartSnapshot.stage === "b"
+            ? `Early trend from ${chartSnapshot.nonZeroCount} periods`
+            : "Mature trend view";
+    rangeEl.textContent = `Visualized range: ${formatDateRange(start, end)} · ${sourceLabel} · ${stageHint}`;
   }
 
   const legend = $("#muscleChartLegend");
@@ -2724,7 +2926,7 @@ function renderMuscleGroupSection() {
               <span class="legend-swatch" style="background:${entry.color};"></span>
               <span>${esc(entry.name)}</span>
             </span>
-            <span class="legend-total">${entry.total}</span>
+            <span class="legend-total">${formatSetCount(entry.total)}</span>
           </div>
         `;
       }).join("")
@@ -3308,6 +3510,51 @@ function handleInputEvents() {
     }
   });
 
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const multiId = target.dataset.multiInput;
+    if (!multiId) return;
+
+    if ((event.key === "Enter" || event.key === ",") && canCreateMultiSelectOption(multiId)) {
+      const value = normalizeMuscleTagValue(target.value);
+      if (!value) return;
+      event.preventDefault();
+      const current = getMultiSelectState(multiId).selected;
+      if (!current.some((entry) => entry.toLowerCase() === value.toLowerCase())) {
+        setMultiSelectSelection(multiId, [...current, value]);
+      }
+      const kind = multiSelectMuscleKind(multiId);
+      if (kind) {
+        rememberMuscleTags(kind, [value]);
+        saveState();
+      }
+      setMultiSelectQuery(multiId, "");
+      if (multiId === "stats-muscles") {
+        ui.muscleSelectionInitialized = true;
+        renderStats();
+      } else {
+        renderExerciseMuscleSelectors();
+      }
+      focusMultiInput(multiId);
+      return;
+    }
+
+    if (event.key === "Backspace" && !target.value.trim()) {
+      const current = getMultiSelectState(multiId).selected;
+      if (!current.length) return;
+      event.preventDefault();
+      setMultiSelectSelection(multiId, current.slice(0, -1));
+      if (multiId === "stats-muscles") {
+        ui.muscleSelectionInitialized = true;
+        renderStats();
+      } else {
+        renderExerciseMuscleSelectors();
+      }
+      focusMultiInput(multiId);
+    }
+  });
+
     document.addEventListener("click", (event) => {
       const insideMulti = event.target.closest(".multi-select");
       if (!insideMulti && ui.activeMultiSelect) {
@@ -3366,6 +3613,30 @@ function handleInputEvents() {
           ? current.filter((entry) => entry !== value)
           : [...current, value];
         setMultiSelectSelection(multiId, next);
+        ui.activeMultiSelect = multiId;
+        if (multiId === "stats-muscles") {
+          ui.muscleSelectionInitialized = true;
+          renderStats();
+        } else {
+          renderExerciseMuscleSelectors();
+        }
+        focusMultiInput(multiId);
+        return;
+      }
+      if (action === "multi-create") {
+        const multiId = button.dataset.multiId || "";
+        const rawValue = String(button.dataset.value || "");
+        const value = normalizeMuscleTagValue(rawValue);
+        if (!multiId || !value) return;
+        const current = getMultiSelectState(multiId).selected;
+        if (!current.some((entry) => entry.toLowerCase() === value.toLowerCase())) {
+          setMultiSelectSelection(multiId, [...current, value]);
+        }
+        const kind = multiSelectMuscleKind(multiId);
+        if (kind) {
+          rememberMuscleTags(kind, [value]);
+          saveState();
+        }
         ui.activeMultiSelect = multiId;
         if (multiId === "stats-muscles") {
           ui.muscleSelectionInitialized = true;
@@ -3703,6 +3974,7 @@ function loadStateFromImport(parsed) {
   merged.bodyMeasurements = Array.isArray(parsed.bodyMeasurements)
     ? parsed.bodyMeasurements.map(normalizeBodyMeasurement).filter(Boolean)
     : [];
+  merged.muscleTagLibrary = normalizeMuscleTagLibrary(parsed.muscleTagLibrary);
   merged.activeWorkoutId = parsed.activeWorkoutId || null;
   merged.lastModified = parsed.lastModified || 0;
   return merged;

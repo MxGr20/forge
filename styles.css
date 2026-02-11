@@ -1100,51 +1100,6 @@ input[data-field="workout-name"] {
   margin-top: 0.5rem;
 }
 
-.performance-insights {
-  margin: 0.5rem 0 0.75rem;
-}
-
-.performance-anchor-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-  gap: 0.5rem;
-}
-
-.performance-anchor {
-  border: 1px solid rgb(var(--brand-rgb) / 0.25);
-  background: rgb(var(--brand-soft-rgb) / 0.38);
-  border-radius: 0.75rem;
-  padding: 0.5rem 0.625rem;
-  min-height: 3.25rem;
-}
-
-.performance-anchor-label {
-  font-size: 0.625rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--chart-axis-text);
-}
-
-.performance-anchor-value {
-  margin-top: 0.25rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--color-on-brand);
-  line-height: 1.2;
-}
-
-.performance-anchor-value.up {
-  color: var(--color-success);
-}
-
-.performance-anchor-value.down {
-  color: var(--color-danger);
-}
-
-.performance-anchor-value.flat {
-  color: var(--chart-axis-text);
-}
-
 .performance-empty {
   border: 1px dashed rgb(var(--brand-rgb) / 0.3);
   border-radius: 0.875rem;
@@ -1574,9 +1529,9 @@ input[data-field="workout-name"] {
 }
 
 .switch {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
 }
 

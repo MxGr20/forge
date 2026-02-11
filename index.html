@@ -173,7 +173,6 @@
           </div>
           <div class="chart-card">
             <div class="chart-title" id="exerciseMetricTitle">Exercise Progression</div>
-            <div id="exerciseMetricInsights" class="performance-insights"></div>
             <div id="exerciseMetricChart" class="chart adaptive-performance-chart"></div>
             <div id="exerciseMetricSummary" class="chart-summary muted small" role="status" aria-live="polite"></div>
             <div id="exerciseMetricRange" class="muted small chart-range"></div>
@@ -213,6 +212,7 @@
           <div class="chart-card">
             <div class="chart-title">Sets by Muscle Group</div>
             <div id="muscleVolumeChart" class="chart"></div>
+            <div id="muscleChartSummary" class="chart-summary muted small" role="status" aria-live="polite"></div>
             <div id="muscleChartRange" class="muted small chart-range"></div>
             <div id="muscleChartLegend" class="chart-legend"></div>
           </div>
@@ -316,7 +316,7 @@
             <h2>Plate Calculator</h2>
           </div>
           <label class="switch">
-            Include Bar Weight In Plate Calculator
+            Include bar weight
             <input type="checkbox" data-setting="includeBarWeightInCalc" id="includeBarWeightInCalc">
           </label>
           <div class="row wrap">
@@ -490,24 +490,12 @@
           <input type="text" id="editExerciseName" placeholder="Exercise name">
         </label>
         <label>
-          Category
-          <input type="text" id="editExerciseCategory" placeholder="Category">
-        </label>
-        <label>
           Primary Muscle Groups
-          <input type="text" id="editExercisePrimaryMuscles" placeholder="e.g., Chest, Triceps">
+          <div id="editExercisePrimaryMusclesSelect"></div>
         </label>
         <label>
           Detailed Muscle Groups
-          <input type="text" id="editExerciseDetailedMuscles" placeholder="e.g., Upper Chest, Lateral Delts">
-        </label>
-        <label>
-          Type
-          <select id="editExerciseType">
-            <option value="weight">Weight</option>
-            <option value="assisted">Assisted Bodyweight</option>
-            <option value="duration">Duration</option>
-          </select>
+          <div id="editExerciseDetailedMusclesSelect"></div>
         </label>
         <button class="primary wide" data-action="exercise-edit-save">Save Exercise</button>
         <button class="ghost wide" data-action="exercise-edit-close">Cancel</button>
