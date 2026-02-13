@@ -3073,6 +3073,58 @@ function getFilteredMultiSelectOptions(multiId) {
   return options.filter((option) => option.toLowerCase().includes(safeQuery));
 }
 
+function removeMuscleOptionFromLibrary(kind, value) {
+  if (kind !== "primary" && kind !== "detailed") return false;
+  const normalized = normalizeMuscleTagValue(value).toLowerCase();
+  if (!normalized) return false;
+  const current = state.muscleTagLibrary?.[kind] || [];
+  const next = current.filter((entry) => entry.toLowerCase() !== normalized);
+  if (next.length === current.length) return false;
+  if (!state.muscleTagLibrary) {
+    state.muscleTagLibrary = { primary: [], detailed: [] };
+  }
+  state.muscleTagLibrary[kind] = next;
+  return true;
+}
+
+function removeMuscleOptionFromExercises(kind, value) {
+  if (kind !== "primary" && kind !== "detailed") return false;
+  const normalized = normalizeMuscleTagValue(value).toLowerCase();
+  if (!normalized) return false;
+  const field = kind === "detailed" ? "detailedMuscleGroups" : "primaryMuscleGroups";
+  let changed = false;
+  state.exercises.forEach((exercise) => {
+    const groups = parseMuscleGroups(exercise?.[field] || "");
+    const nextGroups = groups.filter((entry) => entry.toLowerCase() !== normalized);
+    if (nextGroups.length === groups.length) return;
+    exercise[field] = nextGroups.join(", ");
+    changed = true;
+  });
+  return changed;
+}
+
+function removeOptionFromSelections(kind, value) {
+  const normalized = normalizeMuscleTagValue(value).toLowerCase();
+  if (!normalized) return;
+  const removeFrom = (list) => list.filter((entry) => entry.toLowerCase() !== normalized);
+
+  if (kind === "primary") {
+    ui.exercisePrimarySelection = removeFrom(ui.exercisePrimarySelection);
+    ui.editExercisePrimarySelection = removeFrom(ui.editExercisePrimarySelection);
+    if (ui.muscleDimension === "primary") {
+      ui.selectedMuscles = removeFrom(ui.selectedMuscles);
+    }
+    return;
+  }
+  if (kind === "detailed") {
+    ui.exerciseDetailedSelection = removeFrom(ui.exerciseDetailedSelection);
+    ui.editExerciseDetailedSelection = removeFrom(ui.editExerciseDetailedSelection);
+    if (ui.muscleDimension === "detailed") {
+      ui.selectedMuscles = removeFrom(ui.selectedMuscles);
+    }
+  }
+}
+
 function renderMultiSelectControl({ rootId, multiId, selected, query, options, placeholder }) {
   const root = $(`#${rootId}`);
   if (!root) return;
@@ -3096,11 +3148,27 @@ function renderMultiSelectControl({ rootId, multiId, selected, query, options, p
     ? filteredOptions.map((option) => {
       const isSelected = selectedLowerSet.has(option.toLowerCase());
       const selectedClass = isSelected ? " selected" : "";
+      const canDeleteOption = isExerciseMuscleMultiSelect(multiId);
+      const deleteOptionHtml = canDeleteOption
+        ? `
+          <button
+            type="button"
+            class="multi-option-remove"
+            data-action="multi-delete-option"
+            data-multi-id="${multiId}"
+            data-value="${esc(option)}"
+            aria-label="Remove ${esc(option)} from tag library"
+          >×</button>
+        `
+        : "";
       return `
-        <button type="button" class="multi-option-row${selectedClass}" data-action="multi-toggle" data-multi-id="${multiId}" data-value="${esc(option)}">
-          <span class="multi-option-check" aria-hidden="true">${isSelected ? "✓" : ""}</span>
-          <span class="multi-option-label">${esc(option)}</span>
-        </button>
+        <div class="multi-option-row${selectedClass}">
+          <button type="button" class="multi-option-hit" data-action="multi-toggle" data-multi-id="${multiId}" data-value="${esc(option)}">
+            <span class="multi-option-check" aria-hidden="true">${isSelected ? "✓" : ""}</span>
+            <span class="multi-option-label">${esc(option)}</span>
+          </button>
+          ${deleteOptionHtml}
+        </div>
       `;
     }).join("")
     : `<div class="multi-empty">${trimmedQuery ? "No matching tags" : "No saved tags yet"}</div>`;
@@ -4267,6 +4335,27 @@ function handleInputEvents() {
         setMultiSelectSelection(multiId, next);
         ui.activeMultiSelect = multiId;
         refreshMultiSelect(multiId);
+        focusMultiInput(multiId);
+        return;
+      }
+      if (action === "multi-delete-option") {
+        const multiId = button.dataset.multiId || "";
+        const value = String(button.dataset.value || "").trim();
+        const kind = multiSelectMuscleKind(multiId);
+        if (!multiId || !value || !kind || !isExerciseMuscleMultiSelect(multiId)) return;
+        const removedFromLibrary = removeMuscleOptionFromLibrary(kind, value);
+        const removedFromExercises = removeMuscleOptionFromExercises(kind, value);
+        removeOptionFromSelections(kind, value);
+        if (removedFromLibrary || removedFromExercises) {
+          saveState();
+          renderExercises();
+          renderRoutines();
+          renderLog();
+          renderStats();
+        } else {
+          refreshMultiSelect(multiId);
+        }
+        ui.activeMultiSelect = multiId;
         focusMultiInput(multiId);
         return;
       }
