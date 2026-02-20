@@ -2776,49 +2776,49 @@ function renderExercisePerformanceStageA(container, metric, latestEntry, snapsho
 function renderExercisePerformanceStageB(container, metric, chartData, color, snapshot) {
   if (!container) return;
   const width = 340;
-  const height = 120;
-  const left = 10;
-  const right = 10;
-  const top = 10;
+  const height = 150;
+  const left = 44;
+  const right = 12;
+  const top = 12;
   const bottom = 24;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
-  const values = snapshot.values;
-  let minValue = Math.min(...values);
-  let maxValue = Math.max(...values);
-  if (Math.abs(maxValue - minValue) < 1e-9) {
-    maxValue += 1;
-    minValue -= 1;
-  }
-  const pad = Math.max((maxValue - minValue) * 0.2, 0.5);
-  const min = minValue - pad;
-  const max = maxValue + pad;
-  const span = max - min || 1;
+  const axis = buildNumericAxis(snapshot.values, {
+    tickCount: 5,
+    forceZero: true,
+    integerOnly: metric.key === "mostReps"
+  });
+  const span = axis.max - axis.min || 1;
   const stepX = chartData.length > 1 ? plotWidth / (chartData.length - 1) : 0;
+  const gridStroke = cssVar("--chart-grid-stroke", "rgba(170, 179, 197, 0.24)");
+  const axisColor = cssVar("--chart-axis-text", "#AAB3C5");
   const points = chartData.map((entry, idx) => {
     const x = left + (stepX * idx);
-    const y = top + ((max - entry.value) / span) * plotHeight;
+    const y = top + ((axis.max - entry.value) / span) * plotHeight;
     return { x, y, value: entry.value, label: entry.label };
   });
+  const gridLines = axis.ticks.map((tick) => {
+    const y = top + ((axis.max - tick) / span) * plotHeight;
+    const tickLabel = formatExerciseMetricValue(metric, tick, { withUnit: false });
+    return `
+      <line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}" stroke="${gridStroke}" stroke-width="1" stroke-dasharray="2 4" />
+      <text x="${left - 6}" y="${y + 3}" fill="${axisColor}" font-size="10" text-anchor="end">${esc(tickLabel)}</text>
+    `;
+  }).join("");
   const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
   const bestPoint = points[snapshot.bestIndex] || points[points.length - 1];
-  const latestPoint = points[points.length - 1];
-  const axisColor = cssVar("--chart-axis-text", "#AAB3C5");
 
   container.classList.add("performance-stage-b");
   container.classList.remove("performance-stage-a", "performance-stage-c");
   container.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" width="100%" height="120" preserveAspectRatio="none">
-      <line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="${axisColor}" stroke-opacity="0.35" stroke-width="1" />
+    <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="xMinYMid meet">
+      ${gridLines}
       <polyline points="${polyline}" fill="none" stroke="${color}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
       ${points.map((point, idx) => `<circle cx="${point.x}" cy="${point.y}" r="${idx === points.length - 1 ? 3.2 : 2.2}" fill="${color}" />`).join("")}
       <circle cx="${bestPoint.x}" cy="${bestPoint.y}" r="4.4" fill="none" stroke="${cssVar("--color-warning", "#F59E0B")}" stroke-width="2" />
       <text x="${bestPoint.x}" y="${Math.max(10, bestPoint.y - 8)}" fill="${axisColor}" font-size="10" text-anchor="middle">Best so far</text>
     </svg>
-    <div class="chart-axis">
-      <span>${esc(chartData[0]?.label || "")}</span>
-      <span>${esc(latestPoint?.label || "")}</span>
-    </div>
+    ${buildChartAxis(chartData.map((entry) => entry.label), 3)}
   `;
 }
 
@@ -2870,7 +2870,7 @@ function renderExercisePerformanceStageC(container, metric, chartData, color, sn
   if (!container) return;
   const width = 360;
   const height = 210;
-  const left = 42;
+  const left = 44;
   const right = 12;
   const top = 16;
   const bottom = 30;
@@ -2878,7 +2878,7 @@ function renderExercisePerformanceStageC(container, metric, chartData, color, sn
   const plotHeight = height - top - bottom;
   const axis = buildNumericAxis(snapshot.values, {
     tickCount: 6,
-    forceZero: false,
+    forceZero: true,
     integerOnly: metric.key === "mostReps"
   });
   const span = axis.max - axis.min || 1;
@@ -2923,7 +2923,7 @@ function renderExercisePerformanceStageC(container, metric, chartData, color, sn
   container.classList.remove("performance-stage-a", "performance-stage-b");
   container.innerHTML = `
     <div class="performance-chart-wrap">
-      <svg class="performance-svg" viewBox="0 0 ${width} ${height}" width="100%" height="210" preserveAspectRatio="none">
+      <svg class="performance-svg" viewBox="0 0 ${width} ${height}" width="100%" height="210" preserveAspectRatio="xMinYMid meet">
         <text x="${left}" y="${top - 4}" fill="${axisColor}" font-size="10">${esc(metric.unit || "value")}</text>
         ${gridLines}
         ${Number.isFinite(averageY) ? `
