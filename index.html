@@ -1,561 +1,1205 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Forge</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="manifest" href="manifest.json?v=20260213">
-  <link rel="icon" href="icon.svg?v=20260213" type="image/svg+xml">
-  <link rel="shortcut icon" href="icon.svg?v=20260213" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg?v=20260213">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0B1024">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forge — Workout Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#020510">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{
+  background:#020510;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  background-image:radial-gradient(ellipse at 25% 20%,rgba(79,102,255,.09) 0%,transparent 55%),
+    radial-gradient(ellipse at 75% 80%,rgba(79,102,255,.06) 0%,transparent 50%);
+}
+:root{
+  --bg:#07091b;--s1:#0c1230;--s2:#101840;--s3:#141f50;
+  --bd:rgba(255,255,255,.055);--bd2:rgba(255,255,255,.1);
+  --text:#edf2fc;--t2:#adb9d4;--t3:#8090b0;
+  --brand:#4f66ff;--brgb:79,102,255;--brand2:#7c8cff;
+  --bsoft:rgba(79,102,255,.1);--bbd:rgba(79,102,255,.22);
+  --ok:#22c55e;--okrgb:34,197,94;--oksoft:rgba(34,197,94,.08);--okbd:rgba(34,197,94,.25);
+  --warn:#f59e0b;--danger:#ef4444;
+  --fh:'Space Grotesk',sans-serif;--fb:'Inter',sans-serif;
+}
+#root{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.device-scaler{display:flex;align-items:center;justify-content:center;}
+.sc{height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.sc::-webkit-scrollbar{display:none}
+
+/* ── 1. Directional slide transitions ── */
+@keyframes sR{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes sL{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes sU{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.tr{animation:sR .26s cubic-bezier(.22,1,.36,1)}
+.tl{animation:sL .26s cubic-bezier(.22,1,.36,1)}
+.tu{animation:sU .22s cubic-bezier(.22,1,.36,1)}
+
+/* ── 3. Template sheet ── */
+@keyframes shup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet{
+  position:absolute;bottom:0;left:0;right:0;
+  border-radius:24px 24px 0 0;
+  background:#0d1438;border-top:1px solid rgba(255,255,255,.13);
+  z-index:50;animation:shup .32s cubic-bezier(.22,1,.36,1);
+}
+.sheet-scrim{position:absolute;inset:0;background:rgba(0,0,0,.58);z-index:49}
+
+/* ── 6. Rest timer pulse ── */
+@keyframes rpulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--brgb),0)}
+  50%{box-shadow:0 0 0 8px rgba(var(--brgb),.13),0 0 18px rgba(var(--brgb),.07)}
+}
+.rb-on{animation:rpulse 2.4s ease-in-out infinite}
+
+/* ── 7. Nav ── */
+.nav{
+  height:58px;background:rgba(7,11,32,.92);
+  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  border:1px solid rgba(255,255,255,.08);border-radius:30px;
+  display:flex;align-items:center;overflow:hidden
+}
+.nb{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:transparent;border:none;cursor:pointer;padding:8px 0 6px;
+  color:var(--t3);font-family:var(--fb);transition:color .18s
+}
+.nb.on{color:var(--brand2)}
+.nb svg{display:block}
+.nlbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.npill{height:3px;border-radius:1.5px;background:var(--brand);margin-top:3px;
+  transition:width .22s cubic-bezier(.22,1,.36,1),opacity .22s}
+
+/* ── buttons ── */
+.cta{
+  width:100%;height:54px;border-radius:27px;
+  background:linear-gradient(135deg,#2d3b8d 0%,var(--brand) 55%,var(--brand2) 100%);
+  color:#fff;font-family:var(--fh);font-size:16px;font-weight:700;border:none;cursor:pointer;
+  box-shadow:0 8px 28px rgba(var(--brgb),.32);transition:transform .12s,box-shadow .12s;
+  display:flex;align-items:center;justify-content:center;letter-spacing:.01em
+}
+.cta:active{transform:scale(.97);box-shadow:0 4px 14px rgba(var(--brgb),.2)}
+.gh{
+  height:38px;padding:0 14px;border-radius:19px;background:rgba(255,255,255,.05);
+  border:1px solid var(--bd2);color:var(--t2);font-family:var(--fb);font-size:12px;font-weight:600;
+  cursor:pointer;transition:background .15s,color .15s;display:inline-flex;align-items:center;
+  justify-content:center;white-space:nowrap
+}
+.gh:active{background:var(--s2);color:var(--text)}
+.finish{height:38px;padding:0 18px;border-radius:19px;background:var(--ok);color:#022b14;
+  font-family:var(--fh);font-size:13px;font-weight:700;border:none;cursor:pointer;flex-shrink:0}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:18px}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t2)}
+.pg-eye{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);margin-bottom:4px}
+.pg-h{font-family:var(--fh);font-size:28px;font-weight:800;color:var(--text);letter-spacing:-.02em}
+
+/* ── 9. Stat tiles — tightened type ── */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.st{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:14px}
+.sl2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:6px}
+.sv{font-family:var(--fh);font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.02em;
+  line-height:1;font-variant-numeric:tabular-nums}
+.sv span{font-size:12px;color:var(--t2);margin-left:2px;font-weight:600}
+
+/* ── set rows ── */
+.sw{display:grid;gap:7px;margin-top:14px}
+.shd{display:grid;grid-template-columns:38px 1fr 1fr 44px;gap:8px;font-size:11px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--t2);padding:0 2px 2px;text-align:center}
+.sr{display:grid;grid-template-columns:38px 1fr 1fr 44px;gap:8px;align-items:center}
+.sn{width:38px;height:44px;border-radius:12px;background:var(--s2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:13px;
+  font-weight:700;color:var(--t2);transition:background .2s,border-color .2s,color .2s}
+.si{height:44px;border-radius:12px;background:var(--s2);border:1px solid var(--bd);color:var(--text);
+  font-family:var(--fh);font-size:18px;font-weight:700;text-align:center;width:100%;
+  font-variant-numeric:tabular-nums;transition:background .2s,border-color .2s,color .2s}
+.si:focus{outline:none;border-color:var(--brand);background:rgba(var(--brgb),.08)}
+.ck{width:44px;height:44px;border-radius:12px;background:var(--s2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;
+  color:transparent;transition:background .2s,border-color .2s,color .2s}
+.sr.done .sn{background:var(--oksoft);border-color:var(--okbd);color:var(--ok)}
+.sr.done .si{background:var(--oksoft);border-color:var(--okbd);color:var(--ok)}
+.sr.done .ck{background:var(--ok);border-color:var(--ok);color:#022b14}
+
+/* ── chips ── */
+.chip{display:inline-flex;align-items:center;padding:0 9px;height:22px;border-radius:11px;
+  font-size:11px;font-weight:700;letter-spacing:.03em;background:var(--bsoft);border:1px solid var(--bbd);color:var(--brand2)}
+.chipok{background:var(--oksoft);border:1px solid var(--okbd);color:var(--ok)}
+
+/* ── history rows ── */
+.hi{display:flex;align-items:center;padding:13px 0;border-bottom:1px solid var(--bd);gap:12px;cursor:pointer}
+.hi:last-child{border-bottom:none}
+.hd{width:7px;height:7px;border-radius:50%;background:var(--brand);flex-shrink:0}
+.hd.meas{background:var(--t3)}
+
+/* ── exercise rows ── */
+.er{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--bd)}
+.er:last-child{border-bottom:none}
+
+/* ── settings rows ── */
+.setr{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--bd)}
+.setr:last-child{border-bottom:none}
+.seti{width:80px;height:38px;border-radius:10px;background:var(--s2);border:1px solid var(--bd);
+  color:var(--text);font-family:var(--fh);font-size:15px;font-weight:700;text-align:center}
+.seti:focus{outline:none;border-color:var(--brand)}
+.div{height:1px;background:var(--bd);margin:22px 0}
+
+/* ── session header ── */
+.sesh{position:sticky;top:0;background:var(--bg);z-index:10;padding:14px 20px 12px;
+  margin:0 -20px;border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+/* ── rest banner ── */
+.rb{background:linear-gradient(135deg,rgba(10,16,52,.95),rgba(14,22,60,.95));
+  border:1px solid var(--bbd);border-radius:16px;padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;
+  transition:border-color .4s}
+.rc{font-family:var(--fh);font-size:36px;font-weight:800;color:var(--brand2);
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+
+/* ── exercise card ── */
+.ec{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:16px;margin-bottom:10px}
+.en{font-family:var(--fh);font-size:17px;font-weight:700;color:var(--brand2)}
+
+/* ── chart ── */
+.cw{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:16px}
+
+/* ── 8. Empty states ── */
+.empty{display:flex;flex-direction:column;align-items:center;padding:40px 24px;text-align:center;gap:10px}
+</style>
 </head>
 <body>
-  <div class="app">
-    <main id="viewContainer">
-      <section id="view-workouts" class="view active">
-        <div id="noWorkout">
-          <!-- Header -->
-          <div class="workouts-header">
-            <div class="workouts-header-left">
-              <div class="page-eyebrow" id="latestUpdate"></div>
-              <div class="page-day" id="workoutsDayName"></div>
-            </div>
-            <div class="workouts-header-brand">FORGE</div>
-          </div>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+const { IOSDevice } = window;
+const { useTweaks, TweaksPanel, TweakSection, TweakColor, TweakRadio } = window;
 
-          <!-- 7-day week strip -->
-          <div id="weekStrip" class="week-strip">
-            <div class="week-strip-days" id="weekDays"></div>
-            <div class="week-sep"></div>
-            <div class="week-streak">
-              <div class="week-streak-count">
-                <span class="week-streak-num" id="streakCount">0</span>
-                <span class="week-streak-unit">wk</span>
-              </div>
-              <div class="week-streak-label">STREAK</div>
-            </div>
-          </div>
+/* ── NAV ORDER for directional transitions ── */
+const NAV_ORDER={stats:0,history:1,workouts:2,exercises:3,tools:4};
 
-          <!-- CTA -->
-          <button class="btn-cta" data-action="start-quick" style="margin-bottom:22px">Start Workout</button>
+/* ── DATA ── */
+const TMPLS=[
+  {id:'w1',name:'Push Day A',ex:4,sets:16,last:'2d ago',exercises:['Bench Press','Incline DB Press','Cable Fly','Tricep Pushdown']},
+  {id:'w2',name:'Pull Day',ex:4,sets:14,last:'3d ago',exercises:['Pull-ups','Lat Pulldown','Seated Row','Barbell Curl']},
+  {id:'w3',name:'Leg Day',ex:5,sets:18,last:'4d ago',exercises:['Back Squat','Romanian Deadlift','Leg Press','Hip Thrust','Calf Raise']},
+  {id:'w4',name:'Push Day B',ex:4,sets:15,last:'5d ago',exercises:['Overhead Press','Incline Bench','Lateral Raise','Skull Crushers']},
+];
+const INIT_SESS={
+  name:'Push Day A',
+  exercises:[
+    {id:'e1',name:'Bench Press',sets:[
+      {id:'s1',kg:'80',reps:'10',done:true},
+      {id:'s2',kg:'80',reps:'10',done:true},
+      {id:'s3',kg:'85',reps:'8',done:false},
+      {id:'s4',kg:'85',reps:'8',done:false},
+    ]},
+    {id:'e2',name:'Incline DB Press',sets:[
+      {id:'s5',kg:'30',reps:'12',done:false},
+      {id:'s6',kg:'30',reps:'12',done:false},
+      {id:'s7',kg:'32.5',reps:'10',done:false},
+    ]},
+  ]
+};
+const EX_METRICS=['Weight','Volume','1RM','Reps'];
+const RANGES=[{l:'4w',n:4},{l:'8w',n:8},{l:'12w',n:12},{l:'All',n:999}];
+const EX_DATA={
+  'Bench Press':{
+    Weight:{data:[72.5,75,77.5,80,80,82.5,85,87.5,87.5,90],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    Volume:{data:[725,750,775,800,800,825,850,875,875,900],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    '1RM':{data:[86,89,92,95,95,98,101,104,104,108],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    Reps:{data:[10,10,8,10,8,8,8,8,8,8],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+  },
+  'Back Squat':{
+    Weight:{data:[100,105,105,110,112.5,115,115,120,122.5,125],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    Volume:{data:[1000,1050,1050,1100,1125,1150,1150,1200,1225,1250],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    '1RM':{data:[119,125,125,131,134,137,137,143,146,149],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    Reps:{data:[10,10,10,10,9,8,8,8,8,8],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+  },
+  'Deadlift':{
+    Weight:{data:[120,125,130,135,140,142.5,145,147.5,150,155],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    Volume:{data:[600,625,650,675,700,712,725,737,750,775],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    '1RM':{data:[143,149,155,161,167,170,173,176,179,185],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    Reps:{data:[5,5,5,5,5,5,5,5,5,5],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+  },
+  'Overhead Press':{
+    Weight:{data:[50,52.5,55,55,57.5,60,60,62.5,62.5,65],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    Volume:{data:[500,525,550,550,575,600,600,625,625,650],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    '1RM':{data:[60,63,66,66,68,72,72,74,74,77],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+    Reps:{data:[10,10,10,8,8,8,8,8,8,8],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
+  },
+};
+const MUS_DATA={Legs:[32,28,36,30,34,38,36,32,30,36,34,32],Chest:[28,30,32,28,30,32,34,32,30,32,34,34],Back:[24,26,28,24,26,30,28,26,28,30,28,28],Shoulders:[16,18,20,18,20,18,20,18,18,20,18,20],Arms:[16,14,18,16,18,16,18,16,16,18,16,18]};
+const MUS_COLORS={Legs:'#22c55e',Chest:'var(--brand)',Back:'#7c8cff',Shoulders:'#f59e0b',Arms:'#a5b4fc'};
+const BODY_HIST=[
+  {d:'Apr 1',bw:90.2,bf:19.1,mm:73.0},
+  {d:'Apr 15',bw:89.5,bf:18.8,mm:72.6},
+  {d:'May 1',bw:89.0,bf:18.5,mm:72.6},
+  {d:'May 15',bw:88.3,bf:18.0,mm:72.4},
+  {d:'Jun 1',bw:87.8,bf:17.6,mm:72.3},
+  {d:'Jun 3',bw:87.2,bf:17.2,mm:72.1},
+];
+const HIST=[
+  {id:'h1',name:'Push Day A',date:'Today',time:'7:30 AM',dur:'52 min',vol:'4,180 kg',ex:4,type:'w'},
+  {id:'h2',name:'Pull Day',date:'Yesterday',time:'6:00 PM',dur:'48 min',vol:'3,820 kg',ex:4,type:'w'},
+  {id:'h3',name:'Body Measurements',date:'Tue Jun 2',time:'8:00 AM',dur:'',vol:'87.2 kg BW',ex:0,type:'b'},
+  {id:'h4',name:'Leg Day',date:'Mon Jun 1',time:'7:15 AM',dur:'61 min',vol:'8,340 kg',ex:5,type:'w'},
+  {id:'h5',name:'Push Day A',date:'Sat May 31',time:'8:00 AM',dur:'55 min',vol:'4,060 kg',ex:4,type:'w'},
+  {id:'h6',name:'Pull Day',date:'Thu May 29',time:'6:30 PM',dur:'50 min',vol:'3,750 kg',ex:4,type:'w'},
+];
+const EXLIB=[
+  {id:1,name:'Back Squat',m:['Quadriceps','Glutes']},
+  {id:2,name:'Barbell Curl',m:['Biceps']},
+  {id:3,name:'Bench Press',m:['Chest','Triceps']},
+  {id:4,name:'Cable Fly',m:['Chest']},
+  {id:5,name:'Deadlift',m:['Lower Back','Hamstrings']},
+  {id:6,name:'Hip Thrust',m:['Glutes']},
+  {id:7,name:'Incline DB Press',m:['Chest','Shoulders']},
+  {id:8,name:'Lat Pulldown',m:['Lats']},
+  {id:9,name:'Leg Press',m:['Quadriceps']},
+  {id:10,name:'Overhead Press',m:['Shoulders','Triceps']},
+  {id:11,name:'Pull-ups',m:['Lats','Biceps']},
+  {id:12,name:'Romanian Deadlift',m:['Hamstrings','Lower Back']},
+  {id:13,name:'Seated Row',m:['Upper Back','Biceps']},
+  {id:14,name:'Skull Crushers',m:['Triceps']},
+];
 
-          <!-- This Week Stats -->
-          <div class="section-header">
-            <span class="section-label">This Week</span>
-          </div>
-          <div class="stats-tiles" id="weekStatsGrid">
-            <div class="stat-tile"><div class="stat-tile-label">Volume</div><div class="stat-tile-value" id="weekVolume">—</div></div>
-            <div class="stat-tile"><div class="stat-tile-label">Workouts</div><div class="stat-tile-value" id="weekWorkouts">—</div></div>
-            <div class="stat-tile"><div class="stat-tile-label">Total Sets</div><div class="stat-tile-value" id="weekSets">—</div></div>
-            <div class="stat-tile"><div class="stat-tile-label">Best Day</div><div class="stat-tile-value" id="weekBestDay" style="font-size:16px;letter-spacing:-.01em">—</div></div>
-          </div>
+/* ── NAV ICONS ── */
+const NIco={
+  stats:<svg width="20" height="18" viewBox="0 0 20 18" fill="currentColor"><rect x="1" y="10" width="4" height="8" rx="1.5"/><rect x="8" y="5" width="4" height="13" rx="1.5"/><rect x="15" y="1" width="4" height="17" rx="1.5"/></svg>,
+  hist:<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 3"/></svg>,
+  work:<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><path d="M10 2L18 6.5v7L10 18L2 13.5v-7Z"/></svg>,
+  lib:<svg width="20" height="16" viewBox="0 0 20 16" fill="currentColor"><rect y="0" width="20" height="2" rx="1"/><rect y="7" width="20" height="2" rx="1"/><rect y="14" width="13" height="2" rx="1"/></svg>,
+  tools:<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M14.3 4.3l-1.4 1.4M4.3 15.7l1.4-1.4"/></svg>,
+};
 
-          <div class="v2-divider"></div>
+/* ── 7. NAV with pill indicator ── */
+function Nav({active,set}){
+  const items=[
+    {id:'stats',lbl:'Stats',ico:NIco.stats},
+    {id:'history',lbl:'History',ico:NIco.hist},
+    {id:'workouts',lbl:'Forge',ico:NIco.work},
+    {id:'exercises',lbl:'Library',ico:NIco.lib},
+    {id:'tools',lbl:'Tools',ico:NIco.tools},
+  ];
+  return(
+    <div className="nav">
+      {items.map(it=>(
+        <button key={it.id} className={`nb${active===it.id?' on':''}`} onClick={()=>set(it.id)}>
+          {it.ico}
+          <span className="nlbl">{it.lbl}</span>
+          <div className="npill" style={{width:active===it.id?14:0,opacity:active===it.id?1:0}}/>
+        </button>
+      ))}
+    </div>
+  );
+}
 
-          <!-- Templates -->
-          <div class="section-header">
-            <span class="section-label">Templates</span>
-            <button class="ghost" style="height:30px;font-size:11px;padding:0 10px;border-radius:15px" data-action="create-workout">+ New</button>
-          </div>
-          <div id="landingWorkouts" class="workout-grid"></div>
+/* ── 4. WORKOUTS VIEW with 7-day row ── */
+function WorkoutsView({onStart}){
+  const d=new Date();
+  const day=d.toLocaleDateString('en-US',{weekday:'long'});
+  const date=d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const dow=d.getDay();
+  const monday=new Date(d);
+  monday.setDate(d.getDate()-((dow+6)%7));
+  const weekDays=Array.from({length:7},(_,i)=>{const dd=new Date(monday);dd.setDate(monday.getDate()+i);return dd;});
+  const fmt8=dt=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  const today8=fmt8(new Date());
+  const DONE=['2026-06-01','2026-06-02','2026-06-03'];
+  const DLBL=['M','T','W','T','F','S','S'];
+  return(
+    <div className="sc" style={{padding:'16px 20px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
+        <div>
+          <div className="pg-eye">{date}</div>
+          <div style={{fontFamily:'var(--fh)',fontSize:34,fontWeight:800,color:'var(--text)',letterSpacing:'-.02em',lineHeight:1.1}}>{day}</div>
         </div>
-      </section>
+        <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:800,letterSpacing:'.1em',color:'var(--text)',paddingTop:6}}>FORGE</div>
+      </div>
 
-        <section id="view-session" class="view">
-          <div id="activeWorkoutPanel" class="panel hidden">
-            <div class="session-header">
-              <div>
-                <div class="session-name" id="sessionWorkoutName">Workout</div>
-                <div class="session-elapsed" id="sessionElapsed">⏱ 00:00</div>
+      {/* 7-day row */}
+      <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:16,padding:'13px 16px',marginBottom:20,display:'flex',alignItems:'center'}}>
+        <div style={{flex:1,display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
+          {weekDays.map((wd,i)=>{
+            const ds=fmt8(wd);
+            const isDone=DONE.includes(ds);
+            const isToday=ds===today8;
+            return(
+              <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:7}}>
+                <span style={{fontSize:10,fontWeight:700,letterSpacing:'.06em',color:isToday?'var(--brand2)':isDone?'var(--t2)':'var(--t3)'}}>{DLBL[i]}</span>
+                <div style={{
+                  width:isToday?10:8,height:isToday?10:8,borderRadius:'50%',flexShrink:0,
+                  background:isDone?(isToday?'var(--brand)':'var(--ok)'):'var(--s3)',
+                  border:isToday?'1.5px solid var(--brand2)':'none',
+                  boxShadow:isToday?'0 0 8px rgba(var(--brgb),.6)':isDone&&!isToday?'0 0 5px rgba(var(--okrgb),.35)':'none',
+                }}/>
               </div>
-              <button class="success" data-action="finish-workout" style="height:38px;padding:0 18px;border-radius:19px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;flex-shrink:0">Finish</button>
+            );
+          })}
+        </div>
+        <div style={{width:1,height:30,background:'var(--bd)',margin:'0 14px'}}/>
+        <div style={{textAlign:'right',flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:3}}>
+            <div style={{fontFamily:'var(--fh)',fontSize:22,fontWeight:800,color:'var(--text)',lineHeight:1}}>3</div>
+            <div style={{fontFamily:'var(--fh)',fontSize:11,fontWeight:700,color:'var(--t2)',lineHeight:1}}>wk</div>
+          </div>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:'.08em',color:'var(--ok)',marginTop:3}}>STREAK</div>
+        </div>
+      </div>
+
+      <button className="cta" style={{marginBottom:22}} onClick={()=>onStart(null)}>Start Workout</button>
+
+      <div className="sh"><span className="sl">This Week</span></div>
+      <div className="sg" style={{marginBottom:22}}>
+        <div className="st"><div className="sl2">Volume</div><div className="sv">12.0<span>t</span></div></div>
+        <div className="st"><div className="sl2">Workouts</div><div className="sv">2<span>/ 4</span></div></div>
+        <div className="st"><div className="sl2">Total Sets</div><div className="sv">68</div></div>
+        <div className="st"><div className="sl2">Best Day</div><div className="sv" style={{fontSize:16,letterSpacing:'-.01em'}}>Push A</div></div>
+      </div>
+
+      <div className="div"/>
+      <div className="sh"><span className="sl">Templates</span>
+        <button className="gh" style={{height:30,fontSize:11,padding:'0 10px'}}>+ New</button>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {TMPLS.map(t=>(
+          <div key={t.id} style={{
+            background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:18,
+            padding:'16px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',
+            cursor:'pointer',transition:'background .15s,border-color .15s'
+          }} onClick={()=>onStart(t)}>
+            <div>
+              <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:700,color:'var(--text)',marginBottom:4}}>{t.name}</div>
+              <div style={{fontSize:12,color:'var(--t2)'}}>{t.ex} exercises · {t.sets} sets</div>
             </div>
-
-            <div id="activeWorkout">
-              <input type="text" data-field="workout-name" placeholder="Workout" style="display:none">
-
-            <div id="restMini" class="rest-banner" style="display:none">
-              <div>
-                <div class="rest-banner-label">Rest</div>
-                <div class="rest-timer-display" id="restCountdown">00:00</div>
-              </div>
-              <div class="rest-banner-actions">
-                <button class="ghost small" data-action="timer-add15" style="height:34px;font-size:12px;border-radius:17px;padding:0 12px">+15s</button>
-                <button class="ghost small" data-action="timer-stop" style="height:34px;font-size:12px;border-radius:17px;padding:0 12px">Stop</button>
-              </div>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:8}}>
+              <span style={{fontSize:12,color:'var(--t2)'}}>Last {t.last}</span>
+              <span style={{color:'var(--brand2)',fontSize:20,lineHeight:1}}>›</span>
             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-            <label class="upload">
-              Progress Photos
-              <input type="file" id="workoutPhotos" accept="image/*" multiple>
-            </label>
-            <div id="photoStrip" class="photo-strip"></div>
-
-            <div id="workoutExercises"></div>
-            <div class="add-exercise">
-              <div class="row space">
-                <div>
-                  <div class="title">Add Exercise</div>
-                  <div class="muted">Choose from your library or create a new one.</div>
+/* ── 2. SESSION VIEW with progress indicator ── */
+function SessionView({onFinish}){
+  const [sess,setSess]=useState(INIT_SESS);
+  const [elapsed,setEl]=useState(1847);
+  const [rest,setRest]=useState(67);
+  const [restOn,setRestOn]=useState(true);
+  useEffect(()=>{const t=setInterval(()=>setEl(s=>s+1),1000);return()=>clearInterval(t)},[]);
+  useEffect(()=>{
+    if(!restOn)return;
+    const t=setInterval(()=>setRest(s=>{if(s<=1){setRestOn(false);return 0;}return s-1;}),1000);
+    return()=>clearInterval(t);
+  },[restOn]);
+  const fmt=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const toggle=(exId,sId)=>{
+    setSess(p=>({...p,exercises:p.exercises.map(ex=>
+      ex.id===exId?{...ex,sets:ex.sets.map(s=>s.id===sId?{...s,done:!s.done}:s)}:ex
+    )}));
+    setRest(90);setRestOn(true);
+  };
+  const upd=(exId,sId,f,v)=>setSess(p=>({...p,exercises:p.exercises.map(ex=>
+    ex.id===exId?{...ex,sets:ex.sets.map(s=>s.id===sId?{...s,[f]:v}:s)}:ex
+  )}));
+  const addSet=exId=>setSess(p=>({...p,exercises:p.exercises.map(ex=>{
+    if(ex.id!==exId)return ex;
+    const L=ex.sets[ex.sets.length-1];
+    return{...ex,sets:[...ex.sets,{id:`s${Date.now()}`,kg:L.kg,reps:L.reps,done:false}]};
+  })}));
+  return(
+    <div className="sc" style={{padding:'0 20px 24px'}}>
+      <div className="sesh">
+        <div>
+          <div style={{fontFamily:'var(--fh)',fontSize:19,fontWeight:700,color:'var(--text)'}}>{sess.name}</div>
+          <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:600,color:'var(--brand2)',marginTop:3,fontVariantNumeric:'tabular-nums'}}>⏱ {fmt(elapsed)}</div>
+        </div>
+        <button className="finish" onClick={onFinish}>Finish</button>
+      </div>
+      <div style={{height:16}}/>
+      {/* 6. Rest banner with pulse */}
+      {restOn&&(
+        <div className={`rb rb-on`}>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t2)',marginBottom:5}}>Rest</div>
+            <div className="rc">{fmt(rest)}</div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <button className="gh" style={{height:34,fontSize:12}} onClick={()=>setRest(r=>r+15)}>+15s</button>
+            <button className="gh" style={{height:34,fontSize:12}} onClick={()=>setRestOn(false)}>Stop</button>
+          </div>
+        </div>
+      )}
+      {sess.exercises.map(ex=>{
+        const done=ex.sets.filter(s=>s.done).length;
+        const total=ex.sets.length;
+        const pct=(done/total)*100;
+        return(
+          <div key={ex.id} className="ec">
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+              <div>
+                <div className="en">{ex.name}</div>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginTop:5}}>
+                  <div style={{fontSize:12,color:done===total&&total>0?'var(--ok)':'var(--t2)',fontWeight:600}}>
+                    {done} / {total} sets
+                  </div>
+                  {done===total&&total>0&&<span className="chip chipok" style={{height:18,fontSize:9,padding:'0 6px'}}>Done</span>}
+                </div>
+                {/* 2. Progress bar */}
+                <div style={{width:100,height:2,borderRadius:1,background:'var(--s3)',marginTop:7}}>
+                  <div style={{height:'100%',width:`${pct}%`,background:done===total?'var(--ok)':'var(--brand)',borderRadius:1,transition:'width .3s ease'}}/>
                 </div>
               </div>
-              <div class="row wrap">
-                <select id="addExerciseSelect"></select>
-                <button class="primary" data-action="add-workout-exercise">Add</button>
+              <button className="gh" style={{height:30,fontSize:13,padding:'0 10px',flexShrink:0}}>⋯</button>
+            </div>
+            <div className="sw">
+              <div className="shd"><span>Set</span><span>kg</span><span>Reps</span><span>✓</span></div>
+              {ex.sets.map((s,i)=>(
+                <div key={s.id} className={`sr${s.done?' done':''}`}>
+                  <div className="sn">{i+1}</div>
+                  <input className="si" type="text" inputMode="decimal" value={s.kg} onChange={e=>upd(ex.id,s.id,'kg',e.target.value)}/>
+                  <input className="si" type="text" inputMode="numeric" value={s.reps} onChange={e=>upd(ex.id,s.id,'reps',e.target.value)}/>
+                  <div className="ck" onClick={()=>toggle(ex.id,s.id)}>{s.done?'✓':''}</div>
+                </div>
+              ))}
+            </div>
+            <button className="gh" style={{width:'100%',marginTop:12,height:40,fontSize:13}} onClick={()=>addSet(ex.id)}>+ Add Set</button>
+          </div>
+        );
+      })}
+      <button className="gh" style={{width:'100%',height:50,fontSize:14,marginTop:4}}>+ Add Exercise</button>
+    </div>
+  );
+}
+
+/* ── 5. CHART with tap callout ── */
+function Chart({data,labels,color,gid}){
+  color=color||'#4f66ff';
+  gid=gid||'cg';
+  const [tip,setTip]=useState(null);
+  const W=310,H=130,p={t:22,b:24,l:4,r:4};
+  const mn=Math.min(...data)-3,mx=Math.max(...data)+3;
+  const xi=i=>p.l+(i/(data.length-1))*(W-p.l-p.r);
+  const yi=v=>p.t+((mx-v)/(mx-mn))*(H-p.t-p.b);
+  const pts=data.map((v,i)=>[xi(i),yi(v)]);
+  let d=`M ${pts[0]}`;
+  for(let i=1;i<pts.length;i++){const cx=(pts[i][0]+pts[i-1][0])/2;d+=` C ${cx} ${pts[i-1][1]},${cx} ${pts[i][1]},${pts[i][0]} ${pts[i][1]}`;}
+  const fill=d+` L ${pts[pts.length-1][0]} ${H-p.b} L ${pts[0][0]} ${H-p.b} Z`;
+  const lp=pts[pts.length-1];
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',overflow:'visible'}} onClick={()=>setTip(null)}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity=".2"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      {[.33,.66].map((t,i)=>(
+        <line key={i} x1={p.l} y1={p.t+t*(H-p.t-p.b)} x2={W-p.r} y2={p.t+t*(H-p.t-p.b)} stroke="rgba(255,255,255,.05)" strokeWidth="1" strokeDasharray="3,4"/>
+      ))}
+      <path d={fill} fill={`url(#${gid})`}/>
+      <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      {[0,3,6,9,11].filter(idx=>idx<labels.length).map(idx=>(
+        <text key={idx} x={xi(idx)} y={H-2} fontSize="10" fill="rgba(154,170,200,.9)" textAnchor="middle" fontFamily="Inter,sans-serif">{labels[idx].split(' ')[0]}</text>
+      ))}
+      {/* hit targets */}
+      {pts.map(([x,y],i)=>(
+        <circle key={i} cx={x} cy={y} r="13" fill="transparent" style={{cursor:'pointer'}}
+          onClick={e=>{e.stopPropagation();setTip(tip&&tip.i===i?null:{i,x,y,v:data[i],l:labels[i]});}}/>
+      ))}
+      {/* highlighted point */}
+      {tip?(
+        <>
+          <circle cx={tip.x} cy={tip.y} r="14" fill={color} fillOpacity=".12"/>
+          <circle cx={tip.x} cy={tip.y} r="5" fill={color}/>
+        </>
+      ):(
+        <>
+          <circle cx={lp[0]} cy={lp[1]} r="5" fill={color}/>
+          <circle cx={lp[0]} cy={lp[1]} r="9" fill={color} fillOpacity=".15"/>
+          <text x={lp[0]} y={lp[1]-13} fontSize="12" fontWeight="700" fill={color} textAnchor="middle" fontFamily="Space Grotesk,sans-serif">{data[data.length-1]}</text>
+        </>
+      )}
+      {/* callout */}
+      {tip&&(()=>{
+        const cx=Math.min(Math.max(tip.x,46),W-46);
+        const ry=tip.y-50;
+        return(
+          <g pointerEvents="none">
+            <line x1={cx} y1={ry+30} x2={tip.x} y2={tip.y-7} stroke={color} strokeWidth="1" strokeOpacity=".35" strokeDasharray="2,3"/>
+            <rect x={cx-42} y={ry} width={84} height={30} rx={8} fill="#0c1030" stroke={color} strokeWidth="1" strokeOpacity=".5"/>
+            <text x={cx} y={ry+13} fontSize="12" fontWeight="800" fill={color} textAnchor="middle" fontFamily="Space Grotesk,sans-serif">{tip.v} kg</text>
+            <text x={cx} y={ry+24} fontSize="9" fill="rgba(154,170,200,.9)" textAnchor="middle" fontFamily="Inter,sans-serif">{tip.l}</text>
+          </g>
+        );
+      })()}
+    </svg>
+  );
+}
+
+/* ── STATS VIEW ── */
+function StatsView({onBodyLog}){
+  const [exName,setExName]=useState('Bench Press');
+  const [metric,setMetric]=useState('Weight');
+  const [exRange,setExRange]=useState('12w');
+  const [musRange,setMusRange]=useState('8w');
+  const [selMus,setSelMus]=useState(Object.keys(MUS_DATA));
+  const [bodyMetric,setBodyMetric]=useState('bw');
+
+  const rawEx=(EX_DATA[exName]||EX_DATA['Bench Press'])[metric]||EX_DATA['Bench Press'].Weight;
+  const rn=RANGES.find(r=>r.l===exRange)?.n||12;
+  const exD=rawEx.data.slice(-Math.min(rn,rawEx.data.length));
+  const exL=rawEx.lbl.slice(-Math.min(rn,rawEx.lbl.length));
+  const metUnit=metric==='Reps'?'reps':'kg';
+  const best=Math.max(...exD);
+  const last=exD[exD.length-1];
+  const delta=(last-exD[0]).toFixed(1);
+
+  const musRn=parseInt(musRange)||8;
+  const musVols=selMus.map(m=>({
+    name:m,
+    total:(MUS_DATA[m]||[]).slice(-musRn).reduce((a,b)=>a+b,0),
+    avg:Math.round((MUS_DATA[m]||[]).slice(-musRn).reduce((a,b)=>a+b,0)/Math.min(musRn,MUS_DATA[m]?.length||1)),
+  })).sort((a,b)=>b.total-a.total);
+  const maxMus=Math.max(...musVols.map(v=>v.total),1);
+
+  const bodyKey=bodyMetric;
+  const bodyData=BODY_HIST.map(h=>h[bodyKey]);
+  const bodyLbls=BODY_HIST.map(h=>h.d);
+  const bodyUnit=bodyMetric==='bf'?'%':'kg';
+  const bodyDelta=(bodyData[bodyData.length-1]-bodyData[0]).toFixed(1);
+  const isGoodDelta=bodyMetric==='mm'?parseFloat(bodyDelta)>0:parseFloat(bodyDelta)<0;
+
+  return(
+    <div className="sc" style={{padding:'16px 20px 20px'}}>
+      <div style={{marginBottom:22}}><div className="pg-eye">Analytics</div><div className="pg-h">Stats</div></div>
+
+      {/* ── Exercise Progress ── */}
+      <div className="sh"><span className="sl">Exercise Progress</span></div>
+      <select value={exName} onChange={e=>setExName(e.target.value)}
+        style={{width:'100%',height:44,borderRadius:14,background:'var(--s1)',border:'1px solid var(--bd)',
+          color:'var(--text)',fontSize:14,padding:'0 14px',marginBottom:10,fontFamily:'inherit'}}>
+        {Object.keys(EX_DATA).map(k=><option key={k}>{k}</option>)}
+      </select>
+
+      {/* Metric */}
+      <div style={{display:'flex',gap:6,marginBottom:10}}>
+        {EX_METRICS.map(m=>(
+          <button key={m} onClick={()=>setMetric(m)} style={{
+            flex:1,height:30,borderRadius:15,cursor:'pointer',fontSize:10,fontWeight:700,letterSpacing:'.03em',
+            background:metric===m?'var(--brand)':'var(--s1)',
+            border:`1px solid ${metric===m?'transparent':'var(--bd)'}`,
+            color:metric===m?'#fff':'var(--t2)',transition:'all .15s'
+          }}>{m}</button>
+        ))}
+      </div>
+
+      {/* Range */}
+      <div style={{display:'flex',gap:6,marginBottom:14}}>
+        {RANGES.map(r=>(
+          <button key={r.l} onClick={()=>setExRange(r.l)} style={{
+            flex:1,height:26,borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
+            background:exRange===r.l?'var(--s3)':'transparent',
+            border:`1px solid ${exRange===r.l?'var(--bbd)':'var(--bd)'}`,
+            color:exRange===r.l?'var(--brand2)':'var(--t3)',transition:'all .15s'
+          }}>{r.l}</button>
+        ))}
+      </div>
+
+      <div className="sg" style={{marginBottom:14}}>
+        <div className="st"><div className="sl2">Best</div><div className="sv">{best}<span>{metUnit}</span></div></div>
+        <div className="st"><div className="sl2">Latest</div><div className="sv">{last}<span>{metUnit}</span></div></div>
+        <div className="st"><div className="sl2">Change</div>
+          <div className="sv" style={{color:parseFloat(delta)>=0?'var(--ok)':'var(--danger)'}}>
+            {parseFloat(delta)>=0?'+':''}{delta}<span>{metUnit}</span>
+          </div>
+        </div>
+        <div className="st"><div className="sl2">Sessions</div><div className="sv">{exD.length}</div></div>
+      </div>
+
+      <div className="cw" style={{marginBottom:22}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{metric}</div>
+          <div style={{fontSize:12,color:'var(--t2)'}}>Tap to inspect</div>
+        </div>
+        <Chart data={exD} labels={exL} color="var(--brand)" gid="ex-chart"/>
+      </div>
+
+      <div className="div"/>
+
+      {/* ── Muscle Volume ── */}
+      <div className="sh"><span className="sl">Muscle Volume</span></div>
+
+      <div style={{display:'flex',gap:6,marginBottom:12}}>
+        {['4w','8w','12w'].map(r=>(
+          <button key={r} onClick={()=>setMusRange(r)} style={{
+            flex:1,height:26,borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
+            background:musRange===r?'var(--s3)':'transparent',
+            border:`1px solid ${musRange===r?'var(--bbd)':'var(--bd)'}`,
+            color:musRange===r?'var(--brand2)':'var(--t3)',transition:'all .15s'
+          }}>{r}</button>
+        ))}
+      </div>
+
+      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
+        {Object.keys(MUS_DATA).map(m=>{
+          const on=selMus.includes(m);
+          return(
+            <button key={m} onClick={()=>setSelMus(p=>on?p.filter(x=>x!==m):[...p,m])} style={{
+              height:26,padding:'0 10px',borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
+              background:on?'var(--s2)':'transparent',
+              border:`1px solid ${on?'var(--bd2)':'var(--bd)'}`,
+              color:on?'var(--text)':'var(--t3)',transition:'all .15s'
+            }}>{m}</button>
+          );
+        })}
+      </div>
+
+      {musVols.length===0?(
+        <div style={{textAlign:'center',padding:'16px 0',color:'var(--t3)',fontSize:12,marginBottom:22}}>Select at least one muscle group</div>
+      ):(
+        <div style={{marginBottom:22}}>
+          {musVols.map(({name,total,avg})=>(
+            <div key={name} style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:7,alignItems:'baseline'}}>
+                <span style={{fontSize:13,color:'var(--text)',fontWeight:500}}>{name}</span>
+                <span style={{fontFamily:'var(--fh)',fontSize:12,color:'var(--t2)',fontVariantNumeric:'tabular-nums'}}>
+                  {total} sets <span style={{fontSize:10,opacity:.7}}>~{avg}/wk</span>
+                </span>
+              </div>
+              <div style={{height:6,borderRadius:3,background:'var(--s2)'}}>
+                <div style={{height:'100%',width:`${(total/maxMus)*100}%`,
+                  background:MUS_COLORS[name]||'var(--brand)',borderRadius:3,transition:'width .4s ease'}}/>
               </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      <div className="div"/>
+
+      {/* ── Body Composition ── */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+        <span className="sl">Body Composition</span>
+        <button className="gh" style={{height:28,fontSize:11,padding:'0 12px'}} onClick={onBodyLog}>+ Log</button>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
+        {[
+          {l:'Weight',v:BODY_HIST[BODY_HIST.length-1].bw,u:'kg',k:'bw'},
+          {l:'Body Fat',v:BODY_HIST[BODY_HIST.length-1].bf,u:'%',k:'bf'},
+          {l:'Muscle',v:BODY_HIST[BODY_HIST.length-1].mm,u:'kg',k:'mm'},
+        ].map(s=>(
+          <div key={s.l} className="st" onClick={()=>setBodyMetric(s.k)} style={{
+            cursor:'pointer',gridColumn:'span 1',
+            borderColor:bodyMetric===s.k?'var(--bbd)':'var(--bd)',
+            background:bodyMetric===s.k?'rgba(var(--brgb),.06)':'var(--s1)',
+            transition:'all .15s'
+          }}>
+            <div className="sl2">{s.l}</div>
+            <div className="sv" style={{fontSize:18}}>{s.v}<span>{s.u}</span></div>
+          </div>
+        ))}
+        <div className="st" style={{gridColumn:'span 1'}}>
+          <div className="sl2">Change</div>
+          <div className="sv" style={{fontSize:18,color:isGoodDelta?'var(--ok)':'var(--danger)'}}>
+            {parseFloat(bodyDelta)>0?'+':''}{bodyDelta}<span>{bodyUnit}</span>
           </div>
         </div>
-      </section>
+      </div>
 
-        <section id="view-routines" class="view">
-          <div class="panel edit-template">
-            <div class="edit-topbar">
-              <button class="ghost icon-btn" data-action="nav" data-view="workouts" aria-label="Close">✕</button>
-              <div class="edit-title">Edit Template</div>
-              <button class="primary save-btn" data-action="nav" data-view="workouts">Save</button>
-            </div>
-
-          <div class="template-name-row">
-            <input type="text" id="routineNameInput" placeholder="Workout name">
-            <button class="ghost icon-btn" data-action="share-routine" id="shareRoutineBtn" aria-label="Template options">⋯</button>
+      <div className="cw" style={{marginBottom:20}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>
+            {bodyMetric==='bw'?'Body Weight':bodyMetric==='bf'?'Body Fat %':'Muscle Mass'}
           </div>
-
-            <div class="row wrap template-switch">
-              <select id="routineSelect"></select>
-            </div>
-            <div id="routineItems"></div>
-            <div class="row wrap edit-add">
-              <input type="text" id="routineExerciseInput" list="exerciseNameList" placeholder="Exercise name">
-              <datalist id="exerciseNameList"></datalist>
-              <button class="primary" data-action="add-routine-item">Add Exercise</button>
-            </div>
-          </div>
-        </section>
-
-      <section id="view-exercises" class="view">
-        <div class="page-header">
-          <div class="page-eyebrow-small">Your Library</div>
-          <div class="page-title-large">Exercises</div>
+          <div style={{fontSize:12,color:'var(--t2)'}}>Tap to inspect</div>
         </div>
-        <button class="primary wide tile-button" data-action="toggle-exercise-form">+ Exercise</button>
-        <div id="exerciseForm" class="panel hidden">
-          <div class="row space">
-            <h2>Add Exercise</h2>
-            <button class="ghost" data-action="toggle-exercise-form">Close</button>
-          </div>
-          <div class="grid-2">
-            <label>
-              Name
-              <input type="text" id="exerciseName" placeholder="e.g., Incline Press">
-            </label>
-          </div>
-          <div class="grid-2">
-            <label>
-              Primary Muscle Groups
-              <div id="exercisePrimaryMusclesSelect" class="tag-multi-root" data-multi-root="exercise-primary"></div>
-            </label>
-            <label>
-              Secondary Muscle Groups
-              <div id="exerciseDetailedMusclesSelect" class="tag-multi-root" data-multi-root="exercise-detailed"></div>
-            </label>
-          </div>
-          <div class="muted small tag-multi-help">Search existing tags. Press Enter to add a new tag.</div>
-          <button class="primary" data-action="create-exercise">Add Exercise</button>
-        </div>
-
-        <div class="panel">
-          <div style="margin-bottom:12px">
-            <input type="search" id="exerciseSearch" placeholder="Search exercises…" style="width:100%">
-          </div>
-          <div id="exerciseList"></div>
-        </div>
-      </section>
-
-      <section id="view-stats" class="view">
-        <div class="page-header">
-          <div class="page-eyebrow-small">Analytics</div>
-          <div class="page-title-large">Stats</div>
-        </div>
-
-        <!-- Exercise Progress -->
-        <div class="panel">
-          <div class="section-header" style="margin-bottom:10px">
-            <span class="section-label">Exercise Progress</span>
-          </div>
-          <select id="statsExerciseSelect" class="stats-exercise-select"></select>
-
-          <div id="statsMetricChips" class="filter-chips" style="margin-bottom:8px"></div>
-          <div id="statsRangeChips" class="filter-chips" style="margin-bottom:14px"></div>
-          <!-- hidden selects kept for backward-compat JS change handlers -->
-          <select id="statsMetricSelect" style="display:none"></select>
-          <select id="statsMonthsSelect" style="display:none"></select>
-
-          <div class="stats-tiles" style="margin-bottom:14px">
-            <div class="stat-tile"><div class="stat-tile-label">Best</div><div class="stat-tile-value" id="statBest">—</div></div>
-            <div class="stat-tile"><div class="stat-tile-label">Latest</div><div class="stat-tile-value" id="statLatest">—</div></div>
-            <div class="stat-tile"><div class="stat-tile-label">Change</div><div class="stat-tile-value" id="statChange">—</div></div>
-            <div class="stat-tile"><div class="stat-tile-label">Sessions</div><div class="stat-tile-value" id="statSessions">—</div></div>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title" id="exerciseMetricTitle">Exercise Progression</div>
-            <div id="exerciseMetricChart" class="chart adaptive-performance-chart"></div>
-            <div id="exerciseMetricSummary" class="chart-summary muted small" role="status" aria-live="polite"></div>
-            <div id="exerciseMetricRange" class="muted small chart-range"></div>
-          </div>
-        </div>
-
-        <!-- Muscle Volume -->
-        <div class="panel">
-          <div class="section-header" style="margin-bottom:10px">
-            <span class="section-label">Muscle Volume</span>
-          </div>
-          <div id="muscleRangeChips" class="filter-chips" style="margin-bottom:10px"></div>
-          <select id="muscleMonthsSelect" style="display:none"></select>
-
-          <div class="section-header" style="margin-bottom:8px;margin-top:4px">
-            <span class="section-label" style="font-size:10px">Muscle Source</span>
-          </div>
-          <div class="segment-toggle" id="muscleDimensionToggle" style="margin-bottom:12px">
-            <button class="ghost small" data-action="muscle-dimension" data-dimension="grouped">Muscle Groups</button>
-            <button class="ghost small" data-action="muscle-dimension" data-dimension="primary">Primary</button>
-            <button class="ghost small" data-action="muscle-dimension" data-dimension="detailed">Secondary</button>
-          </div>
-          <!-- hide grouping select, default stays "week" -->
-          <select id="muscleGroupingSelect" style="display:none">
-            <option value="week">Week</option>
-            <option value="month">Month</option>
-            <option value="year">Year</option>
-          </select>
-
-          <div id="muscleToggleChips" class="filter-chips" style="flex-wrap:wrap;gap:6px;margin-bottom:16px"></div>
-          <div id="muscleVolumeBars" style="margin-bottom:22px"></div>
-          <!-- hidden legacy elements kept for backward compat -->
-          <div id="muscleFilterSelect" class="tag-multi-root" data-multi-root="stats-muscles" style="display:none"></div>
-          <div style="display:none">
-            <div id="muscleChartTitle" class="chart-title">Effective Sets by Muscle Group</div>
-            <div id="muscleVolumeChart" class="chart"></div>
-            <div id="muscleChartSummary" class="chart-summary muted small" role="status" aria-live="polite"></div>
-            <div id="muscleChartRange" class="muted small chart-range"></div>
-            <div id="muscleChartLegend" class="chart-legend"></div>
-          </div>
-        </div>
-
-        <!-- Body Measurements -->
-        <div class="panel">
-          <div class="section-header" style="margin-bottom:14px">
-            <span class="section-label">Body Composition</span>
-            <button class="ghost" style="height:28px;font-size:11px;padding:0 12px;border-radius:14px" data-action="save-body-measurement">+ Log</button>
-          </div>
-          <div id="bodyCompTiles" class="body-comp-tiles">
-            <div class="stat-tile" id="bodyCompWeight" data-action="body-comp-metric" data-metric-key="bodyWeight" style="cursor:pointer">
-              <div class="stat-tile-label">Weight</div>
-              <div class="stat-tile-value" style="font-size:18px">—<span class="stat-unit">kg</span></div>
-            </div>
-            <div class="stat-tile" id="bodyCompFat" data-action="body-comp-metric" data-metric-key="bodyFat" style="cursor:pointer">
-              <div class="stat-tile-label">Body Fat</div>
-              <div class="stat-tile-value" style="font-size:18px">—<span class="stat-unit">%</span></div>
-            </div>
-            <div class="stat-tile" id="bodyCompMuscle" data-action="body-comp-metric" data-metric-key="muscleWeight" style="cursor:pointer">
-              <div class="stat-tile-label">Muscle</div>
-              <div class="stat-tile-value" style="font-size:18px">—<span class="stat-unit">kg</span></div>
-            </div>
-            <div class="stat-tile" id="bodyCompChange">
-              <div class="stat-tile-label">Change</div>
-              <div class="stat-tile-value" style="font-size:18px" id="bodyCompChangeValue">—</div>
-            </div>
-          </div>
-          <div class="chart-card" style="margin-bottom:0">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-              <div id="measurementMetricTitle" class="chart-title" style="font-size:13px;font-weight:600">Body Weight</div>
-              <div style="font-size:12px;color:var(--color-text-secondary)">Tap to inspect</div>
-            </div>
-            <div id="measurementMetricChart" class="chart adaptive-performance-chart"></div>
-            <div id="measurementMetricSummary" class="chart-summary muted small" role="status" aria-live="polite"></div>
-            <div id="measurementMetricRange" class="muted small chart-range"></div>
-          </div>
-          <!-- hidden selects kept for backward compat -->
-          <select id="measurementMetricSelect" style="display:none"></select>
-          <select id="measurementMonthsSelect" style="display:none"></select>
-        </div>
-      </section>
-
-      <section id="view-history" class="view">
-        <div class="page-header">
-          <div class="page-eyebrow-small">Activity</div>
-          <div class="page-title-large">History</div>
-        </div>
-        <div class="panel">
-          <div id="historyFilters" class="history-filters">
-            <button class="ghost small active" data-action="history-filter" data-filter="all">All</button>
-            <button class="ghost small" data-action="history-filter" data-filter="workouts">Workouts</button>
-            <button class="ghost small" data-action="history-filter" data-filter="measurements">Body</button>
-          </div>
-          <div id="historyList"></div>
-        </div>
-      </section>
-
-      <section id="view-tools" class="view">
-        <div class="page-header">
-          <div class="page-eyebrow-small">Configuration</div>
-          <div class="page-title-large">Tools</div>
-        </div>
-        <div class="panel">
-          <div class="section-header" style="margin-bottom:12px"><span class="section-label">Settings</span></div>
-          <div class="grid-2">
-            <label>
-              Rest Timer - Work Set (sec)
-              <input type="number" step="5" data-setting="restSecondsWork" id="restSecondsWork">
-            </label>
-            <label>
-              Rest Timer - Drop Set (sec)
-              <input type="number" step="5" data-setting="restSecondsDrop" id="restSecondsDrop">
-            </label>
-          </div>
-          <div class="grid-2">
-            <label>
-              Default Bodyweight (kg)
-              <input type="number" step="0.1" data-setting="bodyweight" id="bodyweight">
-            </label>
-          </div>
-          <div class="grid-2">
-            <label>
-              Bar Weight (kg)
-              <input type="number" step="0.5" data-setting="barWeight" id="barWeight">
-            </label>
-            <label>
-              Plates (kg, comma)
-              <input type="text" data-setting="plates" id="plates">
-            </label>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="section-header" style="margin-bottom:12px"><span class="section-label">Plate Calculator</span></div>
-          <label class="switch">
-            Include bar weight
-            <input type="checkbox" data-setting="includeBarWeightInCalc" id="includeBarWeightInCalc">
-          </label>
-          <div class="row wrap">
-            <input type="number" step="0.5" id="plateTarget" placeholder="Target weight (kg)">
-            <button class="primary" data-action="calc-plates">Calculate</button>
-          </div>
-          <div id="plateResults" class="result-list"></div>
-        </div>
-
-        <div class="panel">
-          <div class="section-header" style="margin-bottom:12px"><span class="section-label">Cloud Sync</span></div>
-          <div id="cloudStatus" class="muted small">Signed out</div>
-          <div class="row wrap">
-            <input type="email" id="cloudEmail" placeholder="Email for magic link">
-            <button class="primary" data-action="cloud-login" id="cloudLoginBtn">Send Magic Link</button>
-            <button class="ghost hidden" data-action="cloud-sync" id="cloudSyncBtn">Sync Now</button>
-            <button class="ghost hidden" data-action="cloud-logout" id="cloudLogoutBtn">Sign Out</button>
-          </div>
-          <div class="muted small">
-            Syncs workouts, templates, exercises, and settings across devices.
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="section-header" style="margin-bottom:12px"><span class="section-label">Export & Backup</span></div>
-          <div class="row wrap">
-            <button class="primary" data-action="export-csv">Export CSV</button>
-            <button class="ghost" data-action="export-json">Export JSON Backup</button>
-            <label class="ghost upload">
-              Import JSON
-              <input type="file" id="importJsonInput" accept="application/json">
-            </label>
-          </div>
-          <div class="muted small">
-            Data stays on this device. Photos are stored locally and not included in CSV export.
-          </div>
-        </div>
-
-      </section>
-    </main>
-
-    <nav class="bottom-nav">
-      <button class="nav-btn" data-action="nav" data-view="stats">
-        <svg width="20" height="18" viewBox="0 0 20 18" fill="currentColor"><rect x="1" y="10" width="4" height="8" rx="1.5"/><rect x="8" y="5" width="4" height="13" rx="1.5"/><rect x="15" y="1" width="4" height="17" rx="1.5"/></svg>
-        <span class="nav-label">Stats</span>
-        <div class="nav-pill" style="width:0;opacity:0"></div>
-      </button>
-      <button class="nav-btn" data-action="nav" data-view="history">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 3"/></svg>
-        <span class="nav-label">History</span>
-        <div class="nav-pill" style="width:0;opacity:0"></div>
-      </button>
-      <button class="nav-btn active" data-action="nav" data-view="workouts">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 2L18 6.5v7L10 18L2 13.5v-7Z"/></svg>
-        <span class="nav-label">Forge</span>
-        <div class="nav-pill" style="width:14px;opacity:1"></div>
-      </button>
-      <button class="nav-btn" data-action="nav" data-view="exercises">
-        <svg width="20" height="16" viewBox="0 0 20 16" fill="currentColor"><rect y="0" width="20" height="2" rx="1"/><rect y="7" width="20" height="2" rx="1"/><rect y="14" width="13" height="2" rx="1"/></svg>
-        <span class="nav-label">Library</span>
-        <div class="nav-pill" style="width:0;opacity:0"></div>
-      </button>
-      <button class="nav-btn" data-action="nav" data-view="tools">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M14.3 4.3l-1.4 1.4M4.3 15.7l1.4-1.4"/></svg>
-        <span class="nav-label">Tools</span>
-        <div class="nav-pill" style="width:0;opacity:0"></div>
-      </button>
-    </nav>
-  </div>
-
-    <div id="workoutSheet" class="sheet hidden">
-      <div class="sheet-card">
-        <div id="workoutSheetTitle" class="sheet-title">Workout</div>
-        <button class="primary wide" data-action="sheet-start">Start Workout</button>
-        <button class="ghost wide" data-action="sheet-edit">Edit Workout</button>
-        <button class="danger wide" data-action="sheet-delete">Delete Workout</button>
-        <button class="ghost wide" data-action="sheet-cancel">Cancel</button>
+        <Chart data={bodyData} labels={bodyLbls} gid="body-chart"
+          color={bodyMetric==='bw'?'var(--brand)':bodyMetric==='bf'?'var(--danger)':'var(--ok)'}/>
       </div>
     </div>
+  );
+}
 
-    <div id="finishSheet" class="sheet hidden">
-      <div class="sheet-card">
-        <div class="sheet-title">Finish Workout</div>
-        <button class="primary wide" data-action="finish-complete">Complete Workout</button>
-        <button class="ghost wide" data-action="finish-cancel-workout">Cancel Workout</button>
-        <button class="ghost wide" data-action="finish-close">Cancel</button>
+/* ── HISTORY VIEW with empty state ── */
+function HistoryView(){
+  const [f,setF]=useState('all');
+  const list=HIST.filter(h=>f==='all'?true:f==='body'?h.type==='b':h.type==='w');
+  return(
+    <div className="sc" style={{padding:'16px 20px 20px'}}>
+      <div style={{marginBottom:20}}><div className="pg-eye">Activity</div><div className="pg-h">History</div></div>
+      <div style={{display:'flex',gap:8,marginBottom:20}}>
+        {['all','workouts','body'].map(v=>(
+          <button key={v} onClick={()=>setF(v)} style={{
+            height:32,padding:'0 14px',borderRadius:16,cursor:'pointer',
+            background:f===v?'var(--brand)':'var(--s1)',border:`1px solid ${f===v?'transparent':'var(--bd)'}`,
+            color:f===v?'#fff':'var(--t2)',fontSize:11,fontWeight:700,letterSpacing:'.04em',textTransform:'capitalize'
+          }}>{v==='all'?'All':v==='workouts'?'Workouts':'Body'}</button>
+        ))}
+      </div>
+      {list.length===0?(
+        <div className="empty">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="17" stroke="var(--t3)" strokeWidth="1.2"/><path d="M12 18h12M18 12v12" stroke="var(--t3)" strokeWidth="1.4" strokeLinecap="round" opacity=".4"/></svg>
+          <div style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--t2)'}}>Nothing here yet</div>
+          <div style={{fontSize:12,color:'var(--t3)',lineHeight:1.5}}>{f==='body'?'Log your first body measurement to track it here':'Complete your first workout to see your history'}</div>
+        </div>
+      ):(
+        <div className="card" style={{padding:'0 16px'}}>
+          {list.map(h=>(
+            <div key={h.id} className="hi">
+              <div className={`hd${h.type==='b'?' meas':''}`}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:3}}>{h.name}</div>
+                <div style={{fontSize:12,color:'var(--t2)'}}>{h.date} · {h.time}{h.dur&&` · ${h.dur}`}</div>
+              </div>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <div style={{fontFamily:'var(--fh)',fontSize:13,color:'var(--text)',fontVariantNumeric:'tabular-nums'}}>{h.vol}</div>
+                {h.ex>0&&<div style={{fontSize:12,color:'var(--t2)'}}>{h.ex} exercises</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── EXERCISES VIEW — add / edit / remove ── */
+const ALL_MUSCLES=['Chest','Shoulders','Triceps','Biceps','Upper Back','Lats','Lower Back','Quadriceps','Hamstrings','Glutes','Calves','Core','Abs'];
+
+function ExercisesView({lib,onEdit,onAdd,onRemove}){
+  const [q,setQ]=useState('');
+  const [editMode,setEditMode]=useState(false);
+  const list=lib.filter(e=>e.name.toLowerCase().includes(q.toLowerCase()));
+  return(
+    <div className="sc" style={{padding:'16px 20px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:20}}>
+        <div><div className="pg-eye">Your Library</div><div className="pg-h">Exercises</div></div>
+        <button className="gh" style={{
+          height:30,fontSize:11,padding:'0 12px',marginBottom:5,
+          color:editMode?'var(--brand2)':'var(--t2)',
+          background:editMode?'var(--bsoft)':'rgba(255,255,255,.05)',
+          borderColor:editMode?'var(--bbd)':'var(--bd2)'
+        }} onClick={()=>setEditMode(v=>!v)}>{editMode?'Done':'Edit'}</button>
+      </div>
+      <div style={{position:'relative',marginBottom:16}}>
+        <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'var(--t3)',fontSize:16,pointerEvents:'none'}}>⌕</span>
+        <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises…"
+          style={{width:'100%',height:46,borderRadius:14,background:'var(--s1)',border:'1px solid var(--bd)',
+            color:'var(--text)',fontSize:14,padding:'0 16px 0 40px',fontFamily:'inherit'}}/>
+      </div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+        <span style={{fontSize:12,color:'var(--t3)'}}>{lib.length} exercise{lib.length!==1?'s':''}</span>
+        <button className="gh" style={{height:30,fontSize:11,padding:'0 12px'}} onClick={onAdd}>+ Add</button>
+      </div>
+      {list.length===0?(
+        <div className="empty">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="15" cy="15" r="10" stroke="var(--t3)" strokeWidth="1.2"/><line x1="22.5" y1="22.5" x2="31" y2="31" stroke="var(--t3)" strokeWidth="1.4" strokeLinecap="round"/><line x1="11" y1="15" x2="19" y2="15" stroke="var(--t3)" strokeWidth="1.4" strokeLinecap="round" opacity=".4"/></svg>
+          <div style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--t2)'}}>No exercises found</div>
+          <div style={{fontSize:12,color:'var(--t3)'}}>Try a different search or add a custom exercise</div>
+          <button className="cta" style={{width:'auto',height:40,padding:'0 24px',marginTop:4,fontSize:13}} onClick={()=>setQ('')}>Clear search</button>
+        </div>
+      ):(
+        <div className="card" style={{padding:'0 16px'}}>
+          {list.map(ex=>(
+            <div key={ex.id} className="er" style={{gap:10}}>
+              {editMode&&(
+                <button onClick={()=>onRemove(ex.id)} style={{
+                  width:22,height:22,borderRadius:'50%',background:'var(--danger)',border:'none',
+                  color:'#fff',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center',
+                  cursor:'pointer',flexShrink:0
+                }}>−</button>
+              )}
+              <div style={{flex:1,cursor:'pointer',minWidth:0}} onClick={()=>onEdit(ex)}>
+                <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:5}}>{ex.name}</div>
+                <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                  {ex.m.map(m=><span key={m} className="chip" style={{height:19,fontSize:9,padding:'0 7px'}}>{m}</span>)}
+                </div>
+              </div>
+              <span style={{color:editMode?'var(--brand2)':'var(--t3)',fontSize:editMode?11:18,
+                fontWeight:editMode?700:400,cursor:'pointer',flexShrink:0}} onClick={()=>onEdit(ex)}>
+                {editMode?'Edit':'›'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── MUSCLE GROUP MANAGER SHEET ── */
+function MuscleManagerSheet({muscles,setMuscles,onClose}){
+  const [editing,setEditing]=useState(null);
+  const [newName,setNewName]=useState('');
+  const save=(i,v)=>{if(!v.trim())return;setMuscles(p=>p.map((m,j)=>j===i?v.trim():m));setEditing(null);};
+  const remove=i=>setMuscles(p=>p.filter((_,j)=>j!==i));
+  const add=()=>{if(!newName.trim())return;setMuscles(p=>[...p,newName.trim()]);setNewName('');};
+  return(
+    <>
+      <div className="sheet-scrim" style={{zIndex:52}} onClick={onClose}/>
+      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'88%',overflowY:'auto',zIndex:53}}>
+        <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)'}}>Manage Muscle Groups</div>
+          <button className="gh" style={{height:26,fontSize:11,padding:'0 10px'}} onClick={onClose}>Done</button>
+        </div>
+        <div className="card" style={{padding:'0 16px',marginBottom:16}}>
+          {muscles.map((m,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 0',
+              borderBottom:i<muscles.length-1?'1px solid var(--bd)':'none'}}>
+              {editing&&editing.i===i?(
+                <>
+                  <input type="text" value={editing.v} autoFocus
+                    onChange={e=>setEditing({i,v:e.target.value})}
+                    onKeyDown={e=>e.key==='Enter'&&save(i,editing.v)}
+                    style={{flex:1,height:36,borderRadius:10,background:'var(--s2)',border:'1px solid var(--bbd)',
+                      color:'var(--text)',fontFamily:'var(--fb)',fontSize:13,padding:'0 10px',outline:'none'}}/>
+                  <button className="gh" style={{height:28,fontSize:11,padding:'0 10px'}} onClick={()=>save(i,editing.v)}>Save</button>
+                  <button className="gh" style={{height:28,fontSize:11,padding:'0 8px'}} onClick={()=>setEditing(null)}>✕</button>
+                </>
+              ):(
+                <>
+                  <span style={{flex:1,fontSize:13,color:'var(--text)',fontWeight:500}}>{m}</span>
+                  <button className="gh" style={{height:26,fontSize:11,padding:'0 10px'}} onClick={()=>setEditing({i,v:m})}>Edit</button>
+                  <button onClick={()=>remove(i)} style={{
+                    width:22,height:22,borderRadius:'50%',background:'var(--danger)',border:'none',
+                    color:'#fff',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'
+                  }}>−</button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <input type="text" value={newName} onChange={e=>setNewName(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&add()}
+            placeholder="New muscle group…"
+            style={{flex:1,height:44,borderRadius:12,background:'var(--s1)',border:'1px solid var(--bd)',
+              color:'var(--text)',fontFamily:'var(--fb)',fontSize:13,padding:'0 14px',outline:'none'}}/>
+          <button className="cta" style={{width:70,flexShrink:0,height:44,borderRadius:12,fontSize:13}} onClick={add}>Add</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── EXERCISE EDIT SHEET ── */
+function ExerciseSheet({item,onSave,onDelete,onClose,muscleLib,setMuscleLib}){
+  const isNew=!item;
+  const [name,setName]=useState(item?item.name:'');
+  const [muscles,setMuscles]=useState(item?[...item.m]:[]);
+  const [manageOpen,setManageOpen]=useState(false);
+  const toggleM=m=>setMuscles(p=>p.includes(m)?p.filter(x=>x!==m):[...p,m]);
+  const valid=name.trim().length>0&&muscles.length>0;
+  return(
+    <>
+      <div className="sheet-scrim" onClick={onClose}/>
+      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'86%',overflowY:'auto'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>
+          {isNew?'New Exercise':'Edit Exercise'}
+        </div>
+        <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Exercise name"
+          style={{width:'100%',height:52,borderRadius:14,background:'var(--s2)',outline:'none',display:'block',
+            border:'1px solid '+(name.trim()?'var(--bbd)':'var(--bd)'),
+            color:'var(--text)',fontFamily:'var(--fh)',fontSize:18,fontWeight:700,
+            padding:'0 16px',marginBottom:22}}/>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)'}}>
+            Muscle Groups
+            {muscles.length>0&&<span style={{color:'var(--brand2)',marginLeft:6,letterSpacing:0,textTransform:'none',fontSize:11,fontWeight:600}}>{muscles.length} selected</span>}
+          </div>
+          <button className="gh" style={{height:24,fontSize:10,padding:'0 8px',borderRadius:12}} onClick={()=>setManageOpen(true)}>Manage</button>
+        </div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:7,marginBottom:26}}>
+          {muscleLib.map(m=>{
+            const on=muscles.includes(m);
+            return(
+              <button key={m} onClick={()=>toggleM(m)} style={{
+                height:30,padding:'0 12px',borderRadius:15,cursor:'pointer',fontFamily:'var(--fb)',
+                background:on?'var(--brand)':'var(--s2)',
+                border:'1px solid '+(on?'transparent':'var(--bd)'),
+                color:on?'#fff':'var(--t2)',fontSize:12,fontWeight:600,transition:'all .15s'
+              }}>{m}</button>
+            );
+          })}
+        </div>
+        <button className="cta" style={{marginBottom:10,opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}}
+          onClick={()=>onSave({id:item?item.id:Date.now(),name:name.trim(),m:muscles})}>
+          {isNew?'Add Exercise':'Save Changes'}
+        </button>
+        {!isNew&&(
+          <button onClick={()=>onDelete(item.id)} style={{
+            width:'100%',height:44,borderRadius:22,background:'transparent',
+            border:'1px solid rgba(239,68,68,.3)',color:'var(--danger)',
+            fontFamily:'var(--fh)',fontSize:14,fontWeight:700,cursor:'pointer'
+          }}>Delete Exercise</button>
+        )}
+      </div>
+      {manageOpen&&<MuscleManagerSheet muscles={muscleLib} setMuscles={setMuscleLib} onClose={()=>setManageOpen(false)}/>}
+    </>
+  );
+}
+
+/* ── TOOLS VIEW ── */
+function ToolsView(){
+  const [tgt,setTgt]=useState('');
+  const [res,setRes]=useState(null);
+  const calc=()=>{
+    const n=parseFloat(tgt);if(isNaN(n))return;
+    let rem=(n-20)/2;const out=[];
+    for(const p of[25,20,15,10,5,2.5,1.25]){const c=Math.floor(rem/p);if(c>0){out.push({p,c});rem-=p*c;}}
+    setRes(out);
+  };
+  const pcol={25:'#ef4444',20:'#3b82f6',15:'#f59e0b',10:'#22c55e',5:'rgba(255,255,255,.7)',2.5:'#a5b4fc',1.25:'#64748b'};
+  return(
+    <div className="sc" style={{padding:'16px 20px 20px'}}>
+      <div style={{marginBottom:24}}><div className="pg-eye">Configuration</div><div className="pg-h">Tools</div></div>
+      <div className="sh"><span className="sl">Settings</span></div>
+      <div className="card" style={{padding:'0 16px',marginBottom:24}}>
+        {[{l:'Rest — Work Set',u:'sec',v:'90'},{l:'Rest — Drop Set',u:'sec',v:'45'},{l:'Bodyweight',u:'kg',v:'87.2'},{l:'Bar Weight',u:'kg',v:'20'}].map(s=>(
+          <div key={s.l} className="setr">
+            <span style={{fontSize:13,color:'var(--text)'}}>{s.l}</span>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <input className="seti" type="number" defaultValue={s.v}/>
+              <span style={{fontSize:12,color:'var(--t3)',width:24}}>{s.u}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="sh"><span className="sl">Plate Calculator</span></div>
+      <div className="card" style={{padding:16,marginBottom:24}}>
+        <div style={{display:'flex',gap:10,marginBottom:res!==null?14:0}}>
+          <input type="number" value={tgt} onChange={e=>setTgt(e.target.value)} onKeyDown={e=>e.key==='Enter'&&calc()}
+            placeholder="Target weight (kg)"
+            style={{flex:1,height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',
+              color:'var(--text)',fontFamily:'var(--fh)',fontSize:16,fontWeight:700,padding:'0 14px',fontVariantNumeric:'tabular-nums'}}/>
+          <button className="cta" style={{width:80,flexShrink:0,height:44,borderRadius:12,fontSize:13}} onClick={calc}>Calc</button>
+        </div>
+        {res!==null&&(res.length===0
+          ?<div style={{fontSize:13,color:'var(--t2)',textAlign:'center',padding:'4px 0'}}>Just the bar!</div>
+          :<div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+            {res.map(({p,c})=>(
+              <div key={p} style={{padding:'7px 12px',borderRadius:10,background:`${pcol[p]||'#4f66ff'}1a`,
+                border:`1px solid ${pcol[p]||'#4f66ff'}44`,fontFamily:'var(--fh)',fontWeight:700,fontSize:13,color:pcol[p]||'var(--brand2)'}}>
+                {c}× {p}kg
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="sh"><span className="sl">Cloud Sync</span></div>
+      <div className="card" style={{padding:16,marginBottom:24}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <span style={{fontSize:13,color:'var(--text)'}}>Status</span>
+          <div className="chip">Signed out</div>
+        </div>
+        <input type="email" placeholder="your@email.com" style={{width:'100%',height:44,borderRadius:12,
+          background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',marginBottom:10}}/>
+        <button className="cta" style={{height:46,fontSize:14}}>Send Magic Link</button>
+      </div>
+      <div className="sh"><span className="sl">Export &amp; Backup</span></div>
+      <div style={{display:'flex',gap:10}}>
+        <button className="gh" style={{flex:1,height:46}}>Export CSV</button>
+        <button className="gh" style={{flex:1,height:46}}>JSON Backup</button>
       </div>
     </div>
+  );
+}
 
-    <div id="historySheet" class="sheet hidden">
-      <div class="sheet-card">
-        <div class="row space">
-          <div class="sheet-title" id="historySheetTitle">Workout Details</div>
-          <button class="ghost icon-btn" data-action="history-close">✕</button>
+/* ── 3. TEMPLATE SHEET ── */
+function TemplateSheet({tmpl,onStart,onClose}){
+  return(
+    <>
+      <div className="sheet-scrim" onClick={onClose}/>
+      <div className="sheet" style={{padding:'18px 22px 36px'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
+        <div style={{fontFamily:'var(--fh)',fontSize:23,fontWeight:800,color:'var(--text)',marginBottom:3}}>{tmpl.name}</div>
+        <div style={{fontSize:11,color:'var(--t3)',marginBottom:18}}>{tmpl.ex} exercises · {tmpl.sets} sets · Last {tmpl.last}</div>
+        <div style={{marginBottom:20}}>
+          {tmpl.exercises.map((ex,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',
+              borderBottom:i<tmpl.exercises.length-1?'1px solid var(--bd)':'none'}}>
+              <div style={{width:24,height:24,borderRadius:7,background:'var(--s2)',border:'1px solid var(--bd)',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontFamily:'var(--fh)',fontSize:10,fontWeight:700,color:'var(--t3)',flexShrink:0}}>{i+1}</div>
+              <span style={{fontSize:14,color:'var(--text)'}}>{ex}</span>
+            </div>
+          ))}
         </div>
-        <div id="historyDetails"></div>
+        <button className="cta" onClick={onStart}>Start {tmpl.name}</button>
       </div>
-    </div>
+    </>
+  );
+}
 
-    <div id="historyActionSheet" class="sheet hidden">
-      <div class="sheet-card">
-        <div class="row space">
-          <div class="sheet-title" id="historyActionTitle">History Entry</div>
-          <button class="ghost icon-btn" data-action="history-action-close">✕</button>
-        </div>
-        <button class="primary wide" data-action="history-action-view">View</button>
-        <button class="ghost wide" data-action="history-action-edit">Edit</button>
-        <button class="danger wide" data-action="history-action-delete">Delete</button>
-        <button class="ghost wide" data-action="history-action-close">Cancel</button>
+/* ── BODY LOG SHEET ── */
+function BodyLogSheet({onClose,onSave}){
+  const [bw,setBw]=useState('');
+  const [bf,setBf]=useState('');
+  const [mm,setMm]=useState('');
+  const valid=bw!=='';
+  return(
+    <>
+      <div className="sheet-scrim" onClick={onClose}/>
+      <div className="sheet" style={{padding:'18px 22px 44px'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:18}}>Log Measurement</div>
+        {[{l:'Body Weight',u:'kg',v:bw,s:setBw},{l:'Body Fat',u:'%',v:bf,s:setBf},{l:'Muscle Mass',u:'kg',v:mm,s:setMm}].map(f=>(
+          <div key={f.l} style={{marginBottom:14}}>
+            <div style={{fontSize:11,color:'var(--t2)',fontWeight:600,marginBottom:6}}>{f.l} <span style={{color:'var(--t3)',fontSize:10,fontWeight:400}}>({f.u})</span></div>
+            <input type="number" step="0.1" value={f.v} onChange={e=>f.s(e.target.value)} placeholder="—"
+              style={{width:'100%',height:50,borderRadius:12,background:'var(--s2)',
+                border:'1px solid '+(f.v?'var(--bbd)':'var(--bd)'),
+                color:'var(--text)',fontFamily:'var(--fh)',fontSize:22,fontWeight:700,
+                padding:'0 16px',outline:'none',fontVariantNumeric:'tabular-nums'}}/>
+          </div>
+        ))}
+        <div style={{height:12}}/>
+        <button className="cta" style={{opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}}
+          onClick={()=>onSave({bw,bf,mm})}>Save Measurement</button>
       </div>
-    </div>
+    </>
+  );
+}
 
-    <div id="historyEditSheet" class="sheet hidden">
-      <div class="sheet-card">
-        <div class="row space">
-          <div class="sheet-title" id="historyEditTitle">Edit Entry</div>
-          <button class="ghost icon-btn" data-action="history-edit-close">✕</button>
+/* ── APP ── */
+const ACCENT_MAP={
+  '#4f66ff':{r:79,g:102,b:255,b2:'#7c8cff'},
+  '#8b5cf6':{r:139,g:92,b:246,b2:'#a78bfa'},
+  '#0ea5e9':{r:14,g:165,b:233,b2:'#38bdf8'},
+};
+const TDEFS=/*EDITMODE-BEGIN*/{
+  "accent": "#4f66ff"
+}/*EDITMODE-END*/;
+
+function App(){
+  const [t,setTweak]=useTweaks(TDEFS);
+  const [view,setView]=useState('workouts');
+  const [inSess,setInSess]=useState(false);
+  const [sheet,setSheet]=useState(null);
+  const [dir,setDir]=useState(0);
+  const [exLib,setExLib]=useState(EXLIB);
+  const [exSheet,setExSheet]=useState(null);
+  const [muscleLib,setMuscleLib]=useState(ALL_MUSCLES);
+  const [bodyLogOpen,setBodyLogOpen]=useState(false);
+
+  useEffect(()=>{
+    const hex=t.accent;
+    const m=ACCENT_MAP[hex]||ACCENT_MAP['#4f66ff'];
+    const root=document.documentElement;
+    root.style.setProperty('--brand',hex);
+    root.style.setProperty('--brgb',`${m.r},${m.g},${m.b}`);
+    root.style.setProperty('--brand2',m.b2);
+    root.style.setProperty('--bsoft',`rgba(${m.r},${m.g},${m.b},.1)`);
+    root.style.setProperty('--bbd',`rgba(${m.r},${m.g},${m.b},.22)`);
+  },[t.accent]);
+
+  const goTo=(v)=>{
+    const cur=inSess?5:(NAV_ORDER[view]??2);
+    const nxt=NAV_ORDER[v]??2;
+    setDir(nxt>cur?1:-1);
+    setInSess(false);
+    setSheet(null);
+    setView(v);
+  };
+  const startSess=(tmpl)=>{
+    if(tmpl){setSheet(tmpl);}
+    else{setDir(0);setInSess(true);setSheet(null);}
+  };
+  const confirmSess=()=>{setDir(0);setSheet(null);setInSess(true);};
+  const finishSess=()=>{setDir(-1);setInSess(false);};
+
+  const openExEdit=ex=>setExSheet({item:ex});
+  const openExAdd=()=>setExSheet({item:null});
+  const saveExercise=ex=>{setExLib(p=>{const found=p.find(e=>e.id===ex.id);return found?p.map(e=>e.id===ex.id?ex:e):[...p,ex];});setExSheet(null);};
+  const deleteExercise=id=>{setExLib(p=>p.filter(e=>e.id!==id));setExSheet(null);};
+  const removeExercise=id=>setExLib(p=>p.filter(e=>e.id!==id));
+  const animCls=dir===0?'tu':dir>0?'tr':'tl';
+  const vk=inSess?'sess':view;
+
+  const renderV=()=>{
+    if(inSess)return <SessionView onFinish={finishSess}/>;
+    switch(view){
+      case 'stats':return <StatsView onBodyLog={()=>setBodyLogOpen(true)}/>;
+      case 'history':return <HistoryView/>;
+      case 'exercises':return <ExercisesView lib={exLib} onEdit={openExEdit} onAdd={openExAdd} onRemove={removeExercise}/>;
+      case 'tools':return <ToolsView/>;
+      default:return <WorkoutsView onStart={startSess}/>;
+    }
+  };
+
+  return(
+    <>
+      <div className="device-scaler" id="device-scaler">
+      <IOSDevice dark>
+        <div style={{
+          position:'relative',height:874,display:'flex',flexDirection:'column',overflow:'hidden',
+          background:`radial-gradient(ellipse at 50% 80px,rgba(var(--brgb),.08) 0%,transparent 55%),var(--bg)`
+        }}>
+          <div style={{height:60,flexShrink:0}}/>
+          <div key={vk} className={animCls} style={{flex:1,overflow:'hidden',minHeight:0}}>
+            {renderV()}
+          </div>
+          <div style={{flexShrink:0,height:inSess?22:88,padding:inSess?0:'8px 14px 0',position:'relative',zIndex:2}}>
+            {!inSess&&<Nav active={view} set={goTo}/>}
+          </div>
+          {sheet&&<TemplateSheet tmpl={sheet} onStart={confirmSess} onClose={()=>setSheet(null)}/>}
+          {exSheet!==null&&<ExerciseSheet item={exSheet.item} onSave={saveExercise} onDelete={deleteExercise} onClose={()=>setExSheet(null)} muscleLib={muscleLib} setMuscleLib={setMuscleLib}/>}
+          {bodyLogOpen&&<BodyLogSheet onClose={()=>setBodyLogOpen(false)} onSave={()=>setBodyLogOpen(false)}/>}
         </div>
-
-        <div id="historyEditWorkoutFields" class="history-edit-section">
-          <label>
-            Workout Name
-            <input type="text" id="historyEditWorkoutName" placeholder="Workout name">
-          </label>
-          <label>
-            Date & Time
-            <input type="datetime-local" id="historyEditWorkoutDate">
-          </label>
-          <label>
-            Bodyweight (kg)
-            <input type="number" step="0.1" id="historyEditWorkoutBodyweight" placeholder="Bodyweight">
-          </label>
-          <label>
-            Notes
-            <input type="text" id="historyEditWorkoutNotes" placeholder="Workout notes">
-          </label>
-          <div id="historyEditWorkoutItems" class="history-edit-workout-items"></div>
-        </div>
-
-        <div id="historyEditMeasurementFields" class="history-edit-section">
-          <label>
-            Date & Time
-            <input type="datetime-local" id="historyEditMeasurementDate">
-          </label>
-          <label>
-            Body Weight (kg)
-            <input type="number" step="0.1" id="historyEditMeasureBodyWeight" placeholder="101.3">
-          </label>
-          <label>
-            Muscle Weight (kg)
-            <input type="number" step="0.1" id="historyEditMeasureMuscleWeight" placeholder="81.5">
-          </label>
-          <label>
-            Bone Weight (kg)
-            <input type="number" step="0.1" id="historyEditMeasureBoneWeight" placeholder="4.2">
-          </label>
-          <label>
-            Body Fat (%)
-            <input type="number" step="0.1" id="historyEditMeasureBodyFat" placeholder="15.5">
-          </label>
-          <label>
-            TBW (%)
-            <input type="number" step="0.1" id="historyEditMeasureTbw" placeholder="61.0">
-          </label>
-          <label>
-            BMI
-            <input type="number" step="0.1" id="historyEditMeasureBmi" placeholder="26.1">
-          </label>
-        </div>
-
-        <button class="primary wide" data-action="history-edit-save">Save</button>
-        <button class="ghost wide" data-action="history-edit-close">Cancel</button>
+      </IOSDevice>
       </div>
-    </div>
+      <TweaksPanel>
+        <TweakSection label="Brand"/>
+        <TweakColor label="Accent" value={t.accent}
+          options={['#4f66ff','#8b5cf6','#0ea5e9']}
+          onChange={v=>setTweak('accent',v)}/>
+        <TweakSection label="Screen"/>
+        <TweakRadio label="View" value={view}
+          options={['workouts','stats','history','exercises','tools']}
+          onChange={v=>{goTo(v);}}/>
+      </TweaksPanel>
+    </>
+  );
+}
 
-    <div id="replaceSheet" class="sheet hidden">
-      <div class="sheet-card">
-        <div class="row space">
-          <div id="replaceSheetTitle" class="sheet-title">Replace Exercise</div>
-          <button class="ghost icon-btn" data-action="replace-close">✕</button>
-        </div>
-        <input type="search" id="replaceSearch" placeholder="Search exercises">
-        <div id="replaceList" class="result-list"></div>
-        <button class="ghost wide" data-action="replace-close">Cancel</button>
-      </div>
-    </div>
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 
-    <div id="exerciseEditSheet" class="sheet hidden">
-      <div class="sheet-card">
-        <div class="row space">
-          <div class="sheet-title">Edit Exercise</div>
-          <button class="ghost icon-btn" data-action="exercise-edit-close">✕</button>
-        </div>
-        <label>
-          Exercise Name
-          <input type="text" id="editExerciseName" placeholder="Exercise name">
-        </label>
-        <label>
-          Primary Muscle Groups
-          <div id="editExercisePrimaryMusclesSelect" class="tag-multi-root" data-multi-root="edit-exercise-primary"></div>
-        </label>
-        <label>
-          Secondary Muscle Groups
-          <div id="editExerciseDetailedMusclesSelect" class="tag-multi-root" data-multi-root="edit-exercise-detailed"></div>
-        </label>
-        <div class="muted small tag-multi-help">Search existing tags. Press Enter to add a new tag.</div>
-        <button class="primary wide" data-action="exercise-edit-save">Save Exercise</button>
-        <button class="ghost wide" data-action="exercise-edit-close">Cancel</button>
-      </div>
-    </div>
-
-  <div id="toast" class="toast"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="data/config/colors.js"></script>
-  <script src="app.js"></script>
+// Scale device to always fit viewport
+function scaleDevice(){
+  const el=document.getElementById('device-scaler');
+  if(!el)return;
+  const deviceH=874+32;
+  const deviceW=402+32;
+  const scaleH=(window.innerHeight-48)/deviceH;
+  const scaleW=(window.innerWidth-48)/deviceW;
+  const scale=Math.min(scaleH,scaleW,1);
+  el.style.transform=`scale(${scale})`;
+  el.style.transformOrigin='top center';
+  el.style.marginBottom=`${(deviceH*(scale-1))}px`;
+}
+window.addEventListener('resize',scaleDevice);
+setTimeout(scaleDevice,100);
+</script>
 </body>
 </html>
-

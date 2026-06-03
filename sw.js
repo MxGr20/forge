@@ -2,12 +2,10 @@ const CACHE = "forge-cache-v8";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./app.js",
+  "./ios-frame.jsx",
+  "./tweaks-panel.jsx",
   "./manifest.json",
-  "./manifest.json?v=20260213",
   "./icon.svg",
-  "./icon.svg?v=20260213",
   "./offline.html"
 ];
 
