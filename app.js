@@ -1007,12 +1007,34 @@ function getRestSeconds(tag = "work") {
     if (!mini || !display) return;
     if (restTimer.remaining > 0) {
       display.textContent = formatDuration(restTimer.remaining);
-      mini.classList.add("active");
+      mini.style.display = "flex";
+      mini.classList.add("pulsing");
       return;
     }
     display.textContent = "00:00";
-    mini.classList.remove("active");
+    mini.style.display = "none";
+    mini.classList.remove("pulsing");
   }
+
+const elapsedTimer = { interval: null };
+
+function startElapsedTimer(startIso) {
+  if (elapsedTimer.interval) clearInterval(elapsedTimer.interval);
+  const update = () => {
+    const el = $("#sessionElapsed");
+    if (!el) return;
+    const secs = Math.floor((Date.now() - new Date(startIso).getTime()) / 1000);
+    el.textContent = `⏱ ${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
+  };
+  update();
+  elapsedTimer.interval = setInterval(update, 1000);
+}
+
+function stopElapsedTimer() {
+  if (elapsedTimer.interval) { clearInterval(elapsedTimer.interval); elapsedTimer.interval = null; }
+  const el = $("#sessionElapsed");
+  if (el) el.textContent = "⏱ 00:00";
+}
 
 function startTimer(seconds) {
   const duration = Math.max(0, Math.round(seconds));
@@ -1185,6 +1207,7 @@ function startWorkout(routineId = null) {
     if (!active) return;
     active.endedAt = new Date().toISOString();
     state.activeWorkoutId = null;
+    stopElapsedTimer();
     saveState();
     renderLog();
     renderHistory();
@@ -1197,6 +1220,7 @@ function startWorkout(routineId = null) {
     if (!active) return;
     state.workouts = state.workouts.filter((w) => w.id !== active.id);
     state.activeWorkoutId = null;
+    stopElapsedTimer();
     saveState();
     renderLog();
     renderHistory();
@@ -1681,8 +1705,13 @@ function renderSession() {
   activePanel.classList.remove("hidden");
   updateFinishSheetActionLabel();
 
-    const nameInput = $("[data-field='workout-name']");
-    if (nameInput) nameInput.value = active.name || "";
+  const nameInput = $("[data-field='workout-name']");
+  if (nameInput) nameInput.value = active.name || "";
+
+  const sessionNameEl = $("#sessionWorkoutName");
+  if (sessionNameEl) sessionNameEl.textContent = active.name || "Workout";
+
+  startElapsedTimer(active.createdAt);
 
   const addSelect = $("#addExerciseSelect");
   if (addSelect) {
@@ -1795,11 +1824,25 @@ function renderExerciseCard(item, options) {
         <button class="ghost small" data-action="remove-workout-exercise" data-item-id="${item.id}">Remove</button>
       `;
 
+  const completedSets = owner === "workout" ? item.sets.filter((s) => s.completed).length : 0;
+  const totalSets = item.sets.length;
+  const pct = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+  const allDone = owner === "workout" && totalSets > 0 && completedSets === totalSets;
+  const progressHtml = owner === "workout" ? `
+    <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+      <div style="font-size:12px;color:${allDone ? "var(--color-success)" : "var(--color-text-secondary)"};font-weight:600">${completedSets} / ${totalSets} sets</div>
+      ${allDone ? '<span style="display:inline-flex;align-items:center;padding:0 6px;height:18px;border-radius:9px;font-size:9px;font-weight:700;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);color:var(--color-success)">Done</span>' : ""}
+    </div>
+    <div class="exercise-progress-bar" style="margin-top:7px">
+      <div class="exercise-progress-fill" style="width:${pct}%;background:${allDone ? "var(--color-success)" : "var(--color-brand)"}"></div>
+    </div>` : "";
+
   return `
       <div class="exercise-card" data-item-id="${item.id}">
         <div class="exercise-header">
           <div>
             <div class="exercise-title">${esc(exercise.name)}</div>
+            ${progressHtml}
           </div>
           <div class="exercise-actions">
             ${actions}
@@ -4783,6 +4826,8 @@ function handleInputEvents() {
     if (target.dataset.field === "workout-name") {
       const workout = getActiveWorkout();
       if (workout) workout.name = target.value;
+      const sessionNameEl = $("#sessionWorkoutName");
+      if (sessionNameEl) sessionNameEl.textContent = target.value || "Workout";
       saveState();
       return;
     }
@@ -5206,6 +5251,12 @@ function handleInputEvents() {
       }
       if (action === "timer-stop") {
         stopTimer();
+        return;
+      }
+      if (action === "timer-add15") {
+        restTimer.remaining = Math.max(0, restTimer.remaining) + 15;
+        if (!restTimer.interval) startTimer(restTimer.remaining);
+        else updateTimerUI();
         return;
       }
       if (action === "finish-workout") {

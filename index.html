@@ -69,23 +69,26 @@
 
         <section id="view-session" class="view">
           <div id="activeWorkoutPanel" class="panel hidden">
-            <div class="row space active-header">
-              <div class="active-title">Workout</div>
-              <button class="success" data-action="finish-workout">Finish</button>
+            <div class="session-header">
+              <div>
+                <div class="session-name" id="sessionWorkoutName">Workout</div>
+                <div class="session-elapsed" id="sessionElapsed">⏱ 00:00</div>
+              </div>
+              <button class="success" data-action="finish-workout" style="height:38px;padding:0 18px;border-radius:19px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;flex-shrink:0">Finish</button>
             </div>
 
             <div id="activeWorkout">
-              <div class="grid-2">
-                <label>
-                  Workout Name
-                  <input type="text" data-field="workout-name" placeholder="Workout">
-                </label>
-            </div>
+              <input type="text" data-field="workout-name" placeholder="Workout" style="display:none">
 
-            <div id="restMini" class="rest-inline">
-              <div class="rest-inline-label">Rest Timer</div>
-              <span id="restCountdown">00:00</span>
-              <button class="ghost small" data-action="timer-stop">Stop</button>
+            <div id="restMini" class="rest-banner" style="display:none">
+              <div>
+                <div class="rest-banner-label">Rest</div>
+                <div class="rest-timer-display" id="restCountdown">00:00</div>
+              </div>
+              <div class="rest-banner-actions">
+                <button class="ghost small" data-action="timer-add15" style="height:34px;font-size:12px;border-radius:17px;padding:0 12px">+15s</button>
+                <button class="ghost small" data-action="timer-stop" style="height:34px;font-size:12px;border-radius:17px;padding:0 12px">Stop</button>
+              </div>
             </div>
 
             <label class="upload">
