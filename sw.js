@@ -1,8 +1,8 @@
-const CACHE = "forge-cache-v8";
+const CACHE = "forge-cache-v9";
 const ASSETS = [
   "./",
   "./index.html",
-  "./ios-frame.jsx",
+  "./app.js",
   "./tweaks-panel.jsx",
   "./manifest.json",
   "./icon.svg",

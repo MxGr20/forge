@@ -11,9 +11,11 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#020510">
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
 <script type="text/babel" src="tweaks-panel.jsx"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -31,12 +33,10 @@ body{background:var(--bg)}
   --max:480px;
 }
 #root{display:flex;flex-direction:column}
-/* Full-screen app shell */
 .app-shell{
   position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden;
   background:radial-gradient(ellipse at 50% 0,rgba(var(--brgb),.07) 0%,transparent 55%),var(--bg);
 }
-/* On desktop: centre a phone-width column */
 @media(min-width:600px){
   .app-shell{align-items:center}
   .app-col{width:var(--max);height:100%;display:flex;flex-direction:column;overflow:hidden;position:relative}
@@ -44,65 +44,46 @@ body{background:var(--bg)}
 .app-col{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;width:100%}
 .sc{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .sc::-webkit-scrollbar{display:none}
-
-/* ── 1. Directional slide transitions ── */
 @keyframes sR{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
 @keyframes sL{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
 @keyframes sU{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .tr{animation:sR .26s cubic-bezier(.22,1,.36,1)}
 .tl{animation:sL .26s cubic-bezier(.22,1,.36,1)}
 .tu{animation:sU .22s cubic-bezier(.22,1,.36,1)}
-
-/* ── 3. Template sheet ── */
 @keyframes shup{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .sheet{
-  position:absolute;bottom:0;left:0;right:0;
-  border-radius:24px 24px 0 0;
+  position:absolute;bottom:0;left:0;right:0;border-radius:24px 24px 0 0;
   background:#0d1438;border-top:1px solid rgba(255,255,255,.13);
   z-index:50;animation:shup .32s cubic-bezier(.22,1,.36,1);
 }
 .sheet-scrim{position:absolute;inset:0;background:rgba(0,0,0,.58);z-index:49}
-
-/* ── 6. Rest timer pulse ── */
 @keyframes rpulse{
   0%,100%{box-shadow:0 0 0 0 rgba(var(--brgb),0)}
   50%{box-shadow:0 0 0 8px rgba(var(--brgb),.13),0 0 18px rgba(var(--brgb),.07)}
 }
 .rb-on{animation:rpulse 2.4s ease-in-out infinite}
-
-/* ── 7. Nav ── */
 .nav{
   height:58px;background:rgba(7,11,32,.92);
   backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
   border:1px solid rgba(255,255,255,.08);border-radius:30px;
   display:flex;align-items:center;overflow:hidden
 }
-.nb{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  background:transparent;border:none;cursor:pointer;padding:8px 0 6px;
-  color:var(--t3);font-family:var(--fb);transition:color .18s
-}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:transparent;border:none;cursor:pointer;padding:8px 0 6px;color:var(--t3);font-family:var(--fb);transition:color .18s}
 .nb.on{color:var(--brand2)}
 .nb svg{display:block}
 .nlbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.npill{height:3px;border-radius:1.5px;background:var(--brand);margin-top:3px;
-  transition:width .22s cubic-bezier(.22,1,.36,1),opacity .22s}
-
-/* ── buttons ── */
-.cta{
-  width:100%;height:54px;border-radius:27px;
+.npill{height:3px;border-radius:1.5px;background:var(--brand);margin-top:3px;transition:width .22s cubic-bezier(.22,1,.36,1),opacity .22s}
+.cta{width:100%;height:54px;border-radius:27px;
   background:linear-gradient(135deg,#2d3b8d 0%,var(--brand) 55%,var(--brand2) 100%);
   color:#fff;font-family:var(--fh);font-size:16px;font-weight:700;border:none;cursor:pointer;
   box-shadow:0 8px 28px rgba(var(--brgb),.32);transition:transform .12s,box-shadow .12s;
-  display:flex;align-items:center;justify-content:center;letter-spacing:.01em
-}
+  display:flex;align-items:center;justify-content:center;letter-spacing:.01em}
 .cta:active{transform:scale(.97);box-shadow:0 4px 14px rgba(var(--brgb),.2)}
-.gh{
-  height:38px;padding:0 14px;border-radius:19px;background:rgba(255,255,255,.05);
+.gh{height:38px;padding:0 14px;border-radius:19px;background:rgba(255,255,255,.05);
   border:1px solid var(--bd2);color:var(--t2);font-family:var(--fb);font-size:12px;font-weight:600;
   cursor:pointer;transition:background .15s,color .15s;display:inline-flex;align-items:center;
-  justify-content:center;white-space:nowrap
-}
+  justify-content:center;white-space:nowrap}
 .gh:active{background:var(--s2);color:var(--text)}
 .finish{height:38px;padding:0 18px;border-radius:19px;background:var(--ok);color:#022b14;
   font-family:var(--fh);font-size:13px;font-weight:700;border:none;cursor:pointer;flex-shrink:0}
@@ -111,16 +92,11 @@ body{background:var(--bg)}
 .sl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t2)}
 .pg-eye{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);margin-bottom:4px}
 .pg-h{font-family:var(--fh);font-size:28px;font-weight:800;color:var(--text);letter-spacing:-.02em}
-
-/* ── 9. Stat tiles — tightened type ── */
 .sg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .st{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:14px}
 .sl2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:6px}
-.sv{font-family:var(--fh);font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.02em;
-  line-height:1;font-variant-numeric:tabular-nums}
+.sv{font-family:var(--fh);font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
 .sv span{font-size:12px;color:var(--t2);margin-left:2px;font-weight:600}
-
-/* ── set rows ── */
 .sw{display:grid;gap:7px;margin-top:14px}
 .shd{display:grid;grid-template-columns:38px 1fr 1fr 44px;gap:8px;font-size:11px;font-weight:700;
   letter-spacing:.08em;text-transform:uppercase;color:var(--t2);padding:0 2px 2px;text-align:center}
@@ -130,7 +106,7 @@ body{background:var(--bg)}
   font-weight:700;color:var(--t2);transition:background .2s,border-color .2s,color .2s}
 .si{height:44px;border-radius:12px;background:var(--s2);border:1px solid var(--bd);color:var(--text);
   font-family:var(--fh);font-size:18px;font-weight:700;text-align:center;width:100%;
-  font-variant-numeric:tabular-nums;transition:background .2s,border-color .2s,color .2s}
+  font-variant-numeric:tabular-nums;transition:background .2s,border-color .2s}
 .si:focus{outline:none;border-color:var(--brand);background:rgba(var(--brgb),.08)}
 .ck{width:44px;height:44px;border-radius:12px;background:var(--s2);border:1px solid var(--bd);
   display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;
@@ -138,151 +114,75 @@ body{background:var(--bg)}
 .sr.done .sn{background:var(--oksoft);border-color:var(--okbd);color:var(--ok)}
 .sr.done .si{background:var(--oksoft);border-color:var(--okbd);color:var(--ok)}
 .sr.done .ck{background:var(--ok);border-color:var(--ok);color:#022b14}
-
-/* ── chips ── */
 .chip{display:inline-flex;align-items:center;padding:0 9px;height:22px;border-radius:11px;
   font-size:11px;font-weight:700;letter-spacing:.03em;background:var(--bsoft);border:1px solid var(--bbd);color:var(--brand2)}
 .chipok{background:var(--oksoft);border:1px solid var(--okbd);color:var(--ok)}
-
-/* ── history rows ── */
 .hi{display:flex;align-items:center;padding:13px 0;border-bottom:1px solid var(--bd);gap:12px;cursor:pointer}
 .hi:last-child{border-bottom:none}
 .hd{width:7px;height:7px;border-radius:50%;background:var(--brand);flex-shrink:0}
 .hd.meas{background:var(--t3)}
-
-/* ── exercise rows ── */
 .er{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--bd)}
 .er:last-child{border-bottom:none}
-
-/* ── settings rows ── */
 .setr{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--bd)}
 .setr:last-child{border-bottom:none}
 .seti{width:80px;height:38px;border-radius:10px;background:var(--s2);border:1px solid var(--bd);
   color:var(--text);font-family:var(--fh);font-size:15px;font-weight:700;text-align:center}
 .seti:focus{outline:none;border-color:var(--brand)}
 .div{height:1px;background:var(--bd);margin:22px 0}
-
-/* ── session header ── */
 .sesh{position:sticky;top:0;background:var(--bg);z-index:10;padding:14px 20px 12px;
   margin:0 -20px;border-bottom:1px solid var(--bd);
   display:flex;align-items:center;justify-content:space-between;gap:12px}
-
-/* ── rest banner ── */
 .rb{background:linear-gradient(135deg,rgba(10,16,52,.95),rgba(14,22,60,.95));
   border:1px solid var(--bbd);border-radius:16px;padding:14px 16px;
-  display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;
-  transition:border-color .4s}
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .rc{font-family:var(--fh);font-size:36px;font-weight:800;color:var(--brand2);
   font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
-
-/* ── exercise card ── */
 .ec{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:16px;margin-bottom:10px}
 .en{font-family:var(--fh);font-size:17px;font-weight:700;color:var(--brand2)}
-
-/* ── chart ── */
 .cw{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:16px}
-
-/* ── 8. Empty states ── */
 .empty{display:flex;flex-direction:column;align-items:center;padding:40px 24px;text-align:center;gap:10px}
+/* Toast */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  background:rgba(20,28,60,.96);border:1px solid rgba(255,255,255,.12);border-radius:20px;
+  padding:10px 20px;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;
+  pointer-events:none;z-index:200;transition:opacity .3s}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect } = React;
-const { useTweaks, TweaksPanel, TweakSection, TweakColor, TweakRadio } = window;
+const { useState, useEffect, useCallback, useReducer, useRef } = React;
+const { useTweaks, TweaksPanel, TweakSection, TweakColor } = window;
 
-/* ── NAV ORDER for directional transitions ── */
-const NAV_ORDER={stats:0,history:1,workouts:2,exercises:3,tools:4};
+const NAV_ORDER = { stats:0, history:1, workouts:2, exercises:3, tools:4 };
+const EX_METRICS = [
+  {key:'heaviestWeight',lbl:'Weight',unit:'kg'},
+  {key:'bestSessionVolume',lbl:'Volume',unit:'kg'},
+  {key:'oneRmBrzycki',lbl:'1RM',unit:'kg'},
+  {key:'mostReps',lbl:'Reps',unit:'reps'},
+];
+const RANGES = [{l:'4w',n:4},{l:'8w',n:8},{l:'12w',n:12},{l:'All',n:999}];
 
-/* ── DATA ── */
-const TMPLS=[
-  {id:'w1',name:'Push Day A',ex:4,sets:16,last:'2d ago',exercises:['Bench Press','Incline DB Press','Cable Fly','Tricep Pushdown']},
-  {id:'w2',name:'Pull Day',ex:4,sets:14,last:'3d ago',exercises:['Pull-ups','Lat Pulldown','Seated Row','Barbell Curl']},
-  {id:'w3',name:'Leg Day',ex:5,sets:18,last:'4d ago',exercises:['Back Squat','Romanian Deadlift','Leg Press','Hip Thrust','Calf Raise']},
-  {id:'w4',name:'Push Day B',ex:4,sets:15,last:'5d ago',exercises:['Overhead Press','Incline Bench','Lateral Raise','Skull Crushers']},
-];
-const INIT_SESS={
-  name:'Push Day A',
-  exercises:[
-    {id:'e1',name:'Bench Press',sets:[
-      {id:'s1',kg:'80',reps:'10',done:true},
-      {id:'s2',kg:'80',reps:'10',done:true},
-      {id:'s3',kg:'85',reps:'8',done:false},
-      {id:'s4',kg:'85',reps:'8',done:false},
-    ]},
-    {id:'e2',name:'Incline DB Press',sets:[
-      {id:'s5',kg:'30',reps:'12',done:false},
-      {id:'s6',kg:'30',reps:'12',done:false},
-      {id:'s7',kg:'32.5',reps:'10',done:false},
-    ]},
-  ]
-};
-const EX_METRICS=['Weight','Volume','1RM','Reps'];
-const RANGES=[{l:'4w',n:4},{l:'8w',n:8},{l:'12w',n:12},{l:'All',n:999}];
-const EX_DATA={
-  'Bench Press':{
-    Weight:{data:[72.5,75,77.5,80,80,82.5,85,87.5,87.5,90],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    Volume:{data:[725,750,775,800,800,825,850,875,875,900],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    '1RM':{data:[86,89,92,95,95,98,101,104,104,108],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    Reps:{data:[10,10,8,10,8,8,8,8,8,8],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-  },
-  'Back Squat':{
-    Weight:{data:[100,105,105,110,112.5,115,115,120,122.5,125],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    Volume:{data:[1000,1050,1050,1100,1125,1150,1150,1200,1225,1250],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    '1RM':{data:[119,125,125,131,134,137,137,143,146,149],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    Reps:{data:[10,10,10,10,9,8,8,8,8,8],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-  },
-  'Deadlift':{
-    Weight:{data:[120,125,130,135,140,142.5,145,147.5,150,155],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    Volume:{data:[600,625,650,675,700,712,725,737,750,775],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    '1RM':{data:[143,149,155,161,167,170,173,176,179,185],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    Reps:{data:[5,5,5,5,5,5,5,5,5,5],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-  },
-  'Overhead Press':{
-    Weight:{data:[50,52.5,55,55,57.5,60,60,62.5,62.5,65],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    Volume:{data:[500,525,550,550,575,600,600,625,625,650],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    '1RM':{data:[60,63,66,66,68,72,72,74,74,77],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-    Reps:{data:[10,10,10,8,8,8,8,8,8,8],lbl:['Jan 6','Jan 20','Feb 3','Feb 17','Mar 3','Mar 17','Mar 31','Apr 14','Apr 28','Jun 3']},
-  },
-};
-const MUS_DATA={Legs:[32,28,36,30,34,38,36,32,30,36,34,32],Chest:[28,30,32,28,30,32,34,32,30,32,34,34],Back:[24,26,28,24,26,30,28,26,28,30,28,28],Shoulders:[16,18,20,18,20,18,20,18,18,20,18,20],Arms:[16,14,18,16,18,16,18,16,16,18,16,18]};
-const MUS_COLORS={Legs:'#22c55e',Chest:'var(--brand)',Back:'#7c8cff',Shoulders:'#f59e0b',Arms:'#a5b4fc'};
-const BODY_HIST=[
-  {d:'Apr 1',bw:90.2,bf:19.1,mm:73.0},
-  {d:'Apr 15',bw:89.5,bf:18.8,mm:72.6},
-  {d:'May 1',bw:89.0,bf:18.5,mm:72.6},
-  {d:'May 15',bw:88.3,bf:18.0,mm:72.4},
-  {d:'Jun 1',bw:87.8,bf:17.6,mm:72.3},
-  {d:'Jun 3',bw:87.2,bf:17.2,mm:72.1},
-];
-const HIST=[
-  {id:'h1',name:'Push Day A',date:'Today',time:'7:30 AM',dur:'52 min',vol:'4,180 kg',ex:4,type:'w'},
-  {id:'h2',name:'Pull Day',date:'Yesterday',time:'6:00 PM',dur:'48 min',vol:'3,820 kg',ex:4,type:'w'},
-  {id:'h3',name:'Body Measurements',date:'Tue Jun 2',time:'8:00 AM',dur:'',vol:'87.2 kg BW',ex:0,type:'b'},
-  {id:'h4',name:'Leg Day',date:'Mon Jun 1',time:'7:15 AM',dur:'61 min',vol:'8,340 kg',ex:5,type:'w'},
-  {id:'h5',name:'Push Day A',date:'Sat May 31',time:'8:00 AM',dur:'55 min',vol:'4,060 kg',ex:4,type:'w'},
-  {id:'h6',name:'Pull Day',date:'Thu May 29',time:'6:30 PM',dur:'50 min',vol:'3,750 kg',ex:4,type:'w'},
-];
-const EXLIB=[
-  {id:1,name:'Back Squat',m:['Quadriceps','Glutes']},
-  {id:2,name:'Barbell Curl',m:['Biceps']},
-  {id:3,name:'Bench Press',m:['Chest','Triceps']},
-  {id:4,name:'Cable Fly',m:['Chest']},
-  {id:5,name:'Deadlift',m:['Lower Back','Hamstrings']},
-  {id:6,name:'Hip Thrust',m:['Glutes']},
-  {id:7,name:'Incline DB Press',m:['Chest','Shoulders']},
-  {id:8,name:'Lat Pulldown',m:['Lats']},
-  {id:9,name:'Leg Press',m:['Quadriceps']},
-  {id:10,name:'Overhead Press',m:['Shoulders','Triceps']},
-  {id:11,name:'Pull-ups',m:['Lats','Biceps']},
-  {id:12,name:'Romanian Deadlift',m:['Hamstrings','Lower Back']},
-  {id:13,name:'Seated Row',m:['Upper Back','Biceps']},
-  {id:14,name:'Skull Crushers',m:['Triceps']},
-];
+/* ── helpers ── */
+function fmtDur(secs){
+  const m=Math.floor(secs/60),s=secs%60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function fmtMins(secs){
+  const m=Math.round(secs/60);
+  return m>0?`${m} min`:'—';
+}
+function getWeekStart(){
+  const d=new Date(); const dow=d.getDay();
+  const mon=new Date(d); mon.setDate(d.getDate()-((dow+6)%7)); mon.setHours(0,0,0,0);
+  return mon;
+}
+function fmt8(dt){
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
 
-/* ── NAV ICONS ── */
-const NIco={
+/* ── nav icons ── */
+const NIco = {
   stats:<svg width="20" height="18" viewBox="0 0 20 18" fill="currentColor"><rect x="1" y="10" width="4" height="8" rx="1.5"/><rect x="8" y="5" width="4" height="13" rx="1.5"/><rect x="15" y="1" width="4" height="17" rx="1.5"/></svg>,
   hist:<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 3"/></svg>,
   work:<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><path d="M10 2L18 6.5v7L10 18L2 13.5v-7Z"/></svg>,
@@ -290,15 +190,8 @@ const NIco={
   tools:<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M14.3 4.3l-1.4 1.4M4.3 15.7l1.4-1.4"/></svg>,
 };
 
-/* ── 7. NAV with pill indicator ── */
 function Nav({active,set}){
-  const items=[
-    {id:'stats',lbl:'Stats',ico:NIco.stats},
-    {id:'history',lbl:'History',ico:NIco.hist},
-    {id:'workouts',lbl:'Forge',ico:NIco.work},
-    {id:'exercises',lbl:'Library',ico:NIco.lib},
-    {id:'tools',lbl:'Tools',ico:NIco.tools},
-  ];
+  const items=[{id:'stats',lbl:'Stats',ico:NIco.stats},{id:'history',lbl:'History',ico:NIco.hist},{id:'workouts',lbl:'Forge',ico:NIco.work},{id:'exercises',lbl:'Library',ico:NIco.lib},{id:'tools',lbl:'Tools',ico:NIco.tools}];
   return(
     <div className="nav">
       {items.map(it=>(
@@ -312,19 +205,39 @@ function Nav({active,set}){
   );
 }
 
-/* ── 4. WORKOUTS VIEW with 7-day row ── */
-function WorkoutsView({onStart}){
+/* ── WORKOUTS VIEW ── */
+function WorkoutsView({onStart,refresh}){
   const d=new Date();
   const day=d.toLocaleDateString('en-US',{weekday:'long'});
   const date=d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const dow=d.getDay();
-  const monday=new Date(d);
-  monday.setDate(d.getDate()-((dow+6)%7));
+  const monday=new Date(d); monday.setDate(d.getDate()-((dow+6)%7));
   const weekDays=Array.from({length:7},(_,i)=>{const dd=new Date(monday);dd.setDate(monday.getDate()+i);return dd;});
-  const fmt8=dt=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
   const today8=fmt8(new Date());
-  const DONE=['2026-06-01','2026-06-02','2026-06-03'];
   const DLBL=['M','T','W','T','F','S','S'];
+
+  const weekStart=getWeekStart();
+  const doneWorkouts=state.workouts.filter(w=>w.endedAt&&new Date(w.createdAt)>=weekStart&&w.id!==state.activeWorkoutId);
+  const doneDays=new Set(doneWorkouts.map(w=>fmt8(new Date(w.createdAt))));
+  const weekVol=doneWorkouts.reduce((s,w)=>s+workoutVolume(w),0);
+  const weekSets=doneWorkouts.reduce((s,w)=>s+w.items.reduce((a,i)=>a+i.sets.length,0),0);
+
+  const streak=(()=>{
+    const completed=state.workouts.filter(w=>w.endedAt).map(w=>new Date(w.createdAt));
+    let wk=0;
+    let cur=new Date(); cur.setHours(0,0,0,0);
+    cur.setDate(cur.getDate()-((cur.getDay()+6)%7));
+    while(true){
+      const wkEnd=new Date(cur); wkEnd.setDate(cur.getDate()+7);
+      const hasWk=completed.some(d=>d>=cur&&d<wkEnd);
+      if(!hasWk)break;
+      wk++; cur.setDate(cur.getDate()-7);
+    }
+    return wk;
+  })();
+
+  const routines=state.routines;
+
   return(
     <div className="sc" style={{padding:'16px 20px 20px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
@@ -335,22 +248,19 @@ function WorkoutsView({onStart}){
         <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:800,letterSpacing:'.1em',color:'var(--text)',paddingTop:6}}>FORGE</div>
       </div>
 
-      {/* 7-day row */}
       <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:16,padding:'13px 16px',marginBottom:20,display:'flex',alignItems:'center'}}>
         <div style={{flex:1,display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
           {weekDays.map((wd,i)=>{
             const ds=fmt8(wd);
-            const isDone=DONE.includes(ds);
+            const isDone=doneDays.has(ds);
             const isToday=ds===today8;
             return(
               <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:7}}>
                 <span style={{fontSize:10,fontWeight:700,letterSpacing:'.06em',color:isToday?'var(--brand2)':isDone?'var(--t2)':'var(--t3)'}}>{DLBL[i]}</span>
-                <div style={{
-                  width:isToday?10:8,height:isToday?10:8,borderRadius:'50%',flexShrink:0,
+                <div style={{width:isToday?10:8,height:isToday?10:8,borderRadius:'50%',
                   background:isDone?(isToday?'var(--brand)':'var(--ok)'):'var(--s3)',
                   border:isToday?'1.5px solid var(--brand2)':'none',
-                  boxShadow:isToday?'0 0 8px rgba(var(--brgb),.6)':isDone&&!isToday?'0 0 5px rgba(var(--okrgb),.35)':'none',
-                }}/>
+                  boxShadow:isToday?'0 0 8px rgba(var(--brgb),.6)':isDone&&!isToday?'0 0 5px rgba(var(--okrgb),.35)':'none'}}/>
               </div>
             );
           })}
@@ -358,7 +268,7 @@ function WorkoutsView({onStart}){
         <div style={{width:1,height:30,background:'var(--bd)',margin:'0 14px'}}/>
         <div style={{textAlign:'right',flexShrink:0}}>
           <div style={{display:'flex',alignItems:'baseline',gap:3}}>
-            <div style={{fontFamily:'var(--fh)',fontSize:22,fontWeight:800,color:'var(--text)',lineHeight:1}}>3</div>
+            <div style={{fontFamily:'var(--fh)',fontSize:22,fontWeight:800,color:'var(--text)',lineHeight:1}}>{streak}</div>
             <div style={{fontFamily:'var(--fh)',fontSize:11,fontWeight:700,color:'var(--t2)',lineHeight:1}}>wk</div>
           </div>
           <div style={{fontSize:10,fontWeight:700,letterSpacing:'.08em',color:'var(--ok)',marginTop:3}}>STREAK</div>
@@ -369,81 +279,103 @@ function WorkoutsView({onStart}){
 
       <div className="sh"><span className="sl">This Week</span></div>
       <div className="sg" style={{marginBottom:22}}>
-        <div className="st"><div className="sl2">Volume</div><div className="sv">12.0<span>t</span></div></div>
-        <div className="st"><div className="sl2">Workouts</div><div className="sv">2<span>/ 4</span></div></div>
-        <div className="st"><div className="sl2">Total Sets</div><div className="sv">68</div></div>
-        <div className="st"><div className="sl2">Best Day</div><div className="sv" style={{fontSize:16,letterSpacing:'-.01em'}}>Push A</div></div>
+        <div className="st"><div className="sl2">Volume</div><div className="sv">{weekVol>=1000?(weekVol/1000).toFixed(1):Math.round(weekVol)}<span>{weekVol>=1000?'t':'kg'}</span></div></div>
+        <div className="st"><div className="sl2">Workouts</div><div className="sv">{doneWorkouts.length}</div></div>
+        <div className="st"><div className="sl2">Total Sets</div><div className="sv">{weekSets}</div></div>
+        <div className="st"><div className="sl2">Best Day</div><div className="sv" style={{fontSize:16,letterSpacing:'-.01em'}}>{doneWorkouts.length>0?doneWorkouts.reduce((b,w)=>workoutVolume(w)>workoutVolume(b)?w:b).name.split(' ').slice(0,2).join(' '):'—'}</div></div>
       </div>
 
       <div className="div"/>
-      <div className="sh"><span className="sl">Templates</span>
-        <button className="gh" style={{height:30,fontSize:11,padding:'0 10px'}}>+ New</button>
+      <div className="sh">
+        <span className="sl">Templates</span>
+        <button className="gh" style={{height:30,fontSize:11,padding:'0 10px'}} onClick={()=>{
+          const name=prompt('Template name');
+          if(name){createRoutine(name);refresh();}
+        }}>+ New</button>
       </div>
-      <div style={{display:'flex',flexDirection:'column',gap:10}}>
-        {TMPLS.map(t=>(
-          <div key={t.id} style={{
-            background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:18,
-            padding:'16px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',
-            cursor:'pointer',transition:'background .15s,border-color .15s'
-          }} onClick={()=>onStart(t)}>
-            <div>
-              <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:700,color:'var(--text)',marginBottom:4}}>{t.name}</div>
-              <div style={{fontSize:12,color:'var(--t2)'}}>{t.ex} exercises · {t.sets} sets</div>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:8}}>
-              <span style={{fontSize:12,color:'var(--t2)'}}>Last {t.last}</span>
-              <span style={{color:'var(--brand2)',fontSize:20,lineHeight:1}}>›</span>
-            </div>
-          </div>
-        ))}
-      </div>
+      {routines.length===0?(
+        <div className="empty" style={{padding:'24px 0'}}>
+          <div style={{fontSize:13,color:'var(--t3)'}}>No templates yet. Create one to get started.</div>
+        </div>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {routines.map(r=>{
+            const exercises=r.items.map(i=>getExercise(i.exerciseId)?.name||'').filter(Boolean);
+            const sets=r.items.reduce((s,i)=>s+i.sets.length,0);
+            const last=state.workouts.filter(w=>w.routineId===r.id&&w.endedAt).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))[0];
+            const lastStr=last?`${Math.round((Date.now()-new Date(last.createdAt).getTime())/86400000)}d ago`:'Never';
+            return(
+              <div key={r.id} style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:18,padding:'16px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}
+                onClick={()=>onStart(r)}>
+                <div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:700,color:'var(--text)',marginBottom:4}}>{r.name}</div>
+                  <div style={{fontSize:12,color:'var(--t2)'}}>{exercises.length} exercises · {sets} sets</div>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:8}}>
+                  <span style={{fontSize:12,color:'var(--t2)'}}>Last {lastStr}</span>
+                  <span style={{color:'var(--brand2)',fontSize:20,lineHeight:1}}>›</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-/* ── 2. SESSION VIEW with progress indicator ── */
-function SessionView({onFinish}){
-  const [sess,setSess]=useState(INIT_SESS);
-  const [elapsed,setEl]=useState(1847);
-  const [rest,setRest]=useState(67);
-  const [restOn,setRestOn]=useState(true);
+/* ── SESSION VIEW ── */
+function SessionView({onFinish,rest,restOn,setRest,setRestOn}){
+  const workout=getActiveWorkout();
+  const [elapsed,setEl]=useState(workout?Math.round((Date.now()-new Date(workout.createdAt).getTime())/1000):0);
+  const [,tick]=useReducer(x=>x+1,0);
+
   useEffect(()=>{const t=setInterval(()=>setEl(s=>s+1),1000);return()=>clearInterval(t)},[]);
-  useEffect(()=>{
-    if(!restOn)return;
-    const t=setInterval(()=>setRest(s=>{if(s<=1){setRestOn(false);return 0;}return s-1;}),1000);
-    return()=>clearInterval(t);
-  },[restOn]);
-  const fmt=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-  const toggle=(exId,sId)=>{
-    setSess(p=>({...p,exercises:p.exercises.map(ex=>
-      ex.id===exId?{...ex,sets:ex.sets.map(s=>s.id===sId?{...s,done:!s.done}:s)}:ex
-    )}));
-    setRest(90);setRestOn(true);
+
+  if(!workout)return null;
+
+  const toggle=(itemId,setId)=>{
+    const item=workout.items.find(i=>i.id===itemId);
+    const s=item?.sets.find(s=>s.id===setId);
+    if(!s)return;
+    s.completed=!s.completed;
+    saveState();
+    if(s.completed){setRest(getRestSeconds(s.tag));setRestOn(true);}
+    tick();
   };
-  const upd=(exId,sId,f,v)=>setSess(p=>({...p,exercises:p.exercises.map(ex=>
-    ex.id===exId?{...ex,sets:ex.sets.map(s=>s.id===sId?{...s,[f]:v}:s)}:ex
-  )}));
-  const addSet=exId=>setSess(p=>({...p,exercises:p.exercises.map(ex=>{
-    if(ex.id!==exId)return ex;
-    const L=ex.sets[ex.sets.length-1];
-    return{...ex,sets:[...ex.sets,{id:`s${Date.now()}`,kg:L.kg,reps:L.reps,done:false}]};
-  })}));
+  const updField=(itemId,setId,field,val)=>{
+    const item=workout.items.find(i=>i.id===itemId);
+    const s=item?.sets.find(s=>s.id===setId);
+    if(!s)return;
+    if(field==='weight'||field==='reps'){const n=parseFloat(val);s[field]=isNaN(n)?null:n;}
+    else s[field]=val;
+    saveState();
+  };
+  const doAddSet=(itemId)=>{
+    const item=workout.items.find(i=>i.id===itemId);
+    if(!item)return;
+    const ex=getExercise(item.exerciseId);
+    const last=item.sets[item.sets.length-1];
+    item.sets.push({id:uid(),type:ex?.type||'weight',tag:'work',completed:false,
+      weight:last?.weight??null,reps:last?.reps??null});
+    saveState();tick();
+  };
+
   return(
     <div className="sc" style={{padding:'0 20px 24px'}}>
       <div className="sesh">
         <div>
-          <div style={{fontFamily:'var(--fh)',fontSize:19,fontWeight:700,color:'var(--text)'}}>{sess.name}</div>
-          <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:600,color:'var(--brand2)',marginTop:3,fontVariantNumeric:'tabular-nums'}}>⏱ {fmt(elapsed)}</div>
+          <div style={{fontFamily:'var(--fh)',fontSize:19,fontWeight:700,color:'var(--text)'}}>{workout.name}</div>
+          <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:600,color:'var(--brand2)',marginTop:3,fontVariantNumeric:'tabular-nums'}}>⏱ {fmtDur(elapsed)}</div>
         </div>
         <button className="finish" onClick={onFinish}>Finish</button>
       </div>
       <div style={{height:16}}/>
-      {/* 6. Rest banner with pulse */}
       {restOn&&(
-        <div className={`rb rb-on`}>
+        <div className="rb rb-on">
           <div>
             <div style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t2)',marginBottom:5}}>Rest</div>
-            <div className="rc">{fmt(rest)}</div>
+            <div className="rc">{fmtDur(rest)}</div>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             <button className="gh" style={{height:34,fontSize:12}} onClick={()=>setRest(r=>r+15)}>+15s</button>
@@ -451,108 +383,119 @@ function SessionView({onFinish}){
           </div>
         </div>
       )}
-      {sess.exercises.map(ex=>{
-        const done=ex.sets.filter(s=>s.done).length;
-        const total=ex.sets.length;
-        const pct=(done/total)*100;
+      {workout.items.map(item=>{
+        const ex=getExercise(item.exerciseId);
+        const done=item.sets.filter(s=>s.completed).length;
+        const total=item.sets.length;
+        const pct=total>0?(done/total)*100:0;
         return(
-          <div key={ex.id} className="ec">
+          <div key={item.id} className="ec">
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
               <div>
-                <div className="en">{ex.name}</div>
+                <div className="en">{ex?.name||'Exercise'}</div>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginTop:5}}>
-                  <div style={{fontSize:12,color:done===total&&total>0?'var(--ok)':'var(--t2)',fontWeight:600}}>
-                    {done} / {total} sets
-                  </div>
+                  <div style={{fontSize:12,color:done===total&&total>0?'var(--ok)':'var(--t2)',fontWeight:600}}>{done} / {total} sets</div>
                   {done===total&&total>0&&<span className="chip chipok" style={{height:18,fontSize:9,padding:'0 6px'}}>Done</span>}
                 </div>
-                {/* 2. Progress bar */}
                 <div style={{width:100,height:2,borderRadius:1,background:'var(--s3)',marginTop:7}}>
                   <div style={{height:'100%',width:`${pct}%`,background:done===total?'var(--ok)':'var(--brand)',borderRadius:1,transition:'width .3s ease'}}/>
                 </div>
               </div>
-              <button className="gh" style={{height:30,fontSize:13,padding:'0 10px',flexShrink:0}}>⋯</button>
             </div>
             <div className="sw">
               <div className="shd"><span>Set</span><span>kg</span><span>Reps</span><span>✓</span></div>
-              {ex.sets.map((s,i)=>(
-                <div key={s.id} className={`sr${s.done?' done':''}`}>
+              {item.sets.map((s,i)=>(
+                <div key={s.id} className={`sr${s.completed?' done':''}`}>
                   <div className="sn">{i+1}</div>
-                  <input className="si" type="text" inputMode="decimal" value={s.kg} onChange={e=>upd(ex.id,s.id,'kg',e.target.value)}/>
-                  <input className="si" type="text" inputMode="numeric" value={s.reps} onChange={e=>upd(ex.id,s.id,'reps',e.target.value)}/>
-                  <div className="ck" onClick={()=>toggle(ex.id,s.id)}>{s.done?'✓':''}</div>
+                  <input className="si" type="number" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
+                    onBlur={e=>updField(item.id,s.id,'weight',e.target.value)}/>
+                  <input className="si" type="number" inputMode="numeric" defaultValue={s.reps??''} placeholder="—"
+                    onBlur={e=>updField(item.id,s.id,'reps',e.target.value)}/>
+                  <div className="ck" onClick={()=>toggle(item.id,s.id)}>{s.completed?'✓':''}</div>
                 </div>
               ))}
             </div>
-            <button className="gh" style={{width:'100%',marginTop:12,height:40,fontSize:13}} onClick={()=>addSet(ex.id)}>+ Add Set</button>
+            <button className="gh" style={{width:'100%',marginTop:12,height:40,fontSize:13}} onClick={()=>doAddSet(item.id)}>+ Add Set</button>
           </div>
         );
       })}
-      <button className="gh" style={{width:'100%',height:50,fontSize:14,marginTop:4}}>+ Add Exercise</button>
+      <AddExerciseToSession workout={workout} onAdd={()=>tick()}/>
     </div>
   );
 }
 
-/* ── 5. CHART with tap callout ── */
+function AddExerciseToSession({workout,onAdd}){
+  const [open,setOpen]=useState(false);
+  const [q,setQ]=useState('');
+  const filtered=state.exercises.filter(e=>e.name.toLowerCase().includes(q.toLowerCase()));
+  if(!open)return(
+    <button className="gh" style={{width:'100%',height:50,fontSize:14,marginTop:4}} onClick={()=>setOpen(true)}>+ Add Exercise</button>
+  );
+  return(
+    <>
+      <div className="sheet-scrim" onClick={()=>setOpen(false)}/>
+      <div className="sheet" style={{padding:'18px 20px 44px',maxHeight:'70%',display:'flex',flexDirection:'column'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 14px'}}/>
+        <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises…"
+          style={{width:'100%',height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',
+            color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',marginBottom:12,flexShrink:0}}/>
+        <div style={{overflowY:'auto',flex:1}}>
+          {filtered.map(ex=>(
+            <div key={ex.id} style={{padding:'12px 0',borderBottom:'1px solid var(--bd)',cursor:'pointer',fontSize:14,color:'var(--text)'}}
+              onClick={()=>{addWorkoutExercise(ex.id);setOpen(false);setQ('');onAdd();}}>
+              {ex.name}
+              {ex.primaryMuscleGroups&&<div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{ex.primaryMuscleGroups}</div>}
+            </div>
+          ))}
+          {filtered.length===0&&<div style={{fontSize:13,color:'var(--t3)',textAlign:'center',padding:'24px 0'}}>No exercises found</div>}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── CHART ── */
 function Chart({data,labels,color,gid}){
-  color=color||'#4f66ff';
-  gid=gid||'cg';
+  color=color||'var(--brand)';gid=gid||'cg';
   const [tip,setTip]=useState(null);
+  if(!data||data.length<2)return<div style={{height:80,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'var(--t3)'}}>Not enough data</div>;
   const W=310,H=130,p={t:22,b:24,l:4,r:4};
-  const mn=Math.min(...data)-3,mx=Math.max(...data)+3;
+  const mn=Math.min(...data)-1,mx=Math.max(...data)+1;
   const xi=i=>p.l+(i/(data.length-1))*(W-p.l-p.r);
   const yi=v=>p.t+((mx-v)/(mx-mn))*(H-p.t-p.b);
   const pts=data.map((v,i)=>[xi(i),yi(v)]);
-  let d=`M ${pts[0]}`;
-  for(let i=1;i<pts.length;i++){const cx=(pts[i][0]+pts[i-1][0])/2;d+=` C ${cx} ${pts[i-1][1]},${cx} ${pts[i][1]},${pts[i][0]} ${pts[i][1]}`;}
-  const fill=d+` L ${pts[pts.length-1][0]} ${H-p.b} L ${pts[0][0]} ${H-p.b} Z`;
+  let d2=`M ${pts[0]}`;
+  for(let i=1;i<pts.length;i++){const cx=(pts[i][0]+pts[i-1][0])/2;d2+=` C ${cx} ${pts[i-1][1]},${cx} ${pts[i][1]},${pts[i][0]} ${pts[i][1]}`;}
+  const fill=d2+` L ${pts[pts.length-1][0]} ${H-p.b} L ${pts[0][0]} ${H-p.b} Z`;
   const lp=pts[pts.length-1];
+  const showIdxs=[0,Math.floor(data.length/2),data.length-1].filter((v,i,a)=>a.indexOf(v)===i&&v<labels.length);
   return(
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',overflow:'visible'}} onClick={()=>setTip(null)}>
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity=".2"/>
-          <stop offset="100%" stopColor={color} stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      {[.33,.66].map((t,i)=>(
-        <line key={i} x1={p.l} y1={p.t+t*(H-p.t-p.b)} x2={W-p.r} y2={p.t+t*(H-p.t-p.b)} stroke="rgba(255,255,255,.05)" strokeWidth="1" strokeDasharray="3,4"/>
-      ))}
+      <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={color} stopOpacity=".2"/>
+        <stop offset="100%" stopColor={color} stopOpacity="0"/>
+      </linearGradient></defs>
       <path d={fill} fill={`url(#${gid})`}/>
-      <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      {[0,3,6,9,11].filter(idx=>idx<labels.length).map(idx=>(
-        <text key={idx} x={xi(idx)} y={H-2} fontSize="10" fill="rgba(154,170,200,.9)" textAnchor="middle" fontFamily="Inter,sans-serif">{labels[idx].split(' ')[0]}</text>
+      <path d={d2} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      {showIdxs.map(idx=>(
+        <text key={idx} x={xi(idx)} y={H-2} fontSize="10" fill="rgba(154,170,200,.9)" textAnchor="middle" fontFamily="Inter,sans-serif">{labels[idx]}</text>
       ))}
-      {/* hit targets */}
       {pts.map(([x,y],i)=>(
-        <circle key={i} cx={x} cy={y} r="13" fill="transparent" style={{cursor:'pointer'}}
-          onClick={e=>{e.stopPropagation();setTip(tip&&tip.i===i?null:{i,x,y,v:data[i],l:labels[i]});}}/>
+        <circle key={i} cx={x} cy={y} r="12" fill="transparent" style={{cursor:'pointer'}}
+          onClick={e=>{e.stopPropagation();setTip(tip?.i===i?null:{i,x,y,v:data[i],l:labels[i]});}}/>
       ))}
-      {/* highlighted point */}
-      {tip?(
-        <>
-          <circle cx={tip.x} cy={tip.y} r="14" fill={color} fillOpacity=".12"/>
-          <circle cx={tip.x} cy={tip.y} r="5" fill={color}/>
-        </>
-      ):(
-        <>
-          <circle cx={lp[0]} cy={lp[1]} r="5" fill={color}/>
-          <circle cx={lp[0]} cy={lp[1]} r="9" fill={color} fillOpacity=".15"/>
-          <text x={lp[0]} y={lp[1]-13} fontSize="12" fontWeight="700" fill={color} textAnchor="middle" fontFamily="Space Grotesk,sans-serif">{data[data.length-1]}</text>
-        </>
+      {tip?(<><circle cx={tip.x} cy={tip.y} r="14" fill={color} fillOpacity=".12"/><circle cx={tip.x} cy={tip.y} r="5" fill={color}/></>):(
+        <><circle cx={lp[0]} cy={lp[1]} r="5" fill={color}/><circle cx={lp[0]} cy={lp[1]} r="9" fill={color} fillOpacity=".15"/>
+        <text x={lp[0]} y={lp[1]-13} fontSize="12" fontWeight="700" fill={color} textAnchor="middle" fontFamily="Space Grotesk,sans-serif">{data[data.length-1]}</text></>
       )}
-      {/* callout */}
       {tip&&(()=>{
-        const cx=Math.min(Math.max(tip.x,46),W-46);
-        const ry=tip.y-50;
-        return(
-          <g pointerEvents="none">
-            <line x1={cx} y1={ry+30} x2={tip.x} y2={tip.y-7} stroke={color} strokeWidth="1" strokeOpacity=".35" strokeDasharray="2,3"/>
-            <rect x={cx-42} y={ry} width={84} height={30} rx={8} fill="#0c1030" stroke={color} strokeWidth="1" strokeOpacity=".5"/>
-            <text x={cx} y={ry+13} fontSize="12" fontWeight="800" fill={color} textAnchor="middle" fontFamily="Space Grotesk,sans-serif">{tip.v} kg</text>
-            <text x={cx} y={ry+24} fontSize="9" fill="rgba(154,170,200,.9)" textAnchor="middle" fontFamily="Inter,sans-serif">{tip.l}</text>
-          </g>
-        );
+        const cx=Math.min(Math.max(tip.x,46),W-46);const ry=tip.y-50;
+        return(<g pointerEvents="none">
+          <line x1={cx} y1={ry+30} x2={tip.x} y2={tip.y-7} stroke={color} strokeWidth="1" strokeOpacity=".35" strokeDasharray="2,3"/>
+          <rect x={cx-42} y={ry} width={84} height={30} rx={8} fill="#0c1030" stroke={color} strokeWidth="1" strokeOpacity=".5"/>
+          <text x={cx} y={ry+13} fontSize="12" fontWeight="800" fill={color} textAnchor="middle" fontFamily="Space Grotesk,sans-serif">{tip.v}</text>
+          <text x={cx} y={ry+24} fontSize="9" fill="rgba(154,170,200,.9)" textAnchor="middle" fontFamily="Inter,sans-serif">{tip.l}</text>
+        </g>);
       })()}
     </svg>
   );
@@ -560,137 +503,115 @@ function Chart({data,labels,color,gid}){
 
 /* ── STATS VIEW ── */
 function StatsView({onBodyLog}){
-  const [exName,setExName]=useState('Bench Press');
-  const [metric,setMetric]=useState('Weight');
+  const statsData=getStatsDataSnapshot();
+  const exercises=state.exercises;
+  const [exId,setExId]=useState(statsData.exercisePerformance[0]?.exerciseId||'');
+  const [metricKey,setMetricKey]=useState('heaviestWeight');
   const [exRange,setExRange]=useState('12w');
-  const [musRange,setMusRange]=useState('8w');
-  const [selMus,setSelMus]=useState(Object.keys(MUS_DATA));
-  const [bodyMetric,setBodyMetric]=useState('bw');
+  const [musMonths,setMusMonths]=useState(3);
+  const [selMus,setSelMus]=useState(null);
+  const [bodyKey,setBodyKey]=useState('bodyWeight');
 
-  const rawEx=(EX_DATA[exName]||EX_DATA['Bench Press'])[metric]||EX_DATA['Bench Press'].Weight;
+  const exPerf=statsData.exercisePerformance.find(p=>p.exerciseId===exId);
   const rn=RANGES.find(r=>r.l===exRange)?.n||12;
-  const exD=rawEx.data.slice(-Math.min(rn,rawEx.data.length));
-  const exL=rawEx.lbl.slice(-Math.min(rn,rawEx.lbl.length));
-  const metUnit=metric==='Reps'?'reps':'kg';
-  const best=Math.max(...exD);
-  const last=exD[exD.length-1];
-  const delta=(last-exD[0]).toFixed(1);
+  const sessions=(exPerf?.sessions||[]).slice(-rn);
+  const chartData=sessions.map(s=>+(s[metricKey]||0).toFixed(1));
+  const chartLbls=sessions.map(s=>formatDate(s.date));
+  const metDef=EX_METRICS.find(m=>m.key===metricKey)||EX_METRICS[0];
+  const best=chartData.length?Math.max(...chartData):0;
+  const last=chartData[chartData.length-1]||0;
+  const delta=chartData.length>1?(last-chartData[0]).toFixed(1):'0';
 
-  const musRn=parseInt(musRange)||8;
-  const musVols=selMus.map(m=>({
-    name:m,
-    total:(MUS_DATA[m]||[]).slice(-musRn).reduce((a,b)=>a+b,0),
-    avg:Math.round((MUS_DATA[m]||[]).slice(-musRn).reduce((a,b)=>a+b,0)/Math.min(musRn,MUS_DATA[m]?.length||1)),
-  })).sort((a,b)=>b.total-a.total);
-  const maxMus=Math.max(...musVols.map(v=>v.total),1);
+  const musVol=computeMuscleVolumeSeries('week',musMonths,'grouped',
+    selMus||(()=>{const mv=computeMuscleVolumeSeries('week',musMonths,'grouped',CANONICAL_MUSCLE_GROUPS);
+      return mv.series.map(s=>s.name);})()
+  );
+  const musAvailNames=musVol.series.filter(s=>s.total>0).map(s=>s.name);
+  if(!selMus&&musAvailNames.length){}
+  const musDisplay=musVol.series.filter(s=>s.total>0).sort((a,b)=>b.total-a.total);
+  const maxMus=Math.max(...musDisplay.map(s=>s.total),1);
 
-  const bodyKey=bodyMetric;
-  const bodyData=BODY_HIST.map(h=>h[bodyKey]);
-  const bodyLbls=BODY_HIST.map(h=>h.d);
-  const bodyUnit=bodyMetric==='bf'?'%':'kg';
-  const bodyDelta=(bodyData[bodyData.length-1]-bodyData[0]).toFixed(1);
-  const isGoodDelta=bodyMetric==='mm'?parseFloat(bodyDelta)>0:parseFloat(bodyDelta)<0;
+  const measurements=getSortedBodyMeasurements();
+  const bodyKeys={bodyWeight:'bw',bodyFat:'bf',muscleWeight:'mm'};
+  const bodyLblMap={bodyWeight:'Body Weight',bodyFat:'Body Fat %',muscleWeight:'Muscle Mass'};
+  const bodyUnitMap={bodyWeight:'kg',bodyFat:'%',muscleWeight:'kg'};
+  const bodyData=measurements.map(m=>+(m[bodyKey]||0).toFixed(1)).filter(v=>v>0);
+  const bodyLbls=measurements.filter(m=>m[bodyKey]).map(m=>formatDate(m.createdAt));
+  const latestMeas=measurements[measurements.length-1];
+  const bodyDelta=bodyData.length>1?(bodyData[bodyData.length-1]-bodyData[0]).toFixed(1):'0';
+  const isGoodDelta=bodyKey==='muscleWeight'?parseFloat(bodyDelta)>0:parseFloat(bodyDelta)<0;
 
   return(
     <div className="sc" style={{padding:'16px 20px 20px'}}>
       <div style={{marginBottom:22}}><div className="pg-eye">Analytics</div><div className="pg-h">Stats</div></div>
 
-      {/* ── Exercise Progress ── */}
       <div className="sh"><span className="sl">Exercise Progress</span></div>
-      <select value={exName} onChange={e=>setExName(e.target.value)}
-        style={{width:'100%',height:44,borderRadius:14,background:'var(--s1)',border:'1px solid var(--bd)',
-          color:'var(--text)',fontSize:14,padding:'0 14px',marginBottom:10,fontFamily:'inherit'}}>
-        {Object.keys(EX_DATA).map(k=><option key={k}>{k}</option>)}
-      </select>
-
-      {/* Metric */}
-      <div style={{display:'flex',gap:6,marginBottom:10}}>
-        {EX_METRICS.map(m=>(
-          <button key={m} onClick={()=>setMetric(m)} style={{
-            flex:1,height:30,borderRadius:15,cursor:'pointer',fontSize:10,fontWeight:700,letterSpacing:'.03em',
-            background:metric===m?'var(--brand)':'var(--s1)',
-            border:`1px solid ${metric===m?'transparent':'var(--bd)'}`,
-            color:metric===m?'#fff':'var(--t2)',transition:'all .15s'
-          }}>{m}</button>
-        ))}
-      </div>
-
-      {/* Range */}
-      <div style={{display:'flex',gap:6,marginBottom:14}}>
-        {RANGES.map(r=>(
-          <button key={r.l} onClick={()=>setExRange(r.l)} style={{
-            flex:1,height:26,borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
-            background:exRange===r.l?'var(--s3)':'transparent',
-            border:`1px solid ${exRange===r.l?'var(--bbd)':'var(--bd)'}`,
-            color:exRange===r.l?'var(--brand2)':'var(--t3)',transition:'all .15s'
-          }}>{r.l}</button>
-        ))}
-      </div>
-
-      <div className="sg" style={{marginBottom:14}}>
-        <div className="st"><div className="sl2">Best</div><div className="sv">{best}<span>{metUnit}</span></div></div>
-        <div className="st"><div className="sl2">Latest</div><div className="sv">{last}<span>{metUnit}</span></div></div>
-        <div className="st"><div className="sl2">Change</div>
-          <div className="sv" style={{color:parseFloat(delta)>=0?'var(--ok)':'var(--danger)'}}>
-            {parseFloat(delta)>=0?'+':''}{delta}<span>{metUnit}</span>
+      {statsData.exercisePerformance.length===0?(
+        <div className="empty" style={{padding:'16px 0'}}>
+          <div style={{fontSize:13,color:'var(--t3)'}}>Complete workouts to see exercise stats</div>
+        </div>
+      ):(
+        <>
+          <select value={exId} onChange={e=>setExId(e.target.value)}
+            style={{width:'100%',height:44,borderRadius:14,background:'var(--s1)',border:'1px solid var(--bd)',
+              color:'var(--text)',fontSize:14,padding:'0 14px',marginBottom:10,fontFamily:'inherit'}}>
+            {statsData.exercisePerformance.map(p=><option key={p.exerciseId} value={p.exerciseId}>{p.exerciseName}</option>)}
+          </select>
+          <div style={{display:'flex',gap:6,marginBottom:10}}>
+            {EX_METRICS.map(m=>(
+              <button key={m.key} onClick={()=>setMetricKey(m.key)} style={{flex:1,height:30,borderRadius:15,cursor:'pointer',fontSize:10,fontWeight:700,
+                background:metricKey===m.key?'var(--brand)':'var(--s1)',border:`1px solid ${metricKey===m.key?'transparent':'var(--bd)'}`,
+                color:metricKey===m.key?'#fff':'var(--t2)',transition:'all .15s'}}>{m.lbl}</button>
+            ))}
           </div>
-        </div>
-        <div className="st"><div className="sl2">Sessions</div><div className="sv">{exD.length}</div></div>
-      </div>
-
-      <div className="cw" style={{marginBottom:22}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-          <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{metric}</div>
-          <div style={{fontSize:12,color:'var(--t2)'}}>Tap to inspect</div>
-        </div>
-        <Chart data={exD} labels={exL} color="var(--brand)" gid="ex-chart"/>
-      </div>
+          <div style={{display:'flex',gap:6,marginBottom:14}}>
+            {RANGES.map(r=>(
+              <button key={r.l} onClick={()=>setExRange(r.l)} style={{flex:1,height:26,borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
+                background:exRange===r.l?'var(--s3)':'transparent',border:`1px solid ${exRange===r.l?'var(--bbd)':'var(--bd)'}`,
+                color:exRange===r.l?'var(--brand2)':'var(--t3)',transition:'all .15s'}}>{r.l}</button>
+            ))}
+          </div>
+          <div className="sg" style={{marginBottom:14}}>
+            <div className="st"><div className="sl2">Best</div><div className="sv">{best}<span>{metDef.unit}</span></div></div>
+            <div className="st"><div className="sl2">Latest</div><div className="sv">{last}<span>{metDef.unit}</span></div></div>
+            <div className="st"><div className="sl2">Change</div>
+              <div className="sv" style={{color:parseFloat(delta)>=0?'var(--ok)':'var(--danger)'}}>
+                {parseFloat(delta)>=0?'+':''}{delta}<span>{metDef.unit}</span></div></div>
+            <div className="st"><div className="sl2">Sessions</div><div className="sv">{sessions.length}</div></div>
+          </div>
+          <div className="cw" style={{marginBottom:22}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{metDef.lbl}</div>
+              <div style={{fontSize:12,color:'var(--t2)'}}>Tap to inspect</div>
+            </div>
+            <Chart data={chartData} labels={chartLbls} color="var(--brand)" gid="ex-chart"/>
+          </div>
+        </>
+      )}
 
       <div className="div"/>
-
-      {/* ── Muscle Volume ── */}
       <div className="sh"><span className="sl">Muscle Volume</span></div>
-
-      <div style={{display:'flex',gap:6,marginBottom:12}}>
-        {['4w','8w','12w'].map(r=>(
-          <button key={r} onClick={()=>setMusRange(r)} style={{
-            flex:1,height:26,borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
-            background:musRange===r?'var(--s3)':'transparent',
-            border:`1px solid ${musRange===r?'var(--bbd)':'var(--bd)'}`,
-            color:musRange===r?'var(--brand2)':'var(--t3)',transition:'all .15s'
-          }}>{r}</button>
+      <div style={{display:'flex',gap:6,marginBottom:16}}>
+        {[1,2,3].map(m=>(
+          <button key={m} onClick={()=>setMusMonths(m)} style={{flex:1,height:26,borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
+            background:musMonths===m?'var(--s3)':'transparent',border:`1px solid ${musMonths===m?'var(--bbd)':'var(--bd)'}`,
+            color:musMonths===m?'var(--brand2)':'var(--t3)',transition:'all .15s'}}>{m===1?'4w':m===2?'8w':'12w'}</button>
         ))}
       </div>
-
-      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
-        {Object.keys(MUS_DATA).map(m=>{
-          const on=selMus.includes(m);
-          return(
-            <button key={m} onClick={()=>setSelMus(p=>on?p.filter(x=>x!==m):[...p,m])} style={{
-              height:26,padding:'0 10px',borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
-              background:on?'var(--s2)':'transparent',
-              border:`1px solid ${on?'var(--bd2)':'var(--bd)'}`,
-              color:on?'var(--text)':'var(--t3)',transition:'all .15s'
-            }}>{m}</button>
-          );
-        })}
-      </div>
-
-      {musVols.length===0?(
-        <div style={{textAlign:'center',padding:'16px 0',color:'var(--t3)',fontSize:12,marginBottom:22}}>Select at least one muscle group</div>
+      {musDisplay.length===0?(
+        <div style={{textAlign:'center',padding:'16px 0 22px',color:'var(--t3)',fontSize:12}}>Complete workouts with tagged exercises to see muscle volume</div>
       ):(
         <div style={{marginBottom:22}}>
-          {musVols.map(({name,total,avg})=>(
-            <div key={name} style={{marginBottom:14}}>
+          {musDisplay.slice(0,8).map(s=>(
+            <div key={s.name} style={{marginBottom:14}}>
               <div style={{display:'flex',justifyContent:'space-between',marginBottom:7,alignItems:'baseline'}}>
-                <span style={{fontSize:13,color:'var(--text)',fontWeight:500}}>{name}</span>
+                <span style={{fontSize:13,color:'var(--text)',fontWeight:500}}>{s.name}</span>
                 <span style={{fontFamily:'var(--fh)',fontSize:12,color:'var(--t2)',fontVariantNumeric:'tabular-nums'}}>
-                  {total} sets <span style={{fontSize:10,opacity:.7}}>~{avg}/wk</span>
+                  {s.total.toFixed(1)} sets <span style={{fontSize:10,opacity:.7}}>~{musVol.labels.length>0?(s.total/musVol.labels.length).toFixed(1):0}/wk</span>
                 </span>
               </div>
               <div style={{height:6,borderRadius:3,background:'var(--s2)'}}>
-                <div style={{height:'100%',width:`${(total/maxMus)*100}%`,
-                  background:MUS_COLORS[name]||'var(--brand)',borderRadius:3,transition:'width .4s ease'}}/>
+                <div style={{height:'100%',width:`${(s.total/maxMus)*100}%`,background:'var(--brand)',borderRadius:3,transition:'width .4s ease'}}/>
               </div>
             </div>
           ))}
@@ -698,298 +619,232 @@ function StatsView({onBodyLog}){
       )}
 
       <div className="div"/>
-
-      {/* ── Body Composition ── */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
         <span className="sl">Body Composition</span>
         <button className="gh" style={{height:28,fontSize:11,padding:'0 12px'}} onClick={onBodyLog}>+ Log</button>
       </div>
-
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
-        {[
-          {l:'Weight',v:BODY_HIST[BODY_HIST.length-1].bw,u:'kg',k:'bw'},
-          {l:'Body Fat',v:BODY_HIST[BODY_HIST.length-1].bf,u:'%',k:'bf'},
-          {l:'Muscle',v:BODY_HIST[BODY_HIST.length-1].mm,u:'kg',k:'mm'},
-        ].map(s=>(
-          <div key={s.l} className="st" onClick={()=>setBodyMetric(s.k)} style={{
-            cursor:'pointer',gridColumn:'span 1',
-            borderColor:bodyMetric===s.k?'var(--bbd)':'var(--bd)',
-            background:bodyMetric===s.k?'rgba(var(--brgb),.06)':'var(--s1)',
-            transition:'all .15s'
-          }}>
+        {[{l:'Weight',k:'bodyWeight',u:'kg'},{l:'Body Fat',k:'bodyFat',u:'%'},{l:'Muscle',k:'muscleWeight',u:'kg'}].map(s=>(
+          <div key={s.k} className="st" onClick={()=>setBodyKey(s.k)} style={{cursor:'pointer',gridColumn:'span 1',
+            borderColor:bodyKey===s.k?'var(--bbd)':'var(--bd)',background:bodyKey===s.k?'rgba(var(--brgb),.06)':'var(--s1)',transition:'all .15s'}}>
             <div className="sl2">{s.l}</div>
-            <div className="sv" style={{fontSize:18}}>{s.v}<span>{s.u}</span></div>
+            <div className="sv" style={{fontSize:18}}>{latestMeas?+(latestMeas[s.k]||0).toFixed(1):'—'}<span>{s.u}</span></div>
           </div>
         ))}
         <div className="st" style={{gridColumn:'span 1'}}>
           <div className="sl2">Change</div>
           <div className="sv" style={{fontSize:18,color:isGoodDelta?'var(--ok)':'var(--danger)'}}>
-            {parseFloat(bodyDelta)>0?'+':''}{bodyDelta}<span>{bodyUnit}</span>
-          </div>
+            {parseFloat(bodyDelta)>0?'+':''}{bodyDelta}<span>{bodyUnitMap[bodyKey]}</span></div>
         </div>
       </div>
-
-      <div className="cw" style={{marginBottom:20}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-          <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>
-            {bodyMetric==='bw'?'Body Weight':bodyMetric==='bf'?'Body Fat %':'Muscle Mass'}
+      {bodyData.length>=2&&(
+        <div className="cw" style={{marginBottom:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{bodyLblMap[bodyKey]}</div>
+            <div style={{fontSize:12,color:'var(--t2)'}}>Tap to inspect</div>
           </div>
-          <div style={{fontSize:12,color:'var(--t2)'}}>Tap to inspect</div>
+          <Chart data={bodyData} labels={bodyLbls} gid="body-chart"
+            color={bodyKey==='bodyWeight'?'var(--brand)':bodyKey==='bodyFat'?'var(--danger)':'var(--ok)'}/>
         </div>
-        <Chart data={bodyData} labels={bodyLbls} gid="body-chart"
-          color={bodyMetric==='bw'?'var(--brand)':bodyMetric==='bf'?'var(--danger)':'var(--ok)'}/>
-      </div>
+      )}
     </div>
   );
 }
 
-/* ── HISTORY VIEW with empty state ── */
+/* ── HISTORY VIEW ── */
 function HistoryView(){
   const [f,setF]=useState('all');
-  const list=HIST.filter(h=>f==='all'?true:f==='body'?h.type==='b':h.type==='w');
+  const all=[
+    ...state.workouts.filter(w=>w.id!==state.activeWorkoutId).map(w=>({type:'workout',createdAt:w.createdAt,data:w})),
+    ...state.bodyMeasurements.map(m=>({type:'measurement',createdAt:m.createdAt,data:m}))
+  ].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const list=f==='workouts'?all.filter(e=>e.type==='workout'):f==='body'?all.filter(e=>e.type==='measurement'):all;
   return(
     <div className="sc" style={{padding:'16px 20px 20px'}}>
       <div style={{marginBottom:20}}><div className="pg-eye">Activity</div><div className="pg-h">History</div></div>
       <div style={{display:'flex',gap:8,marginBottom:20}}>
         {['all','workouts','body'].map(v=>(
-          <button key={v} onClick={()=>setF(v)} style={{
-            height:32,padding:'0 14px',borderRadius:16,cursor:'pointer',
+          <button key={v} onClick={()=>setF(v)} style={{height:32,padding:'0 14px',borderRadius:16,cursor:'pointer',
             background:f===v?'var(--brand)':'var(--s1)',border:`1px solid ${f===v?'transparent':'var(--bd)'}`,
-            color:f===v?'#fff':'var(--t2)',fontSize:11,fontWeight:700,letterSpacing:'.04em',textTransform:'capitalize'
-          }}>{v==='all'?'All':v==='workouts'?'Workouts':'Body'}</button>
+            color:f===v?'#fff':'var(--t2)',fontSize:11,fontWeight:700,letterSpacing:'.04em',textTransform:'capitalize'}}>
+            {v==='all'?'All':v==='workouts'?'Workouts':'Body'}
+          </button>
         ))}
       </div>
       {list.length===0?(
         <div className="empty">
           <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="17" stroke="var(--t3)" strokeWidth="1.2"/><path d="M12 18h12M18 12v12" stroke="var(--t3)" strokeWidth="1.4" strokeLinecap="round" opacity=".4"/></svg>
           <div style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--t2)'}}>Nothing here yet</div>
-          <div style={{fontSize:12,color:'var(--t3)',lineHeight:1.5}}>{f==='body'?'Log your first body measurement to track it here':'Complete your first workout to see your history'}</div>
+          <div style={{fontSize:12,color:'var(--t3)',lineHeight:1.5}}>{f==='body'?'Log body measurements in Stats':'Complete a workout to see your history'}</div>
         </div>
       ):(
         <div className="card" style={{padding:'0 16px'}}>
-          {list.map(h=>(
-            <div key={h.id} className="hi">
-              <div className={`hd${h.type==='b'?' meas':''}`}/>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:3}}>{h.name}</div>
-                <div style={{fontSize:12,color:'var(--t2)'}}>{h.date} · {h.time}{h.dur&&` · ${h.dur}`}</div>
-              </div>
-              <div style={{textAlign:'right',flexShrink:0}}>
-                <div style={{fontFamily:'var(--fh)',fontSize:13,color:'var(--text)',fontVariantNumeric:'tabular-nums'}}>{h.vol}</div>
-                {h.ex>0&&<div style={{fontSize:12,color:'var(--t2)'}}>{h.ex} exercises</div>}
-              </div>
-            </div>
-          ))}
+          {list.map((entry,i)=>{
+            if(entry.type==='workout'){
+              const w=entry.data;
+              const vol=workoutVolume(w);
+              const dur=w.endedAt?Math.round((new Date(w.endedAt)-new Date(w.createdAt))/60000):null;
+              return(
+                <div key={w.id} className="hi">
+                  <div className="hd"/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:3}}>{w.name}</div>
+                    <div style={{fontSize:12,color:'var(--t2)'}}>{formatDate(w.createdAt)}{dur?` · ${dur} min`:''}</div>
+                  </div>
+                  <div style={{textAlign:'right',flexShrink:0}}>
+                    <div style={{fontFamily:'var(--fh)',fontSize:13,color:'var(--text)',fontVariantNumeric:'tabular-nums'}}>{Math.round(vol).toLocaleString()} kg</div>
+                    {w.items.length>0&&<div style={{fontSize:12,color:'var(--t2)'}}>{w.items.length} exercises</div>}
+                  </div>
+                </div>
+              );
+            } else {
+              const m=entry.data;
+              return(
+                <div key={m.id||i} className="hi">
+                  <div className="hd meas"/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:3}}>Body Measurement</div>
+                    <div style={{fontSize:12,color:'var(--t2)'}}>{formatDate(m.createdAt)}</div>
+                  </div>
+                  <div style={{textAlign:'right',flexShrink:0}}>
+                    {m.bodyWeight&&<div style={{fontFamily:'var(--fh)',fontSize:13,color:'var(--text)',fontVariantNumeric:'tabular-nums'}}>{m.bodyWeight} kg</div>}
+                    {m.bodyFat&&<div style={{fontSize:12,color:'var(--t2)'}}>{m.bodyFat}% BF</div>}
+                  </div>
+                </div>
+              );
+            }
+          })}
         </div>
       )}
     </div>
   );
 }
 
-/* ── EXERCISES VIEW — add / edit / remove ── */
-const ALL_MUSCLES=['Chest','Shoulders','Triceps','Biceps','Upper Back','Lats','Lower Back','Quadriceps','Hamstrings','Glutes','Calves','Core','Abs'];
-
-function ExercisesView({lib,onEdit,onAdd,onRemove}){
+/* ── EXERCISES VIEW ── */
+function ExercisesView(){
   const [q,setQ]=useState('');
   const [editMode,setEditMode]=useState(false);
-  const list=lib.filter(e=>e.name.toLowerCase().includes(q.toLowerCase()));
+  const [exSheet,setExSheet]=useState(null);
+  const [,tick]=useReducer(x=>x+1,0);
+  const refresh=()=>tick();
+  const list=state.exercises.filter(e=>e.name.toLowerCase().includes(q.toLowerCase()));
+  const doRemove=(id)=>{deleteExercise(id);refresh();};
+  const doSave=(ex)=>{
+    const idx=state.exercises.findIndex(e=>e.id===ex.id);
+    const normalized=normalizeExercise(ex);
+    if(idx>=0){state.exercises[idx]=normalized;}else{state.exercises.push(normalized);}
+    rememberMuscleTags('primary',parseMuscleGroups(ex.primaryMuscleGroups));
+    saveState();refresh();setExSheet(null);
+  };
   return(
     <div className="sc" style={{padding:'16px 20px 20px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:20}}>
         <div><div className="pg-eye">Your Library</div><div className="pg-h">Exercises</div></div>
-        <button className="gh" style={{
-          height:30,fontSize:11,padding:'0 12px',marginBottom:5,
-          color:editMode?'var(--brand2)':'var(--t2)',
-          background:editMode?'var(--bsoft)':'rgba(255,255,255,.05)',
-          borderColor:editMode?'var(--bbd)':'var(--bd2)'
-        }} onClick={()=>setEditMode(v=>!v)}>{editMode?'Done':'Edit'}</button>
+        <button className="gh" style={{height:30,fontSize:11,padding:'0 12px',marginBottom:5,
+          color:editMode?'var(--brand2)':'var(--t2)',background:editMode?'var(--bsoft)':'rgba(255,255,255,.05)',borderColor:editMode?'var(--bbd)':'var(--bd2)'}}
+          onClick={()=>setEditMode(v=>!v)}>{editMode?'Done':'Edit'}</button>
       </div>
       <div style={{position:'relative',marginBottom:16}}>
-        <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'var(--t3)',fontSize:16,pointerEvents:'none'}}>⌕</span>
         <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises…"
           style={{width:'100%',height:46,borderRadius:14,background:'var(--s1)',border:'1px solid var(--bd)',
-            color:'var(--text)',fontSize:14,padding:'0 16px 0 40px',fontFamily:'inherit'}}/>
+            color:'var(--text)',fontSize:14,padding:'0 16px',fontFamily:'inherit'}}/>
       </div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-        <span style={{fontSize:12,color:'var(--t3)'}}>{lib.length} exercise{lib.length!==1?'s':''}</span>
-        <button className="gh" style={{height:30,fontSize:11,padding:'0 12px'}} onClick={onAdd}>+ Add</button>
+        <span style={{fontSize:12,color:'var(--t3)'}}>{state.exercises.length} exercise{state.exercises.length!==1?'s':''}</span>
+        <button className="gh" style={{height:30,fontSize:11,padding:'0 12px'}} onClick={()=>setExSheet({item:null})}>+ Add</button>
       </div>
       {list.length===0?(
         <div className="empty">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="15" cy="15" r="10" stroke="var(--t3)" strokeWidth="1.2"/><line x1="22.5" y1="22.5" x2="31" y2="31" stroke="var(--t3)" strokeWidth="1.4" strokeLinecap="round"/><line x1="11" y1="15" x2="19" y2="15" stroke="var(--t3)" strokeWidth="1.4" strokeLinecap="round" opacity=".4"/></svg>
           <div style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--t2)'}}>No exercises found</div>
-          <div style={{fontSize:12,color:'var(--t3)'}}>Try a different search or add a custom exercise</div>
           <button className="cta" style={{width:'auto',height:40,padding:'0 24px',marginTop:4,fontSize:13}} onClick={()=>setQ('')}>Clear search</button>
         </div>
       ):(
         <div className="card" style={{padding:'0 16px'}}>
           {list.map(ex=>(
             <div key={ex.id} className="er" style={{gap:10}}>
-              {editMode&&(
-                <button onClick={()=>onRemove(ex.id)} style={{
-                  width:22,height:22,borderRadius:'50%',background:'var(--danger)',border:'none',
-                  color:'#fff',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center',
-                  cursor:'pointer',flexShrink:0
-                }}>−</button>
-              )}
-              <div style={{flex:1,cursor:'pointer',minWidth:0}} onClick={()=>onEdit(ex)}>
-                <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:5}}>{ex.name}</div>
-                <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
-                  {ex.m.map(m=><span key={m} className="chip" style={{height:19,fontSize:9,padding:'0 7px'}}>{m}</span>)}
-                </div>
+              {editMode&&<button onClick={()=>doRemove(ex.id)} style={{width:22,height:22,borderRadius:'50%',background:'var(--danger)',border:'none',color:'#fff',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>−</button>}
+              <div style={{flex:1,cursor:'pointer',minWidth:0}} onClick={()=>setExSheet({item:ex})}>
+                <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:4}}>{ex.name}</div>
+                {ex.primaryMuscleGroups&&<div style={{fontSize:11,color:'var(--t3)'}}>{ex.primaryMuscleGroups}</div>}
               </div>
-              <span style={{color:editMode?'var(--brand2)':'var(--t3)',fontSize:editMode?11:18,
-                fontWeight:editMode?700:400,cursor:'pointer',flexShrink:0}} onClick={()=>onEdit(ex)}>
-                {editMode?'Edit':'›'}
-              </span>
+              <span style={{color:'var(--t3)',fontSize:18,cursor:'pointer',flexShrink:0}} onClick={()=>setExSheet({item:ex})}>›</span>
             </div>
           ))}
         </div>
       )}
+      {exSheet!==null&&<ExerciseSheet item={exSheet.item} onSave={doSave} onDelete={(id)=>{doRemove(id);setExSheet(null);}} onClose={()=>setExSheet(null)}/>}
     </div>
   );
 }
 
-/* ── MUSCLE GROUP MANAGER SHEET ── */
-function MuscleManagerSheet({muscles,setMuscles,onClose}){
-  const [editing,setEditing]=useState(null);
-  const [newName,setNewName]=useState('');
-  const save=(i,v)=>{if(!v.trim())return;setMuscles(p=>p.map((m,j)=>j===i?v.trim():m));setEditing(null);};
-  const remove=i=>setMuscles(p=>p.filter((_,j)=>j!==i));
-  const add=()=>{if(!newName.trim())return;setMuscles(p=>[...p,newName.trim()]);setNewName('');};
-  return(
-    <>
-      <div className="sheet-scrim" style={{zIndex:52}} onClick={onClose}/>
-      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'88%',overflowY:'auto',zIndex:53}}>
-        <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)'}}>Manage Muscle Groups</div>
-          <button className="gh" style={{height:26,fontSize:11,padding:'0 10px'}} onClick={onClose}>Done</button>
-        </div>
-        <div className="card" style={{padding:'0 16px',marginBottom:16}}>
-          {muscles.map((m,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 0',
-              borderBottom:i<muscles.length-1?'1px solid var(--bd)':'none'}}>
-              {editing&&editing.i===i?(
-                <>
-                  <input type="text" value={editing.v} autoFocus
-                    onChange={e=>setEditing({i,v:e.target.value})}
-                    onKeyDown={e=>e.key==='Enter'&&save(i,editing.v)}
-                    style={{flex:1,height:36,borderRadius:10,background:'var(--s2)',border:'1px solid var(--bbd)',
-                      color:'var(--text)',fontFamily:'var(--fb)',fontSize:13,padding:'0 10px',outline:'none'}}/>
-                  <button className="gh" style={{height:28,fontSize:11,padding:'0 10px'}} onClick={()=>save(i,editing.v)}>Save</button>
-                  <button className="gh" style={{height:28,fontSize:11,padding:'0 8px'}} onClick={()=>setEditing(null)}>✕</button>
-                </>
-              ):(
-                <>
-                  <span style={{flex:1,fontSize:13,color:'var(--text)',fontWeight:500}}>{m}</span>
-                  <button className="gh" style={{height:26,fontSize:11,padding:'0 10px'}} onClick={()=>setEditing({i,v:m})}>Edit</button>
-                  <button onClick={()=>remove(i)} style={{
-                    width:22,height:22,borderRadius:'50%',background:'var(--danger)',border:'none',
-                    color:'#fff',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'
-                  }}>−</button>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-        <div style={{display:'flex',gap:8}}>
-          <input type="text" value={newName} onChange={e=>setNewName(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&add()}
-            placeholder="New muscle group…"
-            style={{flex:1,height:44,borderRadius:12,background:'var(--s1)',border:'1px solid var(--bd)',
-              color:'var(--text)',fontFamily:'var(--fb)',fontSize:13,padding:'0 14px',outline:'none'}}/>
-          <button className="cta" style={{width:70,flexShrink:0,height:44,borderRadius:12,fontSize:13}} onClick={add}>Add</button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/* ── EXERCISE EDIT SHEET ── */
-function ExerciseSheet({item,onSave,onDelete,onClose,muscleLib,setMuscleLib}){
+function ExerciseSheet({item,onSave,onDelete,onClose}){
   const isNew=!item;
-  const [name,setName]=useState(item?item.name:'');
-  const [muscles,setMuscles]=useState(item?[...item.m]:[]);
-  const [manageOpen,setManageOpen]=useState(false);
-  const toggleM=m=>setMuscles(p=>p.includes(m)?p.filter(x=>x!==m):[...p,m]);
-  const valid=name.trim().length>0&&muscles.length>0;
+  const [name,setName]=useState(item?.name||'');
+  const [primary,setPrimary]=useState(item?.primaryMuscleGroups||'');
+  const [detailed,setDetailed]=useState(item?.detailedMuscleGroups||'');
+  const valid=name.trim().length>0;
+  const doSave=()=>onSave({id:item?.id||uid(),name:name.trim(),category:'',type:'weight',primaryMuscleGroups:primary,detailedMuscleGroups:detailed});
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
       <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'86%',overflowY:'auto'}}>
         <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
-        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>
-          {isNew?'New Exercise':'Edit Exercise'}
-        </div>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>{isNew?'New Exercise':'Edit Exercise'}</div>
         <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Exercise name"
           style={{width:'100%',height:52,borderRadius:14,background:'var(--s2)',outline:'none',display:'block',
-            border:'1px solid '+(name.trim()?'var(--bbd)':'var(--bd)'),
-            color:'var(--text)',fontFamily:'var(--fh)',fontSize:18,fontWeight:700,
-            padding:'0 16px',marginBottom:22}}/>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)'}}>
-            Muscle Groups
-            {muscles.length>0&&<span style={{color:'var(--brand2)',marginLeft:6,letterSpacing:0,textTransform:'none',fontSize:11,fontWeight:600}}>{muscles.length} selected</span>}
-          </div>
-          <button className="gh" style={{height:24,fontSize:10,padding:'0 8px',borderRadius:12}} onClick={()=>setManageOpen(true)}>Manage</button>
-        </div>
-        <div style={{display:'flex',flexWrap:'wrap',gap:7,marginBottom:26}}>
-          {muscleLib.map(m=>{
-            const on=muscles.includes(m);
-            return(
-              <button key={m} onClick={()=>toggleM(m)} style={{
-                height:30,padding:'0 12px',borderRadius:15,cursor:'pointer',fontFamily:'var(--fb)',
-                background:on?'var(--brand)':'var(--s2)',
-                border:'1px solid '+(on?'transparent':'var(--bd)'),
-                color:on?'#fff':'var(--t2)',fontSize:12,fontWeight:600,transition:'all .15s'
-              }}>{m}</button>
-            );
-          })}
-        </div>
-        <button className="cta" style={{marginBottom:10,opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}}
-          onClick={()=>onSave({id:item?item.id:Date.now(),name:name.trim(),m:muscles})}>
+            border:'1px solid '+(name.trim()?'var(--bbd)':'var(--bd)'),color:'var(--text)',fontFamily:'var(--fh)',
+            fontSize:18,fontWeight:700,padding:'0 16px',marginBottom:16}}/>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)',marginBottom:6}}>Primary Muscles</div>
+        <input type="text" value={primary} onChange={e=>setPrimary(e.target.value)} placeholder="e.g. Chest, Triceps"
+          style={{width:'100%',height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',
+            color:'var(--text)',fontFamily:'var(--fb)',fontSize:14,padding:'0 14px',outline:'none',marginBottom:16}}/>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)',marginBottom:6}}>Secondary Muscles</div>
+        <input type="text" value={detailed} onChange={e=>setDetailed(e.target.value)} placeholder="e.g. Shoulders, Core"
+          style={{width:'100%',height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',
+            color:'var(--text)',fontFamily:'var(--fb)',fontSize:14,padding:'0 14px',outline:'none',marginBottom:26}}/>
+        <button className="cta" style={{marginBottom:10,opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}} onClick={doSave}>
           {isNew?'Add Exercise':'Save Changes'}
         </button>
-        {!isNew&&(
-          <button onClick={()=>onDelete(item.id)} style={{
-            width:'100%',height:44,borderRadius:22,background:'transparent',
-            border:'1px solid rgba(239,68,68,.3)',color:'var(--danger)',
-            fontFamily:'var(--fh)',fontSize:14,fontWeight:700,cursor:'pointer'
-          }}>Delete Exercise</button>
-        )}
+        {!isNew&&<button onClick={()=>onDelete(item.id)} style={{width:'100%',height:44,borderRadius:22,background:'transparent',border:'1px solid rgba(239,68,68,.3)',color:'var(--danger)',fontFamily:'var(--fh)',fontSize:14,fontWeight:700,cursor:'pointer'}}>Delete Exercise</button>}
       </div>
-      {manageOpen&&<MuscleManagerSheet muscles={muscleLib} setMuscles={setMuscleLib} onClose={()=>setManageOpen(false)}/>}
     </>
   );
 }
 
 /* ── TOOLS VIEW ── */
-function ToolsView(){
+function ToolsView({refresh}){
+  const [email,setEmail]=useState(cloud?.user?.email||'');
   const [tgt,setTgt]=useState('');
   const [res,setRes]=useState(null);
+  const s=state.settings;
+  const pcol={25:'#ef4444',20:'#3b82f6',15:'#f59e0b',10:'#22c55e',5:'rgba(255,255,255,.7)',2.5:'#a5b4fc',1.25:'#64748b'};
   const calc=()=>{
     const n=parseFloat(tgt);if(isNaN(n))return;
-    let rem=(n-20)/2;const out=[];
-    for(const p of[25,20,15,10,5,2.5,1.25]){const c=Math.floor(rem/p);if(c>0){out.push({p,c});rem-=p*c;}}
+    let rem=(n-(s.includeBarWeightInCalc?s.barWeight||20:0))/2;
+    const out=[];
+    for(const p of (s.plates||[25,20,15,10,5,2.5,1.25])){const c=Math.floor(rem/p);if(c>0){out.push({p,c});rem-=p*c;}}
     setRes(out);
   };
-  const pcol={25:'#ef4444',20:'#3b82f6',15:'#f59e0b',10:'#22c55e',5:'rgba(255,255,255,.7)',2.5:'#a5b4fc',1.25:'#64748b'};
+  const updSetting=(key,val)=>{state.settings[key]=val;saveState();refresh();};
+
   return(
     <div className="sc" style={{padding:'16px 20px 20px'}}>
       <div style={{marginBottom:24}}><div className="pg-eye">Configuration</div><div className="pg-h">Tools</div></div>
+
       <div className="sh"><span className="sl">Settings</span></div>
       <div className="card" style={{padding:'0 16px',marginBottom:24}}>
-        {[{l:'Rest — Work Set',u:'sec',v:'90'},{l:'Rest — Drop Set',u:'sec',v:'45'},{l:'Bodyweight',u:'kg',v:'87.2'},{l:'Bar Weight',u:'kg',v:'20'}].map(s=>(
-          <div key={s.l} className="setr">
-            <span style={{fontSize:13,color:'var(--text)'}}>{s.l}</span>
+        {[{l:'Rest — Work Set',k:'restSecondsWork',u:'sec'},{l:'Rest — Drop Set',k:'restSecondsDrop',u:'sec'},{l:'Bodyweight',k:'bodyweight',u:'kg'},{l:'Bar Weight',k:'barWeight',u:'kg'}].map(row=>(
+          <div key={row.k} className="setr">
+            <span style={{fontSize:13,color:'var(--text)'}}>{row.l}</span>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <input className="seti" type="number" defaultValue={s.v}/>
-              <span style={{fontSize:12,color:'var(--t3)',width:24}}>{s.u}</span>
+              <input className="seti" type="number" defaultValue={s[row.k]||0}
+                onBlur={e=>{const v=parseFloat(e.target.value);if(!isNaN(v))updSetting(row.k,v);}}/>
+              <span style={{fontSize:12,color:'var(--t3)',width:24}}>{row.u}</span>
             </div>
           </div>
         ))}
       </div>
+
       <div className="sh"><span className="sl">Plate Calculator</span></div>
       <div className="card" style={{padding:16,marginBottom:24}}>
         <div style={{display:'flex',gap:10,marginBottom:res!==null?14:0}}>
@@ -1003,159 +858,184 @@ function ToolsView(){
           ?<div style={{fontSize:13,color:'var(--t2)',textAlign:'center',padding:'4px 0'}}>Just the bar!</div>
           :<div style={{display:'flex',flexWrap:'wrap',gap:8}}>
             {res.map(({p,c})=>(
-              <div key={p} style={{padding:'7px 12px',borderRadius:10,background:`${pcol[p]||'#4f66ff'}1a`,
-                border:`1px solid ${pcol[p]||'#4f66ff'}44`,fontFamily:'var(--fh)',fontWeight:700,fontSize:13,color:pcol[p]||'var(--brand2)'}}>
+              <div key={p} style={{padding:'7px 12px',borderRadius:10,background:`${pcol[p]||'#4f66ff'}1a`,border:`1px solid ${pcol[p]||'#4f66ff'}44`,fontFamily:'var(--fh)',fontWeight:700,fontSize:13,color:pcol[p]||'var(--brand2)'}}>
                 {c}× {p}kg
               </div>
             ))}
           </div>
         )}
       </div>
+
       <div className="sh"><span className="sl">Cloud Sync</span></div>
       <div className="card" style={{padding:16,marginBottom:24}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
           <span style={{fontSize:13,color:'var(--text)'}}>Status</span>
-          <div className="chip">Signed out</div>
+          <div className="chip" style={cloud?.user?{background:'var(--oksoft)',border:'1px solid var(--okbd)',color:'var(--ok)'}:{}}>
+            {cloud?.user?`${cloud.user.email}`:'Signed out'}
+          </div>
         </div>
-        <input type="email" placeholder="your@email.com" style={{width:'100%',height:44,borderRadius:12,
-          background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',marginBottom:10}}/>
-        <button className="cta" style={{height:46,fontSize:14}}>Send Magic Link</button>
+        {!cloud?.user&&(<>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com"
+            style={{width:'100%',height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',
+              color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',marginBottom:10}}/>
+          <button className="cta" style={{height:46,fontSize:14}} onClick={()=>sendMagicLink(email)}>Send Magic Link</button>
+        </>)}
+        {cloud?.user&&<button className="gh" style={{width:'100%',height:44,marginTop:4}} onClick={()=>{supabaseClient?.auth.signOut();refresh();}}>Sign Out</button>}
       </div>
+
       <div className="sh"><span className="sl">Export &amp; Backup</span></div>
-      <div style={{display:'flex',gap:10}}>
-        <button className="gh" style={{flex:1,height:46}}>Export CSV</button>
-        <button className="gh" style={{flex:1,height:46}}>JSON Backup</button>
+      <div style={{display:'flex',gap:10,marginBottom:24}}>
+        <button className="gh" style={{flex:1,height:46}} onClick={exportCsv}>Export CSV</button>
+        <button className="gh" style={{flex:1,height:46}} onClick={exportJson}>JSON Backup</button>
       </div>
+
+      <div className="sh"><span className="sl">Import</span></div>
+      <label style={{display:'flex',alignItems:'center',justifyContent:'center',height:46,borderRadius:23,
+        background:'rgba(255,255,255,.05)',border:'1px solid var(--bd2)',color:'var(--t2)',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+        Import JSON Backup
+        <input type="file" accept=".json" style={{display:'none'}} onChange={e=>{importJson(e.target.files[0]);e.target.value='';}}/>
+      </label>
     </div>
   );
 }
 
-/* ── 3. TEMPLATE SHEET ── */
-function TemplateSheet({tmpl,onStart,onClose}){
+/* ── SHEETS ── */
+function TemplateSheet({routine,onStart,onClose}){
+  const exercises=routine.items.map(i=>getExercise(i.exerciseId)?.name||'Unknown');
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
       <div className="sheet" style={{padding:'18px 22px 36px'}}>
         <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
-        <div style={{fontFamily:'var(--fh)',fontSize:23,fontWeight:800,color:'var(--text)',marginBottom:3}}>{tmpl.name}</div>
-        <div style={{fontSize:11,color:'var(--t3)',marginBottom:18}}>{tmpl.ex} exercises · {tmpl.sets} sets · Last {tmpl.last}</div>
+        <div style={{fontFamily:'var(--fh)',fontSize:23,fontWeight:800,color:'var(--text)',marginBottom:3}}>{routine.name}</div>
+        <div style={{fontSize:11,color:'var(--t3)',marginBottom:18}}>{exercises.length} exercises</div>
         <div style={{marginBottom:20}}>
-          {tmpl.exercises.map((ex,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',
-              borderBottom:i<tmpl.exercises.length-1?'1px solid var(--bd)':'none'}}>
-              <div style={{width:24,height:24,borderRadius:7,background:'var(--s2)',border:'1px solid var(--bd)',
-                display:'flex',alignItems:'center',justifyContent:'center',
-                fontFamily:'var(--fh)',fontSize:10,fontWeight:700,color:'var(--t3)',flexShrink:0}}>{i+1}</div>
+          {exercises.map((ex,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:i<exercises.length-1?'1px solid var(--bd)':'none'}}>
+              <div style={{width:24,height:24,borderRadius:7,background:'var(--s2)',border:'1px solid var(--bd)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--fh)',fontSize:10,fontWeight:700,color:'var(--t3)',flexShrink:0}}>{i+1}</div>
               <span style={{fontSize:14,color:'var(--text)'}}>{ex}</span>
             </div>
           ))}
         </div>
-        <button className="cta" onClick={onStart}>Start {tmpl.name}</button>
+        <button className="cta" onClick={onStart}>Start {routine.name}</button>
       </div>
     </>
   );
 }
 
-/* ── BODY LOG SHEET ── */
-function BodyLogSheet({onClose,onSave}){
+function BodyLogSheet({onClose,onSaved}){
   const [bw,setBw]=useState('');
   const [bf,setBf]=useState('');
   const [mm,setMm]=useState('');
   const valid=bw!=='';
+  const doSave=()=>{
+    const entry={id:uid(),createdAt:new Date().toISOString()};
+    if(bw)entry.bodyWeight=parseFloat(bw);
+    if(bf)entry.bodyFat=parseFloat(bf);
+    if(mm)entry.muscleWeight=parseFloat(mm);
+    state.bodyMeasurements.push(entry);
+    saveState();
+    onSaved();
+    onClose();
+  };
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
       <div className="sheet" style={{padding:'18px 22px 44px'}}>
         <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
         <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:18}}>Log Measurement</div>
-        {[{l:'Body Weight',u:'kg',v:bw,s:setBw},{l:'Body Fat',u:'%',v:bf,s:setBf},{l:'Muscle Mass',u:'kg',v:mm,s:setMm}].map(f=>(
+        {[{l:'Body Weight',u:'kg',v:bw,s:setBw},{l:'Body Fat',u:'%',v:bf,s:setBf},{l:'Muscle Weight',u:'kg',v:mm,s:setMm}].map(f=>(
           <div key={f.l} style={{marginBottom:14}}>
             <div style={{fontSize:11,color:'var(--t2)',fontWeight:600,marginBottom:6}}>{f.l} <span style={{color:'var(--t3)',fontSize:10,fontWeight:400}}>({f.u})</span></div>
             <input type="number" step="0.1" value={f.v} onChange={e=>f.s(e.target.value)} placeholder="—"
-              style={{width:'100%',height:50,borderRadius:12,background:'var(--s2)',
-                border:'1px solid '+(f.v?'var(--bbd)':'var(--bd)'),
-                color:'var(--text)',fontFamily:'var(--fh)',fontSize:22,fontWeight:700,
-                padding:'0 16px',outline:'none',fontVariantNumeric:'tabular-nums'}}/>
+              style={{width:'100%',height:50,borderRadius:12,background:'var(--s2)',border:'1px solid '+(f.v?'var(--bbd)':'var(--bd)'),color:'var(--text)',fontFamily:'var(--fh)',fontSize:22,fontWeight:700,padding:'0 16px',outline:'none',fontVariantNumeric:'tabular-nums'}}/>
           </div>
         ))}
         <div style={{height:12}}/>
-        <button className="cta" style={{opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}}
-          onClick={()=>onSave({bw,bf,mm})}>Save Measurement</button>
+        <button className="cta" style={{opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}} onClick={doSave}>Save Measurement</button>
       </div>
     </>
   );
 }
 
 /* ── APP ── */
-const ACCENT_MAP={
-  '#4f66ff':{r:79,g:102,b:255,b2:'#7c8cff'},
-  '#8b5cf6':{r:139,g:92,b:246,b2:'#a78bfa'},
-  '#0ea5e9':{r:14,g:165,b:233,b2:'#38bdf8'},
-};
-const TDEFS=/*EDITMODE-BEGIN*/{
-  "accent": "#4f66ff"
-}/*EDITMODE-END*/;
+const ACCENT_MAP={'#4f66ff':{r:79,g:102,b:255,b2:'#7c8cff'},'#8b5cf6':{r:139,g:92,b:246,b2:'#a78bfa'},'#0ea5e9':{r:14,g:165,b:233,b2:'#38bdf8'}};
+const TDEFS={accent:'#4f66ff'};
 
 function App(){
   const [t,setTweak]=useTweaks(TDEFS);
   const [view,setView]=useState('workouts');
-  const [inSess,setInSess]=useState(false);
+  const [inSess,setInSess]=useState(!!state.activeWorkoutId);
   const [sheet,setSheet]=useState(null);
-  const [dir,setDir]=useState(0);
-  const [exLib,setExLib]=useState(EXLIB);
-  const [exSheet,setExSheet]=useState(null);
-  const [muscleLib,setMuscleLib]=useState(ALL_MUSCLES);
   const [bodyLogOpen,setBodyLogOpen]=useState(false);
+  const [dir,setDir]=useState(0);
+  const [toastMsg,setToastMsg]=useState(null);
+  const [rest,setRest]=useState(0);
+  const [restOn,setRestOn]=useState(false);
+  const [,forceUpdate]=useReducer(x=>x+1,0);
+  const toastTimer=useRef(null);
+
+  const refresh=useCallback(()=>forceUpdate(),[forceUpdate]);
 
   useEffect(()=>{
-    const hex=t.accent;
-    const m=ACCENT_MAP[hex]||ACCENT_MAP['#4f66ff'];
-    const root=document.documentElement;
-    root.style.setProperty('--brand',hex);
-    root.style.setProperty('--brgb',`${m.r},${m.g},${m.b}`);
-    root.style.setProperty('--brand2',m.b2);
-    root.style.setProperty('--bsoft',`rgba(${m.r},${m.g},${m.b},.1)`);
-    root.style.setProperty('--bbd',`rgba(${m.r},${m.g},${m.b},.22)`);
+    window._forgeRefresh=refresh;
+    window._forgeToast=(msg)=>{
+      setToastMsg(msg);
+      clearTimeout(toastTimer.current);
+      toastTimer.current=setTimeout(()=>setToastMsg(null),2200);
+    };
+    window._forgeSetView=(v)=>{
+      if(v==='session'){setDir(0);setInSess(true);}
+      else{setDir(-1);setInSess(false);if(v==='workouts')setView('workouts');}
+    };
+    window._forgeStartTimer=(secs)=>{setRest(Math.round(secs));setRestOn(true);};
+    window._forgeStopTimer=()=>setRestOn(false);
+    return()=>{delete window._forgeRefresh;delete window._forgeToast;delete window._forgeSetView;delete window._forgeStartTimer;delete window._forgeStopTimer;};
+  },[refresh]);
+
+  useEffect(()=>{
+    const hex=t.accent;const m=ACCENT_MAP[hex]||ACCENT_MAP['#4f66ff'];
+    const r=document.documentElement;
+    r.style.setProperty('--brand',hex);r.style.setProperty('--brgb',`${m.r},${m.g},${m.b}`);
+    r.style.setProperty('--brand2',m.b2);r.style.setProperty('--bsoft',`rgba(${m.r},${m.g},${m.b},.1)`);
+    r.style.setProperty('--bbd',`rgba(${m.r},${m.g},${m.b},.22)`);
   },[t.accent]);
 
-  const goTo=(v)=>{
-    const cur=inSess?5:(NAV_ORDER[view]??2);
-    const nxt=NAV_ORDER[v]??2;
-    setDir(nxt>cur?1:-1);
-    setInSess(false);
-    setSheet(null);
-    setView(v);
-  };
-  const startSess=(tmpl)=>{
-    if(tmpl){setSheet(tmpl);}
-    else{setDir(0);setInSess(true);setSheet(null);}
-  };
-  const confirmSess=()=>{setDir(0);setSheet(null);setInSess(true);};
-  const finishSess=()=>{setDir(-1);setInSess(false);};
+  useEffect(()=>{
+    if(!restOn)return;
+    const t2=setInterval(()=>setRest(s=>{if(s<=1){setRestOn(false);window._forgeToast?.('Rest complete');return 0;}return s-1;}),1000);
+    return()=>clearInterval(t2);
+  },[restOn]);
 
-  const openExEdit=ex=>setExSheet({item:ex});
-  const openExAdd=()=>setExSheet({item:null});
-  const saveExercise=ex=>{setExLib(p=>{const found=p.find(e=>e.id===ex.id);return found?p.map(e=>e.id===ex.id?ex:e):[...p,ex];});setExSheet(null);};
-  const deleteExercise=id=>{setExLib(p=>p.filter(e=>e.id!==id));setExSheet(null);};
-  const removeExercise=id=>setExLib(p=>p.filter(e=>e.id!==id));
+  const goTo=(v)=>{
+    const cur=inSess?5:(NAV_ORDER[view]??2);const nxt=NAV_ORDER[v]??2;
+    setDir(nxt>cur?1:-1);setInSess(false);setSheet(null);setView(v);
+  };
+  const startSess=(routine)=>{
+    if(routine){setSheet(routine);}
+    else{startWorkout(null);}
+  };
+  const confirmSess=(routine)=>{setSheet(null);startWorkout(routine.id);};
+  const finishSess=()=>{endWorkout();};
+
   const animCls=dir===0?'tu':dir>0?'tr':'tl';
   const vk=inSess?'sess':view;
 
   const renderV=()=>{
-    if(inSess)return <SessionView onFinish={finishSess}/>;
+    if(inSess)return <SessionView onFinish={finishSess} rest={rest} restOn={restOn} setRest={setRest} setRestOn={setRestOn}/>;
     switch(view){
       case 'stats':return <StatsView onBodyLog={()=>setBodyLogOpen(true)}/>;
       case 'history':return <HistoryView/>;
-      case 'exercises':return <ExercisesView lib={exLib} onEdit={openExEdit} onAdd={openExAdd} onRemove={removeExercise}/>;
-      case 'tools':return <ToolsView/>;
-      default:return <WorkoutsView onStart={startSess}/>;
+      case 'exercises':return <ExercisesView/>;
+      case 'tools':return <ToolsView refresh={refresh}/>;
+      default:return <WorkoutsView onStart={startSess} refresh={refresh}/>;
     }
   };
 
   return(
     <div className="app-shell">
       <div className="app-col">
-        <div key={vk} className={animCls} style={{flex:1,overflow:'hidden',minHeight:0,position:'relative',display:'flex',flexDirection:'column'}}>
+        <div key={vk} className={animCls} style={{flex:1,overflow:'hidden',minHeight:0,display:'flex',flexDirection:'column'}}>
           {renderV()}
         </div>
         {!inSess&&(
@@ -1164,10 +1044,14 @@ function App(){
           </div>
         )}
         {inSess&&<div style={{height:'env(safe-area-inset-bottom, 0px)'}}/>}
-        {sheet&&<TemplateSheet tmpl={sheet} onStart={confirmSess} onClose={()=>setSheet(null)}/>}
-        {exSheet!==null&&<ExerciseSheet item={exSheet.item} onSave={saveExercise} onDelete={deleteExercise} onClose={()=>setExSheet(null)} muscleLib={muscleLib} setMuscleLib={setMuscleLib}/>}
-        {bodyLogOpen&&<BodyLogSheet onClose={()=>setBodyLogOpen(false)} onSave={()=>setBodyLogOpen(false)}/>}
+        {sheet&&<TemplateSheet routine={sheet} onStart={()=>confirmSess(sheet)} onClose={()=>setSheet(null)}/>}
+        {bodyLogOpen&&<BodyLogSheet onClose={()=>setBodyLogOpen(false)} onSaved={refresh}/>}
       </div>
+      {toastMsg&&<div className="toast">{toastMsg}</div>}
+      <TweaksPanel>
+        <TweakSection label="Accent"/>
+        <TweakColor label="Color" value={t.accent} options={['#4f66ff','#8b5cf6','#0ea5e9']} onChange={v=>setTweak('accent',v)}/>
+      </TweaksPanel>
     </div>
   );
 }
