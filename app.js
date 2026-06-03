@@ -2079,8 +2079,18 @@ function renderHistory() {
     });
   }
   const entries = getHistoryEntries();
+  const contextMsg = ui.historyFilter === "measurements"
+    ? "Log your first body measurement to track it here"
+    : "Complete your first workout to see your history";
   if (!entries.length) {
-    list.innerHTML = "<div class=\"muted small\">No history entries yet.</div>";
+    list.innerHTML = `<div class="v2-empty">
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+    <circle cx="18" cy="18" r="17" stroke="var(--color-icon-muted)" stroke-width="1.2"/>
+    <path d="M12 18h12M18 12v12" stroke="var(--color-icon-muted)" stroke-width="1.4" stroke-linecap="round" opacity=".4"/>
+  </svg>
+  <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--color-text-secondary)">Nothing here yet</div>
+  <div style="font-size:12px;color:var(--color-icon-muted);line-height:1.5">${contextMsg}</div>
+</div>`;
     return;
   }
   list.innerHTML = entries.map((entry) => (
@@ -2586,7 +2596,15 @@ function renderExercises() {
         </div>
       `;
     }).join("")
-    : "<div class=\"muted small\">No exercises found.</div>";
+    : `<div class="v2-empty">
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+    <circle cx="15" cy="15" r="10" stroke="var(--color-icon-muted)" stroke-width="1.2"/>
+    <line x1="22.5" y1="22.5" x2="31" y2="31" stroke="var(--color-icon-muted)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="11" y1="15" x2="19" y2="15" stroke="var(--color-icon-muted)" stroke-width="1.4" stroke-linecap="round" opacity=".4"/>
+  </svg>
+  <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--color-text-secondary)">No exercises found</div>
+  <div style="font-size:12px;color:var(--color-icon-muted)">Try a different search or add a custom exercise</div>
+</div>`;
 }
 
 function getExerciseStatsMetric(metricKey) {
@@ -4231,6 +4249,7 @@ function renderMuscleGroupSection() {
     ui.selectedMuscles = validSelection;
   }
 
+  // Keep legacy multi-select in sync (hidden, backward compat)
   renderMultiSelectControl({
     rootId: "muscleFilterSelect",
     multiId: "stats-muscles",
@@ -4240,76 +4259,80 @@ function renderMuscleGroupSection() {
     placeholder: "Search muscles to track"
   });
 
+  // Render toggle chips for individual muscle selection
+  const toggleChipsEl = $("#muscleToggleChips");
+  if (toggleChipsEl) {
+    toggleChipsEl.innerHTML = availableMuscles.map((muscle) => {
+      const isOn = ui.selectedMuscles.includes(muscle);
+      return `<button class="filter-chip${isOn ? " active" : ""}" data-action="muscle-toggle" data-muscle="${esc(muscle)}">${esc(muscle)}</button>`;
+    }).join("");
+  }
+
+  // Compute data for bars
   const data = computeMuscleVolumeSeries(
     ui.muscleGrouping,
     ui.muscleMonthsBack,
     ui.muscleDimension,
     ui.selectedMuscles
   );
-  const chartSnapshot = renderAdaptiveMuscleVolumeChart($("#muscleVolumeChart"), data.labels, data.series, {
+
+  // Also keep legacy chart updated (it's hidden, but keep in sync for compat)
+  renderAdaptiveMuscleVolumeChart($("#muscleVolumeChart"), data.labels, data.series, {
     selectedCount: ui.selectedMuscles.length
   });
 
-  const summaryEl = $("#muscleChartSummary");
-  if (summaryEl) {
-    if (chartSnapshot.status === "selection-required") {
-      summaryEl.textContent = "No muscles selected. Choose one or more muscles to track effective sets.";
-    } else if (chartSnapshot.status === "no-data") {
-      summaryEl.textContent = "No effective sets logged for the selected range and muscle filters.";
-    } else if (chartSnapshot.stage === "a") {
-      summaryEl.textContent = `Latest logged volume: ${formatSetCount(chartSnapshot.latestSets)}. Log more periods to unlock trends.`;
-    } else if (chartSnapshot.stage === "b") {
-      summaryEl.textContent = `Early trend across ${chartSnapshot.nonZeroCount} logged periods. Peak volume ${formatSetCount(chartSnapshot.bestSets)}${chartSnapshot.bestLabel ? ` (${chartSnapshot.bestLabel})` : ""}.`;
+  // Render horizontal bars instead of chart
+  const barsEl = $("#muscleVolumeBars");
+  if (barsEl) {
+    const MUSCLE_BAR_COLORS = {
+      Legs: "#22c55e",
+      Chest: "var(--color-brand,#4F66FF)",
+      Back: "#7c8cff",
+      Shoulders: "#f59e0b",
+      Arms: "#a5b4fc",
+      Core: "var(--color-brand,#4F66FF)"
+    };
+    if (!ui.selectedMuscles.length) {
+      barsEl.innerHTML = `<div style="text-align:center;padding:16px 0;color:var(--color-text-muted);font-size:12px;margin-bottom:22px">Select at least one muscle group</div>`;
     } else {
-      summaryEl.textContent = `Volume trend across ${chartSnapshot.periodCount} periods. Peak period ${formatSetCount(chartSnapshot.bestSets)}${chartSnapshot.bestLabel ? ` (${chartSnapshot.bestLabel})` : ""}.`;
+      // Compute totals per selected muscle from data.series
+      const muscleTotals = ui.selectedMuscles.map((muscle) => {
+        const seriesEntry = data.series.find((s) => s.name === muscle);
+        const total = seriesEntry ? seriesEntry.total : 0;
+        return { name: muscle, total, color: seriesEntry?.color || MUSCLE_BAR_COLORS[muscle] || "var(--color-brand,#4F66FF)" };
+      }).filter((m) => m.total > 0);
+
+      if (!muscleTotals.length) {
+        barsEl.innerHTML = `<div style="text-align:center;padding:16px 0;color:var(--color-text-muted);font-size:12px;margin-bottom:22px">No logged sets in this range</div>`;
+      } else {
+        const rangeWeeks = Math.max(1, (ui.muscleMonthsBack * 4.33));
+        const maxTotal = Math.max(...muscleTotals.map((m) => m.total), 1);
+        barsEl.innerHTML = muscleTotals.map(({name, total, color}) => {
+          const avg = Math.round(total / rangeWeeks * 10) / 10;
+          const pct = Math.round((total / maxTotal) * 100);
+          return `
+            <div style="margin-bottom:14px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:7px;align-items:baseline">
+                <span style="font-size:13px;color:var(--color-text-primary);font-weight:500">${esc(name)}</span>
+                <span style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--color-text-secondary);font-variant-numeric:tabular-nums">
+                  ${total} sets <span style="font-size:10px;opacity:.7">~${avg}/wk</span>
+                </span>
+              </div>
+              <div style="height:6px;border-radius:3px;background:var(--color-surface-muted,var(--color-surface))">
+                <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .4s ease"></div>
+              </div>
+            </div>`;
+        }).join("");
+      }
     }
   }
 
+  const summaryEl = $("#muscleChartSummary");
+  if (summaryEl) summaryEl.textContent = "";
   const rangeEl = $("#muscleChartRange");
-  if (rangeEl) {
-    const start = data.fromDate || data.cutoff;
-    const end = data.toDate || new Date();
-    const sessionsLabel = `${chartSnapshot.nonZeroCount} session${chartSnapshot.nonZeroCount === 1 ? "" : "s"}`;
-    const stageHint = chartSnapshot.status === "selection-required"
-      ? "Trend visible after 5 sessions."
-      : chartSnapshot.status === "no-data"
-        ? "Trend visible after 5 sessions."
-        : chartSnapshot.stage === "a"
-          ? "Trend visible after 5 sessions."
-          : chartSnapshot.stage === "b"
-            ? `Early trend from ${chartSnapshot.nonZeroCount} sessions. Trend visible after 5 sessions.`
-            : "Mature trend view";
-    const interpretation = chartSnapshot.nonZeroCount > 1
-      ? (chartSnapshot.direction === "flat"
-        ? "Stable effective-set volume."
-        : `${performanceDirectionLabel(chartSnapshot.direction)} by ${formatSetCount(Math.abs(chartSnapshot.delta))}.`)
-      : "No trend yet.";
-    rangeEl.textContent = `Visualized range: ${formatDateRange(start, end)} · ${sessionsLabel} · ${stageHint} ${interpretation}`;
-  }
-
+  if (rangeEl) rangeEl.textContent = "";
   const legend = $("#muscleChartLegend");
-  if (legend) {
-    const sortedLegendSeries = data.series
-      .slice()
-      .sort((a, b) => {
-        const totalDelta = (Number.isFinite(b.total) ? b.total : 0) - (Number.isFinite(a.total) ? a.total : 0);
-        if (Math.abs(totalDelta) > 1e-9) return totalDelta;
-        return (a.name || "").localeCompare(b.name || "");
-      });
-    legend.innerHTML = sortedLegendSeries.length
-      ? sortedLegendSeries.map((entry) => {
-        return `
-          <div class="legend-item">
-            <span class="legend-name">
-              <span class="legend-swatch" style="background:${entry.color};"></span>
-              <span>${esc(entry.name)}</span>
-            </span>
-            <span class="legend-total">${formatSetCount(entry.total)}</span>
-          </div>
-        `;
-      }).join("")
-      : "<div class=\"muted small\">No muscle data in selected range.</div>";
-  }
+  if (legend) legend.innerHTML = "";
 }
 
 function renderStats() {
@@ -4451,6 +4474,8 @@ function getBodyMeasurementDraft() {
 
 function renderBodyMeasurementSection() {
   const latest = getLatestBodyMeasurement();
+
+  // Populate hidden legacy inputs (backward compat for modal sheet)
   BODY_MEASUREMENT_FIELDS.forEach((field) => {
     const input = $(`#${measurementInputId(field.key)}`);
     if (!input) return;
@@ -4466,23 +4491,79 @@ function renderBodyMeasurementSection() {
       : "No body measurements logged yet.";
   }
 
+  // Keep hidden select in sync for backward-compat change handlers
   const metricSelect = $("#measurementMetricSelect");
   if (metricSelect) {
     metricSelect.innerHTML = BODY_MEASUREMENT_FIELDS
       .map((field) => `<option value="${field.key}">${field.label}</option>`)
       .join("");
-    if (!BODY_MEASUREMENT_FIELDS.some((field) => field.key === ui.measurementMetric)) {
-      ui.measurementMetric = BODY_MEASUREMENT_FIELDS[0].key;
+    if (!BODY_MEASUREMENT_FIELDS.some((field) => field.key === ui.bodyCompMetric)) {
+      ui.bodyCompMetric = BODY_MEASUREMENT_FIELDS[0].key;
     }
-    metricSelect.value = ui.measurementMetric;
+    metricSelect.value = ui.bodyCompMetric;
+    // keep legacy ui.measurementMetric in sync
+    ui.measurementMetric = ui.bodyCompMetric;
+  }
+
+  // Update body comp tiles
+  const weightTile = $("#bodyCompWeight");
+  const fatTile = $("#bodyCompFat");
+  const muscleTile = $("#bodyCompMuscle");
+  const changeTile = $("#bodyCompChange");
+  const changeValueEl = $("#bodyCompChangeValue");
+
+  const fmt = (v, d = 1) => Number.isFinite(v) ? v.toFixed(d) : "—";
+
+  if (weightTile) {
+    const vEl = weightTile.querySelector(".stat-tile-value");
+    if (vEl) vEl.innerHTML = `${fmt(latest?.bodyWeight)}<span class="stat-unit">kg</span>`;
+    const isActive = ui.bodyCompMetric === "bodyWeight";
+    weightTile.style.borderColor = isActive ? "var(--color-brand)" : "";
+    weightTile.style.background = isActive ? "rgb(var(--brand-rgb) / 0.06)" : "";
+  }
+  if (fatTile) {
+    const vEl = fatTile.querySelector(".stat-tile-value");
+    if (vEl) vEl.innerHTML = `${fmt(latest?.bodyFat)}<span class="stat-unit">%</span>`;
+    const isActive = ui.bodyCompMetric === "bodyFat";
+    fatTile.style.borderColor = isActive ? "var(--color-brand)" : "";
+    fatTile.style.background = isActive ? "rgb(var(--brand-rgb) / 0.06)" : "";
+  }
+  if (muscleTile) {
+    const vEl = muscleTile.querySelector(".stat-tile-value");
+    if (vEl) vEl.innerHTML = `${fmt(latest?.muscleWeight)}<span class="stat-unit">kg</span>`;
+    const isActive = ui.bodyCompMetric === "muscleWeight";
+    muscleTile.style.borderColor = isActive ? "var(--color-brand)" : "";
+    muscleTile.style.background = isActive ? "rgb(var(--brand-rgb) / 0.06)" : "";
+  }
+  if (changeTile && changeValueEl) {
+    // Compute delta for current metric between first and latest entry with that field
+    const metricKey = ui.bodyCompMetric === "bodyFat" ? "bodyFat" : ui.bodyCompMetric === "muscleWeight" ? "muscleWeight" : "bodyWeight";
+    const metricUnit = metricKey === "bodyFat" ? "%" : "kg";
+    const sorted = getSortedBodyMeasurements().filter((e) => Number.isFinite(e[metricKey]));
+    let deltaHtml = "—";
+    let deltaColor = "";
+    if (sorted.length >= 2) {
+      const delta = sorted[sorted.length - 1][metricKey] - sorted[0][metricKey];
+      const positive = delta >= 0;
+      // For body fat, lower is better (danger if positive)
+      const isGood = metricKey === "bodyFat" ? !positive : positive;
+      deltaColor = isGood ? "var(--color-success)" : "var(--color-danger)";
+      deltaHtml = `${positive ? "+" : ""}${delta.toFixed(1)}<span class="stat-unit">${metricUnit}</span>`;
+    }
+    changeValueEl.innerHTML = deltaHtml;
+    changeValueEl.style.color = deltaColor;
   }
 
   const monthsSelect = $("#measurementMonthsSelect");
   ui.measurementMonthsBack = populateMonthRangeSelect(monthsSelect, ui.measurementMonthsBack, 6);
-  const metric = findBodyMeasurementField(ui.measurementMetric);
+
+  const metric = findBodyMeasurementField(ui.bodyCompMetric);
   const titleEl = $("#measurementMetricTitle");
   if (titleEl) {
-    titleEl.textContent = `${metric.label} · Last ${ui.measurementMonthsBack} month${ui.measurementMonthsBack === 1 ? "" : "s"}`;
+    const metricLabel = ui.bodyCompMetric === "bodyWeight" ? "Body Weight"
+      : ui.bodyCompMetric === "bodyFat" ? "Body Fat %"
+      : "Muscle Mass";
+    titleEl.textContent = metricLabel;
   }
   const cutoff = getMonthsBackCutoff(ui.measurementMonthsBack);
   const allMetricEntries = getSortedBodyMeasurements()
@@ -4922,6 +5003,7 @@ function handleInputEvents() {
     }
     if (target.id === "measurementMetricSelect") {
       ui.measurementMetric = target.value;
+      ui.bodyCompMetric = target.value;
       renderBodyMeasurementSection();
       return;
     }
@@ -5405,6 +5487,27 @@ function handleInputEvents() {
       if (action === "muscle-months") {
         ui.muscleMonthsBack = Math.min(12, Math.max(1, parseInt(button.dataset.months, 10) || 1));
         renderStats();
+        return;
+      }
+      if (action === "muscle-toggle") {
+        const muscle = button.dataset.muscle;
+        if (muscle) {
+          if (ui.selectedMuscles.includes(muscle)) {
+            ui.selectedMuscles = ui.selectedMuscles.filter((m) => m !== muscle);
+          } else {
+            ui.selectedMuscles = [...ui.selectedMuscles, muscle];
+          }
+          renderMuscleGroupSection();
+        }
+        return;
+      }
+      if (action === "body-comp-metric") {
+        const metricKey = button.dataset.metricKey;
+        if (metricKey) {
+          ui.bodyCompMetric = metricKey;
+          ui.measurementMetric = metricKey;
+          renderBodyMeasurementSection();
+        }
         return;
       }
       if (action === "history-close") {
