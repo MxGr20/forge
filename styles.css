@@ -78,30 +78,30 @@
 
 body[data-theme="dark"],
 html[data-theme="dark"] {
-  --color-app-bg: #0b1024;
-  --color-surface: #0f1733;
-  --color-surface-muted: #141c3f;
-  --color-surface-elevated: #141c3f;
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #aab3c5;
-  --color-icon-muted: #7d8aa6;
-  --color-divider: #1f2a4d;
+  --color-app-bg: #07091b;
+  --color-surface: #0c1230;
+  --color-surface-muted: #101840;
+  --color-surface-elevated: #141f50;
+  --color-text-primary: #edf2fc;
+  --color-text-secondary: #adb9d4;
+  --color-icon-muted: #8090b0;
+  --color-divider: rgba(255,255,255,.055);
   --color-brand: #4f66ff;
   --color-brand-strong: #7c8cff;
-  --color-brand-soft: #151a3d;
+  --color-brand-soft: rgba(79,102,255,.1);
   --color-on-brand: #ffffff;
-  --color-chart-surface: #151a3d;
-  --chart-grid-stroke: rgba(170, 179, 197, 0.24);
-  --chart-axis-text: #aab3c5;
-  --panel-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  --floating-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
+  --color-chart-surface: #0c1230;
+  --chart-grid-stroke: rgba(255,255,255,.05);
+  --chart-axis-text: #8090b0;
+  --panel-shadow: 0 10px 30px rgba(0,0,0,.5);
+  --floating-shadow: 0 20px 40px rgba(0,0,0,.65);
   --brand-rgb: 79 102 255;
-  --brand-soft-rgb: 21 26 61;
-  --accent-2: #8fa0ff;
+  --brand-soft-rgb: 12 18 48;
+  --accent-2: #7c8cff;
   --accent-3: #a5b4fc;
-  --chip: rgb(var(--brand-rgb) / 0.2);
-  --focus: rgb(var(--brand-rgb) / 0.32);
-  --nav-bg: rgb(15 23 51 / 0.86);
+  --chip: rgba(79,102,255,.1);
+  --focus: rgba(79,102,255,.28);
+  --nav-bg: rgba(7,11,32,.92);
   color-scheme: dark;
 }
 
@@ -265,18 +265,20 @@ body::after {
   left: var(--space-4);
   right: var(--space-4);
   bottom: var(--space-4);
-  transform: none;
   width: auto;
   display: flex;
   justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+  gap: 0;
+  padding: 0;
   background: var(--nav-bg);
-  backdrop-filter: blur(1rem);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 30px;
   box-shadow: var(--floating-shadow);
   z-index: 20;
+  height: 58px;
+  overflow: hidden;
 }
 
 #viewContainer {
@@ -599,41 +601,48 @@ button:disabled {
 
 .workout-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .workout-card {
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: 18px;
+  padding: 16px 18px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 110px;
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
+  transition: background .15s, border-color .15s;
+  min-height: unset;
+  text-align: left;
 }
-
 .workout-card .workout-title {
-  font-weight: 600;
-  font-size: 15px;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  margin-bottom: 4px;
 }
-
 .workout-card .workout-meta {
-  color: var(--muted);
+  color: var(--color-text-secondary);
   font-size: 12px;
 }
-
 .workout-card .workout-actions {
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
+  flex-shrink: 0;
+}
+.workout-card-chevron {
+  color: var(--color-brand-strong);
+  font-size: 20px;
+  line-height: 1;
 }
 
 .active-header {
@@ -722,22 +731,44 @@ button:disabled {
 .nav-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: var(--muted);
-  padding: 8px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  color: var(--color-icon-muted);
+  padding: 8px 0 6px;
+  border-radius: 0;
+  font-size: 10px;
+  letter-spacing: .05em;
   text-transform: uppercase;
-  transition: background 0.2s ease, color 0.2s ease;
+  font-weight: 700;
+  transition: color .18s;
   flex: 1;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 }
-
+.nav-btn svg {
+  display: block;
+}
+.nav-btn .nav-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
 .nav-btn.active {
-  color: var(--color-text-primary);
-  background: var(--accent);
+  color: var(--color-brand-strong);
+  background: transparent;
   border-color: transparent;
-  box-shadow: 0 8px 18px rgb(var(--brand-rgb) / 0.35);
+  box-shadow: none;
+}
+.nav-pill {
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--color-brand);
+  margin-top: 3px;
+  transition: width .22s cubic-bezier(.22,1,.36,1), opacity .22s;
 }
 
 .exercise-card {
@@ -1784,7 +1815,6 @@ h2 {
 }
 
 .card,
-.workout-card,
 .rest-inline,
 .set-pill,
 .set-cell,
@@ -1905,13 +1935,13 @@ button:hover {
 }
 
 .nav-btn {
-  color: var(--muted);
+  color: var(--color-icon-muted);
 }
 
 .nav-btn.active {
-  background: var(--accent);
-  color: var(--color-on-brand);
-  box-shadow: 0 8px 18px rgb(var(--brand-rgb) / 0.35);
+  color: var(--color-brand-strong);
+  background: transparent;
+  box-shadow: none;
 }
 
 .history-filters button.active,
@@ -1976,7 +2006,6 @@ button:hover {
 
 /* Flat inner list surfaces */
 .card,
-.workout-card,
 .exercise-card,
 .edit-template .exercise-card,
 .result-item,
@@ -2076,11 +2105,6 @@ button:hover {
     right: 10px;
   }
 
-  .nav-btn {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-  }
-
   .workout-grid {
     grid-template-columns: 1fr;
   }
@@ -2096,14 +2120,14 @@ button:hover {
 
 @media (max-width: 480px) {
   .bottom-nav {
-    gap: 4px;
-    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    gap: 0;
+    padding: 0;
   }
 
   .nav-btn {
     font-size: 9px;
     letter-spacing: 0.05em;
-    padding: 6px 6px;
+    padding: 8px 0 6px;
   }
 
   .row.wrap > input,
