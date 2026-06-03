@@ -171,9 +171,8 @@
         </div>
 
         <div class="panel">
-          <div class="row space">
-            <h2>Exercise Library</h2>
-            <input type="search" id="exerciseSearch" placeholder="Search exercises">
+          <div style="margin-bottom:12px">
+            <input type="search" id="exerciseSearch" placeholder="Search exercises…" style="width:100%">
           </div>
           <div id="exerciseList"></div>
         </div>
@@ -184,30 +183,25 @@
           <div class="page-eyebrow-small">Analytics</div>
           <div class="page-title-large">Stats</div>
         </div>
+
+        <!-- Exercise Progress -->
         <div class="panel">
-          <div class="row space">
-            <h2>Exercise Performance</h2>
-            <select id="statsExerciseSelect"></select>
+          <div class="section-header" style="margin-bottom:10px">
+            <span class="section-label">Exercise Progress</span>
           </div>
-          <div class="row wrap stats-controls">
-            <label class="inline-control">
-              Metric
-              <select id="statsMetricSelect"></select>
-            </label>
-            <label class="inline-control">
-              Range
-              <select id="statsMonthsSelect"></select>
-            </label>
-          </div>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-label">Total Weight (All Workouts)</div>
-              <div id="statTotalWeightAll" class="stat-value">-</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Total Reps (All Workouts)</div>
-              <div id="statTotalRepsAll" class="stat-value">-</div>
-            </div>
+          <select id="statsExerciseSelect" class="stats-exercise-select"></select>
+
+          <div id="statsMetricChips" class="filter-chips" style="margin-bottom:8px"></div>
+          <div id="statsRangeChips" class="filter-chips" style="margin-bottom:14px"></div>
+          <!-- hidden selects kept for backward-compat JS change handlers -->
+          <select id="statsMetricSelect" style="display:none"></select>
+          <select id="statsMonthsSelect" style="display:none"></select>
+
+          <div class="stats-tiles" style="margin-bottom:14px">
+            <div class="stat-tile"><div class="stat-tile-label">Best</div><div class="stat-tile-value" id="statBest">—</div></div>
+            <div class="stat-tile"><div class="stat-tile-label">Latest</div><div class="stat-tile-value" id="statLatest">—</div></div>
+            <div class="stat-tile"><div class="stat-tile-label">Change</div><div class="stat-tile-value" id="statChange">—</div></div>
+            <div class="stat-tile"><div class="stat-tile-label">Sessions</div><div class="stat-tile-value" id="statSessions">—</div></div>
           </div>
           <div class="chart-card">
             <div class="chart-title" id="exerciseMetricTitle">Exercise Progression</div>
@@ -217,37 +211,34 @@
           </div>
         </div>
 
+        <!-- Muscle Volume -->
         <div class="panel">
-          <div class="row space">
-            <h2>Muscle Group Volume</h2>
+          <div class="section-header" style="margin-bottom:10px">
+            <span class="section-label">Muscle Volume</span>
           </div>
-          <div class="row wrap stats-controls">
-            <label class="inline-control">
-              Group By
-              <select id="muscleGroupingSelect">
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-                <option value="year">Year</option>
-              </select>
-            </label>
-            <label class="inline-control">
-              Range
-              <select id="muscleMonthsSelect"></select>
-            </label>
-            <div class="inline-control">
-              <div class="muted small">Muscle Source</div>
-              <div class="segment-toggle" id="muscleDimensionToggle">
-                <button class="ghost small" data-action="muscle-dimension" data-dimension="grouped">Muscle Groups</button>
-                <button class="ghost small" data-action="muscle-dimension" data-dimension="primary">Primary</button>
-                <button class="ghost small" data-action="muscle-dimension" data-dimension="detailed">Secondary</button>
-              </div>
-            </div>
+          <div id="muscleRangeChips" class="filter-chips" style="margin-bottom:10px"></div>
+          <select id="muscleMonthsSelect" style="display:none"></select>
+
+          <div class="section-header" style="margin-bottom:8px;margin-top:4px">
+            <span class="section-label" style="font-size:10px">Muscle Source</span>
           </div>
+          <div class="segment-toggle" id="muscleDimensionToggle" style="margin-bottom:12px">
+            <button class="ghost small" data-action="muscle-dimension" data-dimension="grouped">Muscle Groups</button>
+            <button class="ghost small" data-action="muscle-dimension" data-dimension="primary">Primary</button>
+            <button class="ghost small" data-action="muscle-dimension" data-dimension="detailed">Secondary</button>
+          </div>
+          <!-- hide grouping select, default stays "week" -->
+          <select id="muscleGroupingSelect" style="display:none">
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+            <option value="year">Year</option>
+          </select>
+
           <label>
             Muscles to Track
             <div id="muscleFilterSelect" class="tag-multi-root" data-multi-root="stats-muscles"></div>
           </label>
-          <div class="muted small">Select one or more muscles to compare effective sets over time.</div>
+          <div class="muted small" style="margin-bottom:8px">Select one or more muscles to compare effective sets over time.</div>
           <div class="chart-card">
             <div id="muscleChartTitle" class="chart-title">Effective Sets by Muscle Group</div>
             <div id="muscleVolumeChart" class="chart"></div>
@@ -257,10 +248,11 @@
           </div>
         </div>
 
+        <!-- Body Measurements -->
         <div class="panel">
-          <div class="row space">
-            <h2>Body Measurements</h2>
-            <button class="primary" data-action="save-body-measurement">Save</button>
+          <div class="section-header" style="margin-bottom:14px">
+            <span class="section-label">Body Composition</span>
+            <button class="ghost" style="height:28px;font-size:11px;padding:0 12px;border-radius:14px" data-action="save-body-measurement">+ Log</button>
           </div>
           <div class="grid-2">
             <label>
@@ -312,13 +304,10 @@
           <div class="page-title-large">History</div>
         </div>
         <div class="panel">
-          <div class="row space">
-            <h2>History</h2>
-          </div>
           <div id="historyFilters" class="history-filters">
             <button class="ghost small active" data-action="history-filter" data-filter="all">All</button>
             <button class="ghost small" data-action="history-filter" data-filter="workouts">Workouts</button>
-            <button class="ghost small" data-action="history-filter" data-filter="measurements">Body Measurements</button>
+            <button class="ghost small" data-action="history-filter" data-filter="measurements">Body</button>
           </div>
           <div id="historyList"></div>
         </div>
@@ -330,9 +319,7 @@
           <div class="page-title-large">Tools</div>
         </div>
         <div class="panel">
-          <div class="row space">
-            <h2>Settings</h2>
-          </div>
+          <div class="section-header" style="margin-bottom:12px"><span class="section-label">Settings</span></div>
           <div class="grid-2">
             <label>
               Rest Timer - Work Set (sec)
@@ -362,9 +349,7 @@
         </div>
 
         <div class="panel">
-          <div class="row space">
-            <h2>Plate Calculator</h2>
-          </div>
+          <div class="section-header" style="margin-bottom:12px"><span class="section-label">Plate Calculator</span></div>
           <label class="switch">
             Include bar weight
             <input type="checkbox" data-setting="includeBarWeightInCalc" id="includeBarWeightInCalc">
@@ -377,10 +362,8 @@
         </div>
 
         <div class="panel">
-          <div class="row space">
-            <h2>Cloud Sync</h2>
-            <div id="cloudStatus" class="muted small">Signed out</div>
-          </div>
+          <div class="section-header" style="margin-bottom:12px"><span class="section-label">Cloud Sync</span></div>
+          <div id="cloudStatus" class="muted small">Signed out</div>
           <div class="row wrap">
             <input type="email" id="cloudEmail" placeholder="Email for magic link">
             <button class="primary" data-action="cloud-login" id="cloudLoginBtn">Send Magic Link</button>
@@ -393,9 +376,7 @@
         </div>
 
         <div class="panel">
-          <div class="row space">
-            <h2>Export and Back-Up</h2>
-          </div>
+          <div class="section-header" style="margin-bottom:12px"><span class="section-label">Export & Backup</span></div>
           <div class="row wrap">
             <button class="primary" data-action="export-csv">Export CSV</button>
             <button class="ghost" data-action="export-json">Export JSON Backup</button>

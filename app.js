@@ -4197,6 +4197,16 @@ function renderMuscleGroupSection() {
   if (groupingSelect) groupingSelect.value = ui.muscleGrouping;
   const monthsSelect = $("#muscleMonthsSelect");
   ui.muscleMonthsBack = populateMonthRangeSelect(monthsSelect, ui.muscleMonthsBack, 1);
+
+  // Range chips for muscle section
+  const MUSCLE_RANGES = [{l: "1m", n: 1}, {l: "3m", n: 3}, {l: "6m", n: 6}, {l: "12m", n: 12}];
+  const muscleRangeChipsEl = $("#muscleRangeChips");
+  if (muscleRangeChipsEl) {
+    muscleRangeChipsEl.innerHTML = MUSCLE_RANGES.map((r) =>
+      `<button class="filter-chip${ui.muscleMonthsBack === r.n ? " active" : ""}" data-action="muscle-months" data-months="${r.n}">${r.l}</button>`
+    ).join("");
+  }
+
   const chartTitle = $("#muscleChartTitle");
   if (chartTitle) {
     chartTitle.textContent = `Effective Sets by Muscle Group · Last ${ui.muscleMonthsBack} month${ui.muscleMonthsBack === 1 ? "" : "s"}`;
@@ -4323,6 +4333,7 @@ function renderStats() {
     }
   }
 
+  // Keep hidden select in sync for backward-compat change handlers
   const metricSelect = $("#statsMetricSelect");
   if (metricSelect) {
     metricSelect.innerHTML = EXERCISE_STATS_METRICS
@@ -4336,6 +4347,30 @@ function renderStats() {
 
   const statsMonthsSelect = $("#statsMonthsSelect");
   ui.statsMonthsBack = populateMonthRangeSelect(statsMonthsSelect, ui.statsMonthsBack, 6);
+
+  // Metric chips
+  const METRIC_SHORT = {
+    heaviestWeight: "Weight",
+    oneRmBrzycki: "1RM",
+    bestSetVolume: "Set Vol",
+    bestSessionVolume: "Sess Vol",
+    mostReps: "Reps"
+  };
+  const metricChipsEl = $("#statsMetricChips");
+  if (metricChipsEl) {
+    metricChipsEl.innerHTML = EXERCISE_STATS_METRICS.map((m) =>
+      `<button class="filter-chip${ui.statsMetric === m.key ? " primary-active" : ""}" data-action="stats-metric" data-metric-key="${m.key}">${METRIC_SHORT[m.key] || m.label}</button>`
+    ).join("");
+  }
+
+  // Range chips (1m / 3m / 6m / 12m)
+  const STAT_RANGES = [{l: "1m", n: 1}, {l: "3m", n: 3}, {l: "6m", n: 6}, {l: "12m", n: 12}];
+  const rangeChipsEl = $("#statsRangeChips");
+  if (rangeChipsEl) {
+    rangeChipsEl.innerHTML = STAT_RANGES.map((r) =>
+      `<button class="filter-chip${ui.statsMonthsBack === r.n ? " active" : ""}" data-action="stats-months" data-months="${r.n}">${r.l}</button>`
+    ).join("");
+  }
   const selectedMetric = getExerciseStatsMetric(ui.statsMetric);
   const chartTitle = $("#exerciseMetricTitle");
   if (chartTitle) {
@@ -4343,27 +4378,42 @@ function renderStats() {
   }
   const rangeEl = $("#exerciseMetricRange");
 
-  const totalWeightEl = $("#statTotalWeightAll");
-  const totalRepsEl = $("#statTotalRepsAll");
+  const bestEl = $("#statBest");
+  const latestEl = $("#statLatest");
+  const changeEl = $("#statChange");
+  const sessionsEl = $("#statSessions");
+
+  function updateStatTiles(chartData) {
+    const unit = selectedMetric.unit || "";
+    if (!chartData.length) {
+      if (bestEl) bestEl.textContent = "—";
+      if (latestEl) latestEl.textContent = "—";
+      if (changeEl) { changeEl.textContent = "—"; changeEl.style.color = ""; }
+      if (sessionsEl) sessionsEl.textContent = "—";
+      return;
+    }
+    const vals = chartData.map((d) => d.value);
+    const best = Math.max(...vals);
+    const latest = vals[vals.length - 1];
+    const first = vals[0];
+    const delta = latest - first;
+    const positive = delta >= 0;
+    if (bestEl) bestEl.innerHTML = `${best % 1 === 0 ? best : best.toFixed(1)}<span class="stat-unit" style="font-size:12px;color:var(--color-text-secondary);margin-left:2px;font-weight:600">${unit}</span>`;
+    if (latestEl) latestEl.innerHTML = `${latest % 1 === 0 ? latest : latest.toFixed(1)}<span class="stat-unit" style="font-size:12px;color:var(--color-text-secondary);margin-left:2px;font-weight:600">${unit}</span>`;
+    if (changeEl) {
+      changeEl.innerHTML = `${positive ? "+" : ""}${delta % 1 === 0 ? delta : delta.toFixed(1)}<span class="stat-unit" style="font-size:12px;margin-left:2px;font-weight:600">${unit}</span>`;
+      changeEl.style.color = positive ? "var(--color-success)" : "var(--color-danger)";
+    }
+    if (sessionsEl) sessionsEl.textContent = chartData.length;
+  }
+
   if (!ui.statsExerciseId) {
-    if (totalWeightEl) totalWeightEl.textContent = "-";
-    if (totalRepsEl) totalRepsEl.textContent = "-";
+    updateStatTiles([]);
     const cutoff = getMonthsBackCutoff(ui.statsMonthsBack);
     renderAdaptiveExercisePerformance(selectedMetric, [], cutoff, []);
     if (rangeEl) rangeEl.textContent = "No sessions in selected range. Log workouts to unlock trend feedback.";
   } else {
     const performance = getExercisePerformanceData(ui.statsExerciseId);
-    if (totalWeightEl) {
-      totalWeightEl.textContent = performance.totalWeight > 0
-        ? `${performance.totalWeight.toFixed(0)} kg`
-        : "-";
-    }
-    if (totalRepsEl) {
-      totalRepsEl.textContent = performance.totalReps > 0
-        ? `${performance.totalReps.toFixed(0)}`
-        : "-";
-    }
-
     const cutoff = getMonthsBackCutoff(ui.statsMonthsBack);
     const sessionsInRange = performance.sessions
       .filter((session) => new Date(session.date) >= cutoff);
@@ -4374,6 +4424,7 @@ function renderStats() {
         label: formatDate(session.date),
         value: Number.isFinite(session[selectedMetric.key]) ? session[selectedMetric.key] : 0
       }));
+    updateStatTiles(chartData);
     renderAdaptiveExercisePerformance(selectedMetric, chartData, cutoff, performance.sessions);
   }
 
@@ -5337,6 +5388,21 @@ function handleInputEvents() {
           ui.muscleSearchQuery = "";
           ui.muscleSelectionInitialized = false;
         }
+        renderStats();
+        return;
+      }
+      if (action === "stats-metric") {
+        ui.statsMetric = button.dataset.metricKey || ui.statsMetric;
+        renderStats();
+        return;
+      }
+      if (action === "stats-months") {
+        ui.statsMonthsBack = Math.min(12, Math.max(1, parseInt(button.dataset.months, 10) || 6));
+        renderStats();
+        return;
+      }
+      if (action === "muscle-months") {
+        ui.muscleMonthsBack = Math.min(12, Math.max(1, parseInt(button.dataset.months, 10) || 1));
         renderStats();
         return;
       }
