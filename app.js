@@ -1007,12 +1007,34 @@ function getRestSeconds(tag = "work") {
     if (!mini || !display) return;
     if (restTimer.remaining > 0) {
       display.textContent = formatDuration(restTimer.remaining);
-      mini.classList.add("active");
+      mini.style.display = "flex";
+      mini.classList.add("pulsing");
       return;
     }
     display.textContent = "00:00";
-    mini.classList.remove("active");
+    mini.style.display = "none";
+    mini.classList.remove("pulsing");
   }
+
+const elapsedTimer = { interval: null };
+
+function startElapsedTimer(startIso) {
+  if (elapsedTimer.interval) clearInterval(elapsedTimer.interval);
+  const update = () => {
+    const el = $("#sessionElapsed");
+    if (!el) return;
+    const secs = Math.floor((Date.now() - new Date(startIso).getTime()) / 1000);
+    el.textContent = `⏱ ${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
+  };
+  update();
+  elapsedTimer.interval = setInterval(update, 1000);
+}
+
+function stopElapsedTimer() {
+  if (elapsedTimer.interval) { clearInterval(elapsedTimer.interval); elapsedTimer.interval = null; }
+  const el = $("#sessionElapsed");
+  if (el) el.textContent = "⏱ 00:00";
+}
 
 function startTimer(seconds) {
   const duration = Math.max(0, Math.round(seconds));
@@ -1185,6 +1207,7 @@ function startWorkout(routineId = null) {
     if (!active) return;
     active.endedAt = new Date().toISOString();
     state.activeWorkoutId = null;
+    stopElapsedTimer();
     saveState();
     renderLog();
     renderHistory();
@@ -1197,6 +1220,7 @@ function startWorkout(routineId = null) {
     if (!active) return;
     state.workouts = state.workouts.filter((w) => w.id !== active.id);
     state.activeWorkoutId = null;
+    stopElapsedTimer();
     saveState();
     renderLog();
     renderHistory();
@@ -1681,8 +1705,13 @@ function renderSession() {
   activePanel.classList.remove("hidden");
   updateFinishSheetActionLabel();
 
-    const nameInput = $("[data-field='workout-name']");
-    if (nameInput) nameInput.value = active.name || "";
+  const nameInput = $("[data-field='workout-name']");
+  if (nameInput) nameInput.value = active.name || "";
+
+  const sessionNameEl = $("#sessionWorkoutName");
+  if (sessionNameEl) sessionNameEl.textContent = active.name || "Workout";
+
+  startElapsedTimer(active.createdAt);
 
   const addSelect = $("#addExerciseSelect");
   if (addSelect) {
@@ -1795,11 +1824,25 @@ function renderExerciseCard(item, options) {
         <button class="ghost small" data-action="remove-workout-exercise" data-item-id="${item.id}">Remove</button>
       `;
 
+  const completedSets = owner === "workout" ? item.sets.filter((s) => s.completed).length : 0;
+  const totalSets = item.sets.length;
+  const pct = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+  const allDone = owner === "workout" && totalSets > 0 && completedSets === totalSets;
+  const progressHtml = owner === "workout" ? `
+    <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+      <div style="font-size:12px;color:${allDone ? "var(--color-success)" : "var(--color-text-secondary)"};font-weight:600">${completedSets} / ${totalSets} sets</div>
+      ${allDone ? '<span style="display:inline-flex;align-items:center;padding:0 6px;height:18px;border-radius:9px;font-size:9px;font-weight:700;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);color:var(--color-success)">Done</span>' : ""}
+    </div>
+    <div class="exercise-progress-bar" style="margin-top:7px">
+      <div class="exercise-progress-fill" style="width:${pct}%;background:${allDone ? "var(--color-success)" : "var(--color-brand)"}"></div>
+    </div>` : "";
+
   return `
       <div class="exercise-card" data-item-id="${item.id}">
         <div class="exercise-header">
           <div>
             <div class="exercise-title">${esc(exercise.name)}</div>
+            ${progressHtml}
           </div>
           <div class="exercise-actions">
             ${actions}
@@ -4154,6 +4197,16 @@ function renderMuscleGroupSection() {
   if (groupingSelect) groupingSelect.value = ui.muscleGrouping;
   const monthsSelect = $("#muscleMonthsSelect");
   ui.muscleMonthsBack = populateMonthRangeSelect(monthsSelect, ui.muscleMonthsBack, 1);
+
+  // Range chips for muscle section
+  const MUSCLE_RANGES = [{l: "1m", n: 1}, {l: "3m", n: 3}, {l: "6m", n: 6}, {l: "12m", n: 12}];
+  const muscleRangeChipsEl = $("#muscleRangeChips");
+  if (muscleRangeChipsEl) {
+    muscleRangeChipsEl.innerHTML = MUSCLE_RANGES.map((r) =>
+      `<button class="filter-chip${ui.muscleMonthsBack === r.n ? " active" : ""}" data-action="muscle-months" data-months="${r.n}">${r.l}</button>`
+    ).join("");
+  }
+
   const chartTitle = $("#muscleChartTitle");
   if (chartTitle) {
     chartTitle.textContent = `Effective Sets by Muscle Group · Last ${ui.muscleMonthsBack} month${ui.muscleMonthsBack === 1 ? "" : "s"}`;
@@ -4280,6 +4333,7 @@ function renderStats() {
     }
   }
 
+  // Keep hidden select in sync for backward-compat change handlers
   const metricSelect = $("#statsMetricSelect");
   if (metricSelect) {
     metricSelect.innerHTML = EXERCISE_STATS_METRICS
@@ -4293,6 +4347,30 @@ function renderStats() {
 
   const statsMonthsSelect = $("#statsMonthsSelect");
   ui.statsMonthsBack = populateMonthRangeSelect(statsMonthsSelect, ui.statsMonthsBack, 6);
+
+  // Metric chips
+  const METRIC_SHORT = {
+    heaviestWeight: "Weight",
+    oneRmBrzycki: "1RM",
+    bestSetVolume: "Set Vol",
+    bestSessionVolume: "Sess Vol",
+    mostReps: "Reps"
+  };
+  const metricChipsEl = $("#statsMetricChips");
+  if (metricChipsEl) {
+    metricChipsEl.innerHTML = EXERCISE_STATS_METRICS.map((m) =>
+      `<button class="filter-chip${ui.statsMetric === m.key ? " primary-active" : ""}" data-action="stats-metric" data-metric-key="${m.key}">${METRIC_SHORT[m.key] || m.label}</button>`
+    ).join("");
+  }
+
+  // Range chips (1m / 3m / 6m / 12m)
+  const STAT_RANGES = [{l: "1m", n: 1}, {l: "3m", n: 3}, {l: "6m", n: 6}, {l: "12m", n: 12}];
+  const rangeChipsEl = $("#statsRangeChips");
+  if (rangeChipsEl) {
+    rangeChipsEl.innerHTML = STAT_RANGES.map((r) =>
+      `<button class="filter-chip${ui.statsMonthsBack === r.n ? " active" : ""}" data-action="stats-months" data-months="${r.n}">${r.l}</button>`
+    ).join("");
+  }
   const selectedMetric = getExerciseStatsMetric(ui.statsMetric);
   const chartTitle = $("#exerciseMetricTitle");
   if (chartTitle) {
@@ -4300,27 +4378,42 @@ function renderStats() {
   }
   const rangeEl = $("#exerciseMetricRange");
 
-  const totalWeightEl = $("#statTotalWeightAll");
-  const totalRepsEl = $("#statTotalRepsAll");
+  const bestEl = $("#statBest");
+  const latestEl = $("#statLatest");
+  const changeEl = $("#statChange");
+  const sessionsEl = $("#statSessions");
+
+  function updateStatTiles(chartData) {
+    const unit = selectedMetric.unit || "";
+    if (!chartData.length) {
+      if (bestEl) bestEl.textContent = "—";
+      if (latestEl) latestEl.textContent = "—";
+      if (changeEl) { changeEl.textContent = "—"; changeEl.style.color = ""; }
+      if (sessionsEl) sessionsEl.textContent = "—";
+      return;
+    }
+    const vals = chartData.map((d) => d.value);
+    const best = Math.max(...vals);
+    const latest = vals[vals.length - 1];
+    const first = vals[0];
+    const delta = latest - first;
+    const positive = delta >= 0;
+    if (bestEl) bestEl.innerHTML = `${best % 1 === 0 ? best : best.toFixed(1)}<span class="stat-unit" style="font-size:12px;color:var(--color-text-secondary);margin-left:2px;font-weight:600">${unit}</span>`;
+    if (latestEl) latestEl.innerHTML = `${latest % 1 === 0 ? latest : latest.toFixed(1)}<span class="stat-unit" style="font-size:12px;color:var(--color-text-secondary);margin-left:2px;font-weight:600">${unit}</span>`;
+    if (changeEl) {
+      changeEl.innerHTML = `${positive ? "+" : ""}${delta % 1 === 0 ? delta : delta.toFixed(1)}<span class="stat-unit" style="font-size:12px;margin-left:2px;font-weight:600">${unit}</span>`;
+      changeEl.style.color = positive ? "var(--color-success)" : "var(--color-danger)";
+    }
+    if (sessionsEl) sessionsEl.textContent = chartData.length;
+  }
+
   if (!ui.statsExerciseId) {
-    if (totalWeightEl) totalWeightEl.textContent = "-";
-    if (totalRepsEl) totalRepsEl.textContent = "-";
+    updateStatTiles([]);
     const cutoff = getMonthsBackCutoff(ui.statsMonthsBack);
     renderAdaptiveExercisePerformance(selectedMetric, [], cutoff, []);
     if (rangeEl) rangeEl.textContent = "No sessions in selected range. Log workouts to unlock trend feedback.";
   } else {
     const performance = getExercisePerformanceData(ui.statsExerciseId);
-    if (totalWeightEl) {
-      totalWeightEl.textContent = performance.totalWeight > 0
-        ? `${performance.totalWeight.toFixed(0)} kg`
-        : "-";
-    }
-    if (totalRepsEl) {
-      totalRepsEl.textContent = performance.totalReps > 0
-        ? `${performance.totalReps.toFixed(0)}`
-        : "-";
-    }
-
     const cutoff = getMonthsBackCutoff(ui.statsMonthsBack);
     const sessionsInRange = performance.sessions
       .filter((session) => new Date(session.date) >= cutoff);
@@ -4331,6 +4424,7 @@ function renderStats() {
         label: formatDate(session.date),
         value: Number.isFinite(session[selectedMetric.key]) ? session[selectedMetric.key] : 0
       }));
+    updateStatTiles(chartData);
     renderAdaptiveExercisePerformance(selectedMetric, chartData, cutoff, performance.sessions);
   }
 
@@ -4783,6 +4877,8 @@ function handleInputEvents() {
     if (target.dataset.field === "workout-name") {
       const workout = getActiveWorkout();
       if (workout) workout.name = target.value;
+      const sessionNameEl = $("#sessionWorkoutName");
+      if (sessionNameEl) sessionNameEl.textContent = target.value || "Workout";
       saveState();
       return;
     }
@@ -5208,6 +5304,12 @@ function handleInputEvents() {
         stopTimer();
         return;
       }
+      if (action === "timer-add15") {
+        restTimer.remaining = Math.max(0, restTimer.remaining) + 15;
+        if (!restTimer.interval) startTimer(restTimer.remaining);
+        else updateTimerUI();
+        return;
+      }
       if (action === "finish-workout") {
         openFinishSheet();
         return;
@@ -5286,6 +5388,21 @@ function handleInputEvents() {
           ui.muscleSearchQuery = "";
           ui.muscleSelectionInitialized = false;
         }
+        renderStats();
+        return;
+      }
+      if (action === "stats-metric") {
+        ui.statsMetric = button.dataset.metricKey || ui.statsMetric;
+        renderStats();
+        return;
+      }
+      if (action === "stats-months") {
+        ui.statsMonthsBack = Math.min(12, Math.max(1, parseInt(button.dataset.months, 10) || 6));
+        renderStats();
+        return;
+      }
+      if (action === "muscle-months") {
+        ui.muscleMonthsBack = Math.min(12, Math.max(1, parseInt(button.dataset.months, 10) || 1));
         renderStats();
         return;
       }
