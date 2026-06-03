@@ -14,17 +14,11 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<script type="text/babel" src="ios-frame.jsx"></script>
 <script type="text/babel" src="tweaks-panel.jsx"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
-body{
-  background:#020510;min-height:100vh;
-  display:flex;align-items:center;justify-content:center;
-  background-image:radial-gradient(ellipse at 25% 20%,rgba(79,102,255,.09) 0%,transparent 55%),
-    radial-gradient(ellipse at 75% 80%,rgba(79,102,255,.06) 0%,transparent 50%);
-}
+html,body,#root{height:100%;font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{background:var(--bg)}
 :root{
   --bg:#07091b;--s1:#0c1230;--s2:#101840;--s3:#141f50;
   --bd:rgba(255,255,255,.055);--bd2:rgba(255,255,255,.1);
@@ -34,10 +28,21 @@ body{
   --ok:#22c55e;--okrgb:34,197,94;--oksoft:rgba(34,197,94,.08);--okbd:rgba(34,197,94,.25);
   --warn:#f59e0b;--danger:#ef4444;
   --fh:'Space Grotesk',sans-serif;--fb:'Inter',sans-serif;
+  --max:480px;
 }
-#root{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
-.device-scaler{display:flex;align-items:center;justify-content:center;}
-.sc{height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#root{display:flex;flex-direction:column}
+/* Full-screen app shell */
+.app-shell{
+  position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 0,rgba(var(--brgb),.07) 0%,transparent 55%),var(--bg);
+}
+/* On desktop: centre a phone-width column */
+@media(min-width:600px){
+  .app-shell{align-items:center}
+  .app-col{width:var(--max);height:100%;display:flex;flex-direction:column;overflow:hidden;position:relative}
+}
+.app-col{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;width:100%}
+.sc{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .sc::-webkit-scrollbar{display:none}
 
 /* ── 1. Directional slide transitions ── */
@@ -185,7 +190,6 @@ body{
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect } = React;
-const { IOSDevice } = window;
 const { useTweaks, TweaksPanel, TweakSection, TweakColor, TweakRadio } = window;
 
 /* ── NAV ORDER for directional transitions ── */
@@ -1149,57 +1153,26 @@ function App(){
   };
 
   return(
-    <>
-      <div className="device-scaler" id="device-scaler">
-      <IOSDevice dark>
-        <div style={{
-          position:'relative',height:874,display:'flex',flexDirection:'column',overflow:'hidden',
-          background:`radial-gradient(ellipse at 50% 80px,rgba(var(--brgb),.08) 0%,transparent 55%),var(--bg)`
-        }}>
-          <div style={{height:60,flexShrink:0}}/>
-          <div key={vk} className={animCls} style={{flex:1,overflow:'hidden',minHeight:0}}>
-            {renderV()}
-          </div>
-          <div style={{flexShrink:0,height:inSess?22:88,padding:inSess?0:'8px 14px 0',position:'relative',zIndex:2}}>
-            {!inSess&&<Nav active={view} set={goTo}/>}
-          </div>
-          {sheet&&<TemplateSheet tmpl={sheet} onStart={confirmSess} onClose={()=>setSheet(null)}/>}
-          {exSheet!==null&&<ExerciseSheet item={exSheet.item} onSave={saveExercise} onDelete={deleteExercise} onClose={()=>setExSheet(null)} muscleLib={muscleLib} setMuscleLib={setMuscleLib}/>}
-          {bodyLogOpen&&<BodyLogSheet onClose={()=>setBodyLogOpen(false)} onSave={()=>setBodyLogOpen(false)}/>}
+    <div className="app-shell">
+      <div className="app-col">
+        <div key={vk} className={animCls} style={{flex:1,overflow:'hidden',minHeight:0,position:'relative',display:'flex',flexDirection:'column'}}>
+          {renderV()}
         </div>
-      </IOSDevice>
+        {!inSess&&(
+          <div style={{flexShrink:0,padding:'8px 14px',paddingBottom:'calc(8px + env(safe-area-inset-bottom, 0px))',position:'relative',zIndex:2}}>
+            <Nav active={view} set={goTo}/>
+          </div>
+        )}
+        {inSess&&<div style={{height:'env(safe-area-inset-bottom, 0px)'}}/>}
+        {sheet&&<TemplateSheet tmpl={sheet} onStart={confirmSess} onClose={()=>setSheet(null)}/>}
+        {exSheet!==null&&<ExerciseSheet item={exSheet.item} onSave={saveExercise} onDelete={deleteExercise} onClose={()=>setExSheet(null)} muscleLib={muscleLib} setMuscleLib={setMuscleLib}/>}
+        {bodyLogOpen&&<BodyLogSheet onClose={()=>setBodyLogOpen(false)} onSave={()=>setBodyLogOpen(false)}/>}
       </div>
-      <TweaksPanel>
-        <TweakSection label="Brand"/>
-        <TweakColor label="Accent" value={t.accent}
-          options={['#4f66ff','#8b5cf6','#0ea5e9']}
-          onChange={v=>setTweak('accent',v)}/>
-        <TweakSection label="Screen"/>
-        <TweakRadio label="View" value={view}
-          options={['workouts','stats','history','exercises','tools']}
-          onChange={v=>{goTo(v);}}/>
-      </TweaksPanel>
-    </>
+    </div>
   );
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
-
-// Scale device to always fit viewport
-function scaleDevice(){
-  const el=document.getElementById('device-scaler');
-  if(!el)return;
-  const deviceH=874+32;
-  const deviceW=402+32;
-  const scaleH=(window.innerHeight-48)/deviceH;
-  const scaleW=(window.innerWidth-48)/deviceW;
-  const scale=Math.min(scaleH,scaleW,1);
-  el.style.transform=`scale(${scale})`;
-  el.style.transformOrigin='top center';
-  el.style.marginBottom=`${(deviceH*(scale-1))}px`;
-}
-window.addEventListener('resize',scaleDevice);
-setTimeout(scaleDevice,100);
 </script>
 </body>
 </html>
