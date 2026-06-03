@@ -1067,7 +1067,13 @@ function setView(view) {
   });
   const navView = resolvedView === "session" ? "workouts" : resolvedView;
   $$(".nav-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.view === navView);
+    const isActive = btn.dataset.view === navView;
+    btn.classList.toggle("active", isActive);
+    const pill = btn.querySelector(".nav-pill");
+    if (pill) {
+      pill.style.width = isActive ? "14px" : "0";
+      pill.style.opacity = isActive ? "1" : "0";
+    }
   });
 }
 
@@ -1817,20 +1823,140 @@ function renderWorkoutExercise(item) {
   return renderExerciseCard(item, { owner: "workout" });
 }
 
+function timeAgo(isoString) {
+  if (!isoString) return "—";
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks === 1) return "1 wk ago";
+  return `${diffWeeks} wks ago`;
+}
+
 function renderLandingWorkouts() {
   const grid = $("#landingWorkouts");
   if (!grid) return;
   if (!state.routines.length) {
-    grid.innerHTML = "<div class=\"muted small\">No workouts yet. Create one to get started.</div>";
+    grid.innerHTML = "<div class=\"muted small\" style=\"padding:16px 0\">No workouts yet. Create one to get started.</div>";
+    renderWeekStrip();
+    renderWeekStats();
     return;
   }
   grid.innerHTML = state.routines.map((routine) => {
+    const last = getLastCompletedRoutineSession(routine.id);
+    const lastText = last ? `Last ${timeAgo(last.endedAt || last.createdAt)}` : "Not started";
+    const exCount = routine.items ? routine.items.length : 0;
+    const setCount = routine.items ? routine.items.reduce((a, item) => a + (item.sets ? item.sets.length : 0), 0) : 0;
     return `
       <div class="workout-card" data-action="workout-options" data-routine-id="${routine.id}">
-        <div class="workout-title">${esc(routine.name)}</div>
+        <div>
+          <div class="workout-title">${esc(routine.name)}</div>
+          <div class="workout-meta">${exCount} exercise${exCount !== 1 ? "s" : ""}${setCount ? ` · ${setCount} sets` : ""}</div>
+        </div>
+        <div class="workout-actions">
+          <span class="muted" style="font-size:12px">${lastText}</span>
+          <span class="workout-card-chevron">›</span>
+        </div>
       </div>
     `;
   }).join("");
+  renderWeekStrip();
+  renderWeekStats();
+}
+
+function renderWeekStrip() {
+  const container = $("#weekDays");
+  if (!container) return;
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((dow + 6) % 7));
+
+  const fmt8 = (dt) => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+  const today8 = fmt8(today);
+
+  // Build set of workout dates from this week
+  const completedWorkouts = getCompletedWorkoutsByNewest();
+  const workoutDates = new Set(completedWorkouts.map((w) => {
+    const d = new Date(w.endedAt || w.createdAt);
+    return fmt8(d);
+  }));
+
+  const DLBL = ["M","T","W","T","F","S","S"];
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    return dd;
+  });
+
+  container.innerHTML = days.map((wd, i) => {
+    const ds = fmt8(wd);
+    const isDone = workoutDates.has(ds);
+    const isToday = ds === today8;
+    let labelClass = "week-day-label";
+    let dotClass = "week-day-dot";
+    if (isToday) { labelClass += " today"; dotClass += " today"; }
+    else if (isDone) { labelClass += " done"; dotClass += " done"; }
+    return `
+      <div class="week-day">
+        <span class="${labelClass}">${DLBL[i]}</span>
+        <div class="${dotClass}"></div>
+      </div>
+    `;
+  }).join("");
+
+  // Compute streak in weeks
+  const streakEl = $("#streakCount");
+  if (streakEl) {
+    let streak = 0;
+    const checkDate = new Date(today);
+    for (let w = 0; w < 52; w++) {
+      let hasWorkout = false;
+      for (let d = 0; d < 7; d++) {
+        const ds = fmt8(checkDate);
+        if (workoutDates.has(ds)) { hasWorkout = true; }
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      if (hasWorkout) streak++;
+      else break;
+    }
+    streakEl.textContent = streak;
+  }
+}
+
+function renderWeekStats() {
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((dow + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+
+  const completedWorkouts = getCompletedWorkoutsByNewest();
+  const thisWeek = completedWorkouts.filter((w) => {
+    const d = new Date(w.endedAt || w.createdAt);
+    return d >= monday;
+  });
+
+  const vol = thisWeek.reduce((a, w) => a + workoutVolume(w), 0);
+  const sets = thisWeek.reduce((a, w) => a + (w.items || []).reduce((b, item) => b + ((item.sets || []).filter((s) => s.completed).length), 0), 0);
+
+  let bestDay = "—";
+  if (thisWeek.length > 0) {
+    const best = thisWeek.reduce((a, b) => workoutVolume(a) >= workoutVolume(b) ? a : b);
+    const name = (best.name || "Workout").split(" ").slice(0, 2).join(" ");
+    bestDay = name;
+  }
+
+  const volEl = $("#weekVolume");
+  const workEl = $("#weekWorkouts");
+  const setsEl = $("#weekSets");
+  const bestEl = $("#weekBestDay");
+  if (volEl) volEl.innerHTML = vol >= 1000 ? `${(vol/1000).toFixed(1)}<span class="stat-unit">t</span>` : `${vol.toFixed(0)}<span class="stat-unit">kg</span>`;
+  if (workEl) workEl.textContent = thisWeek.length;
+  if (setsEl) setsEl.textContent = sets || "—";
+  if (bestEl) bestEl.textContent = bestDay;
 }
 
 function openWorkoutSheet(routineId) {
@@ -5343,20 +5469,15 @@ function registerServiceWorker() {
 }
 
 function updateLatestUpdateStamp() {
+  const d = new Date();
   const el = $("#latestUpdate");
-  if (!el) return;
-  const raw = document.lastModified;
-  const parsed = raw ? new Date(raw) : null;
-  const date = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
-  const stamp = date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
-  el.textContent = `Updated ${stamp}`;
+  if (el) {
+    el.textContent = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  const dayEl = $("#workoutsDayName");
+  if (dayEl) {
+    dayEl.textContent = d.toLocaleDateString("en-US", { weekday: "long" });
+  }
 }
 
 function getUrlHashParams(url) {
@@ -5564,6 +5685,8 @@ function scheduleCloudSync() {
       updateCloudUI();
     });
     updateLatestUpdateStamp();
+    renderWeekStrip();
+    renderWeekStats();
     registerServiceWorker();
     setupInstallPrompt();
   }

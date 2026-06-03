@@ -19,21 +19,51 @@
   <div class="app">
     <main id="viewContainer">
       <section id="view-workouts" class="view active">
-        <div id="noWorkout" class="landing">
-          <div class="hero">
-              <div class="eyebrow" id="latestUpdate">Updated</div>
-            <h1>Start Workout</h1>
-            <div class="hero-sub">Quick Start</div>
-            <button class="primary wide" data-action="start-quick">Start an Empty Workout</button>
+        <div id="noWorkout">
+          <!-- Header -->
+          <div class="workouts-header">
+            <div class="workouts-header-left">
+              <div class="page-eyebrow" id="latestUpdate"></div>
+              <div class="page-day" id="workoutsDayName"></div>
+            </div>
+            <div class="workouts-header-brand">FORGE</div>
           </div>
 
-          <div class="panel">
-            <div class="row space">
-              <h2>Workouts</h2>
+          <!-- 7-day week strip -->
+          <div id="weekStrip" class="week-strip">
+            <div class="week-strip-days" id="weekDays"></div>
+            <div class="week-sep"></div>
+            <div class="week-streak">
+              <div class="week-streak-count">
+                <span class="week-streak-num" id="streakCount">0</span>
+                <span class="week-streak-unit">wk</span>
+              </div>
+              <div class="week-streak-label">STREAK</div>
             </div>
-            <button class="primary wide tile-button" data-action="create-workout">+ Workout</button>
-            <div id="landingWorkouts" class="workout-grid"></div>
           </div>
+
+          <!-- CTA -->
+          <button class="btn-cta" data-action="start-quick" style="margin-bottom:22px">Start Workout</button>
+
+          <!-- This Week Stats -->
+          <div class="section-header">
+            <span class="section-label">This Week</span>
+          </div>
+          <div class="stats-tiles" id="weekStatsGrid">
+            <div class="stat-tile"><div class="stat-tile-label">Volume</div><div class="stat-tile-value" id="weekVolume">—</div></div>
+            <div class="stat-tile"><div class="stat-tile-label">Workouts</div><div class="stat-tile-value" id="weekWorkouts">—</div></div>
+            <div class="stat-tile"><div class="stat-tile-label">Total Sets</div><div class="stat-tile-value" id="weekSets">—</div></div>
+            <div class="stat-tile"><div class="stat-tile-label">Best Day</div><div class="stat-tile-value" id="weekBestDay" style="font-size:16px;letter-spacing:-.01em">—</div></div>
+          </div>
+
+          <div class="v2-divider"></div>
+
+          <!-- Templates -->
+          <div class="section-header">
+            <span class="section-label">Templates</span>
+            <button class="ghost" style="height:30px;font-size:11px;padding:0 10px;border-radius:15px" data-action="create-workout">+ New</button>
+          </div>
+          <div id="landingWorkouts" class="workout-grid"></div>
         </div>
       </section>
 
@@ -107,6 +137,10 @@
         </section>
 
       <section id="view-exercises" class="view">
+        <div class="page-header">
+          <div class="page-eyebrow-small">Your Library</div>
+          <div class="page-title-large">Exercises</div>
+        </div>
         <button class="primary wide tile-button" data-action="toggle-exercise-form">+ Exercise</button>
         <div id="exerciseForm" class="panel hidden">
           <div class="row space">
@@ -143,6 +177,10 @@
       </section>
 
       <section id="view-stats" class="view">
+        <div class="page-header">
+          <div class="page-eyebrow-small">Analytics</div>
+          <div class="page-title-large">Stats</div>
+        </div>
         <div class="panel">
           <div class="row space">
             <h2>Exercise Performance</h2>
@@ -266,6 +304,10 @@
       </section>
 
       <section id="view-history" class="view">
+        <div class="page-header">
+          <div class="page-eyebrow-small">Activity</div>
+          <div class="page-title-large">History</div>
+        </div>
         <div class="panel">
           <div class="row space">
             <h2>History</h2>
@@ -280,6 +322,10 @@
       </section>
 
       <section id="view-tools" class="view">
+        <div class="page-header">
+          <div class="page-eyebrow-small">Configuration</div>
+          <div class="page-title-large">Tools</div>
+        </div>
         <div class="panel">
           <div class="row space">
             <h2>Settings</h2>
@@ -364,11 +410,31 @@
     </main>
 
     <nav class="bottom-nav">
-      <button class="nav-btn" data-action="nav" data-view="stats">Stats</button>
-      <button class="nav-btn" data-action="nav" data-view="history">History</button>
-      <button class="nav-btn active" data-action="nav" data-view="workouts">Workouts</button>
-      <button class="nav-btn" data-action="nav" data-view="exercises">Exercises</button>
-      <button class="nav-btn" data-action="nav" data-view="tools">Tools</button>
+      <button class="nav-btn" data-action="nav" data-view="stats">
+        <svg width="20" height="18" viewBox="0 0 20 18" fill="currentColor"><rect x="1" y="10" width="4" height="8" rx="1.5"/><rect x="8" y="5" width="4" height="13" rx="1.5"/><rect x="15" y="1" width="4" height="17" rx="1.5"/></svg>
+        <span class="nav-label">Stats</span>
+        <div class="nav-pill" style="width:0;opacity:0"></div>
+      </button>
+      <button class="nav-btn" data-action="nav" data-view="history">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 3"/></svg>
+        <span class="nav-label">History</span>
+        <div class="nav-pill" style="width:0;opacity:0"></div>
+      </button>
+      <button class="nav-btn active" data-action="nav" data-view="workouts">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 2L18 6.5v7L10 18L2 13.5v-7Z"/></svg>
+        <span class="nav-label">Forge</span>
+        <div class="nav-pill" style="width:14px;opacity:1"></div>
+      </button>
+      <button class="nav-btn" data-action="nav" data-view="exercises">
+        <svg width="20" height="16" viewBox="0 0 20 16" fill="currentColor"><rect y="0" width="20" height="2" rx="1"/><rect y="7" width="20" height="2" rx="1"/><rect y="14" width="13" height="2" rx="1"/></svg>
+        <span class="nav-label">Library</span>
+        <div class="nav-pill" style="width:0;opacity:0"></div>
+      </button>
+      <button class="nav-btn" data-action="nav" data-view="tools">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M14.3 4.3l-1.4 1.4M4.3 15.7l1.4-1.4"/></svg>
+        <span class="nav-label">Tools</span>
+        <div class="nav-pill" style="width:0;opacity:0"></div>
+      </button>
     </nav>
   </div>
 
