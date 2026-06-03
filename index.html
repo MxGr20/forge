@@ -234,12 +234,11 @@
             <option value="year">Year</option>
           </select>
 
-          <label>
-            Muscles to Track
-            <div id="muscleFilterSelect" class="tag-multi-root" data-multi-root="stats-muscles"></div>
-          </label>
-          <div class="muted small" style="margin-bottom:8px">Select one or more muscles to compare effective sets over time.</div>
-          <div class="chart-card">
+          <div id="muscleToggleChips" class="filter-chips" style="flex-wrap:wrap;gap:6px;margin-bottom:16px"></div>
+          <div id="muscleVolumeBars" style="margin-bottom:22px"></div>
+          <!-- hidden legacy elements kept for backward compat -->
+          <div id="muscleFilterSelect" class="tag-multi-root" data-multi-root="stats-muscles" style="display:none"></div>
+          <div style="display:none">
             <div id="muscleChartTitle" class="chart-title">Effective Sets by Muscle Group</div>
             <div id="muscleVolumeChart" class="chart"></div>
             <div id="muscleChartSummary" class="chart-summary muted small" role="status" aria-live="polite"></div>
@@ -254,47 +253,36 @@
             <span class="section-label">Body Composition</span>
             <button class="ghost" style="height:28px;font-size:11px;padding:0 12px;border-radius:14px" data-action="save-body-measurement">+ Log</button>
           </div>
-          <div class="grid-2">
-            <label>
-              Body Weight (kg)
-              <input type="number" step="0.1" id="measureBodyWeight" placeholder="101.3">
-            </label>
-            <label>
-              Muscle Weight (kg)
-              <input type="number" step="0.1" id="measureMuscleWeight" placeholder="81.5">
-            </label>
+          <div id="bodyCompTiles" class="body-comp-tiles">
+            <div class="stat-tile" id="bodyCompWeight" data-action="body-comp-metric" data-metric-key="bodyWeight" style="cursor:pointer">
+              <div class="stat-tile-label">Weight</div>
+              <div class="stat-tile-value" style="font-size:18px">—<span class="stat-unit">kg</span></div>
+            </div>
+            <div class="stat-tile" id="bodyCompFat" data-action="body-comp-metric" data-metric-key="bodyFat" style="cursor:pointer">
+              <div class="stat-tile-label">Body Fat</div>
+              <div class="stat-tile-value" style="font-size:18px">—<span class="stat-unit">%</span></div>
+            </div>
+            <div class="stat-tile" id="bodyCompMuscle" data-action="body-comp-metric" data-metric-key="muscleWeight" style="cursor:pointer">
+              <div class="stat-tile-label">Muscle</div>
+              <div class="stat-tile-value" style="font-size:18px">—<span class="stat-unit">kg</span></div>
+            </div>
+            <div class="stat-tile" id="bodyCompChange">
+              <div class="stat-tile-label">Change</div>
+              <div class="stat-tile-value" style="font-size:18px" id="bodyCompChangeValue">—</div>
+            </div>
           </div>
-          <div class="grid-2">
-            <label>
-              Bone Weight (kg)
-              <input type="number" step="0.1" id="measureBoneWeight" placeholder="4.2">
-            </label>
-            <label>
-              Body Fat (%)
-              <input type="number" step="0.1" id="measureBodyFat" placeholder="15.5">
-            </label>
-          </div>
-          <div class="grid-2">
-            <label>
-              TBW (%)
-              <input type="number" step="0.1" id="measureTbw" placeholder="61.0">
-            </label>
-            <label>
-              BMI
-              <input type="number" step="0.1" id="measureBmi" placeholder="26.1">
-            </label>
-          </div>
-          <div id="bodyMeasurementMeta" class="muted small"></div>
-          <div class="chart-card">
-            <div class="row wrap stats-controls">
-              <div id="measurementMetricTitle" class="chart-title">Body Measurement Trend</div>
-              <select id="measurementMetricSelect"></select>
-              <select id="measurementMonthsSelect"></select>
+          <div class="chart-card" style="margin-bottom:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <div id="measurementMetricTitle" class="chart-title" style="font-size:13px;font-weight:600">Body Weight</div>
+              <div style="font-size:12px;color:var(--color-text-secondary)">Tap to inspect</div>
             </div>
             <div id="measurementMetricChart" class="chart adaptive-performance-chart"></div>
             <div id="measurementMetricSummary" class="chart-summary muted small" role="status" aria-live="polite"></div>
             <div id="measurementMetricRange" class="muted small chart-range"></div>
           </div>
+          <!-- hidden selects kept for backward compat -->
+          <select id="measurementMetricSelect" style="display:none"></select>
+          <select id="measurementMonthsSelect" style="display:none"></select>
         </div>
       </section>
 

@@ -151,6 +151,7 @@ const ui = {
   historyEditTarget: null,
   historyFilter: "all",
   measurementMetric: "bodyWeight",
+  bodyCompMetric: "bodyWeight",
   measurementMonthsBack: 6,
   exercisePrimarySelection: [],
   exerciseDetailedSelection: [],
