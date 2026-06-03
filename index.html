@@ -721,13 +721,58 @@ function HistoryView(){
 }
 
 /* ── EXERCISES VIEW ── */
+function ExMusclePills({primary,secondary}){
+  const ps=parseMuscleGroups(primary);
+  const ss=parseMuscleGroups(secondary);
+  if(!ps.length&&!ss.length)return null;
+  return(
+    <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:5}}>
+      {ps.map(m=>(
+        <span key={m} style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:600,
+          background:'var(--bsoft)',border:'1px solid var(--bbd)',color:'var(--brand2)'}}>{m}</span>
+      ))}
+      {ss.map(m=>(
+        <span key={m} style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:600,
+          background:'rgba(255,255,255,.07)',border:'1px solid var(--bd)',color:'var(--t2)'}}>{m}</span>
+      ))}
+    </div>
+  );
+}
+
+function MuscleGroupPicker({selected,onChange,label,accent}){
+  const toggle=(m)=>onChange(selected.includes(m)?selected.filter(x=>x!==m):[...selected,m]);
+  const selStyle=accent==='primary'
+    ?{background:'var(--bsoft)',border:'1px solid var(--bbd)',color:'var(--brand2)'}
+    :{background:'rgba(255,255,255,.12)',border:'1px solid rgba(255,255,255,.25)',color:'var(--t1)'};
+  return(
+    <div style={{marginBottom:20}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+        <span style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)'}}>{label}</span>
+        {selected.length>0&&<button onClick={()=>onChange([])} style={{fontSize:10,color:'var(--t3)',background:'none',border:'none',cursor:'pointer',padding:0}}>Clear</button>}
+      </div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        {CANONICAL_MUSCLE_GROUPS.map(m=>{
+          const sel=selected.includes(m);
+          return(
+            <button key={m} onClick={()=>toggle(m)} style={{padding:'5px 12px',borderRadius:99,fontSize:12,
+              fontWeight:600,cursor:'pointer',transition:'all .12s',
+              ...(sel?selStyle:{background:'rgba(255,255,255,.04)',border:'1px solid var(--bd)',color:'var(--t3)'})}}>
+              {m}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ExercisesView(){
   const [q,setQ]=useState('');
   const [editMode,setEditMode]=useState(false);
   const [exSheet,setExSheet]=useState(null);
   const [,tick]=useReducer(x=>x+1,0);
   const refresh=()=>tick();
-  const list=state.exercises.filter(e=>e.name.toLowerCase().includes(q.toLowerCase()));
+  const list=state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name)).filter(e=>e.name.toLowerCase().includes(q.toLowerCase()));
   const doRemove=(id)=>{deleteExercise(id);refresh();};
   const doSave=(ex)=>{
     const idx=state.exercises.findIndex(e=>e.id===ex.id);
@@ -761,13 +806,13 @@ function ExercisesView(){
       ):(
         <div className="card" style={{padding:'0 16px'}}>
           {list.map(ex=>(
-            <div key={ex.id} className="er" style={{gap:10}}>
-              {editMode&&<button onClick={()=>doRemove(ex.id)} style={{width:22,height:22,borderRadius:'50%',background:'var(--danger)',border:'none',color:'#fff',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>−</button>}
+            <div key={ex.id} className="er" style={{gap:10,alignItems:'flex-start',paddingTop:12,paddingBottom:12}}>
+              {editMode&&<button onClick={()=>doRemove(ex.id)} style={{width:22,height:22,borderRadius:'50%',background:'var(--danger)',border:'none',color:'#fff',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,marginTop:2}}>−</button>}
               <div style={{flex:1,cursor:'pointer',minWidth:0}} onClick={()=>setExSheet({item:ex})}>
-                <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:4}}>{ex.name}</div>
-                {ex.primaryMuscleGroups&&<div style={{fontSize:11,color:'var(--t3)'}}>{ex.primaryMuscleGroups}</div>}
+                <div style={{fontSize:14,fontWeight:600,color:'var(--text)'}}>{ex.name}</div>
+                <ExMusclePills primary={ex.primaryMuscleGroups} secondary={ex.detailedMuscleGroups}/>
               </div>
-              <span style={{color:'var(--t3)',fontSize:18,cursor:'pointer',flexShrink:0}} onClick={()=>setExSheet({item:ex})}>›</span>
+              <span style={{color:'var(--t3)',fontSize:18,cursor:'pointer',flexShrink:0,marginTop:2}} onClick={()=>setExSheet({item:ex})}>›</span>
             </div>
           ))}
         </div>
@@ -780,28 +825,25 @@ function ExercisesView(){
 function ExerciseSheet({item,onSave,onDelete,onClose}){
   const isNew=!item;
   const [name,setName]=useState(item?.name||'');
-  const [primary,setPrimary]=useState(item?.primaryMuscleGroups||'');
-  const [detailed,setDetailed]=useState(item?.detailedMuscleGroups||'');
+  const [primary,setPrimary]=useState(()=>parseMuscleGroups(item?.primaryMuscleGroups||''));
+  const [detailed,setDetailed]=useState(()=>parseMuscleGroups(item?.detailedMuscleGroups||''));
   const valid=name.trim().length>0;
-  const doSave=()=>onSave({id:item?.id||uid(),name:name.trim(),category:'',type:'weight',primaryMuscleGroups:primary,detailedMuscleGroups:detailed});
+  const doSave=()=>onSave({
+    id:item?.id||uid(),name:name.trim(),category:'',type:'weight',
+    primaryMuscleGroups:primary.join(', '),detailedMuscleGroups:detailed.join(', ')
+  });
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
-      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'86%',overflowY:'auto'}}>
+      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'90%',overflowY:'auto'}}>
         <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
         <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>{isNew?'New Exercise':'Edit Exercise'}</div>
         <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Exercise name"
           style={{width:'100%',height:52,borderRadius:14,background:'var(--s2)',outline:'none',display:'block',
             border:'1px solid '+(name.trim()?'var(--bbd)':'var(--bd)'),color:'var(--text)',fontFamily:'var(--fh)',
-            fontSize:18,fontWeight:700,padding:'0 16px',marginBottom:16}}/>
-        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)',marginBottom:6}}>Primary Muscles</div>
-        <input type="text" value={primary} onChange={e=>setPrimary(e.target.value)} placeholder="e.g. Chest, Triceps"
-          style={{width:'100%',height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',
-            color:'var(--text)',fontFamily:'var(--fb)',fontSize:14,padding:'0 14px',outline:'none',marginBottom:16}}/>
-        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)',marginBottom:6}}>Secondary Muscles</div>
-        <input type="text" value={detailed} onChange={e=>setDetailed(e.target.value)} placeholder="e.g. Shoulders, Core"
-          style={{width:'100%',height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',
-            color:'var(--text)',fontFamily:'var(--fb)',fontSize:14,padding:'0 14px',outline:'none',marginBottom:26}}/>
+            fontSize:18,fontWeight:700,padding:'0 16px',marginBottom:20}}/>
+        <MuscleGroupPicker selected={primary} onChange={setPrimary} label="Primary Muscles" accent="primary"/>
+        <MuscleGroupPicker selected={detailed} onChange={setDetailed} label="Secondary Muscles" accent="secondary"/>
         <button className="cta" style={{marginBottom:10,opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}} onClick={doSave}>
           {isNew?'Add Exercise':'Save Changes'}
         </button>
