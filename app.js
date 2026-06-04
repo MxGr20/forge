@@ -115,6 +115,7 @@ const DEFAULT_STATE = {
   routines: [],
   workouts: [],
   bodyMeasurements: [],
+  customMuscleGroups: [],
   muscleTagLibrary: {
     primary: [],
     detailed: []
@@ -579,6 +580,7 @@ function createPersistedStateSnapshot(sourceState, options = {}) {
   const priorLastModified = Number.isFinite(source.lastModified) ? source.lastModified : 0;
   const lastModified = options.touchLastModified ? Date.now() : priorLastModified;
   const statsData = buildStatsDataSnapshot(exercises, workouts, bodyMeasurements);
+  const customMuscleGroups = Array.isArray(source?.customMuscleGroups) ? source.customMuscleGroups : [];
   return {
     version: STORAGE_VERSION,
     lastModified,
@@ -589,6 +591,7 @@ function createPersistedStateSnapshot(sourceState, options = {}) {
       workouts,
       bodyMeasurements
     },
+    customMuscleGroups,
     muscleTagLibrary,
     activeWorkoutId,
     statsData
@@ -609,6 +612,7 @@ function hydrateState(source) {
   fresh.routines = routines;
   fresh.workouts = workouts;
   fresh.bodyMeasurements = bodyMeasurements;
+  fresh.customMuscleGroups = Array.isArray(source?.customMuscleGroups) ? source.customMuscleGroups : [];
   fresh.muscleTagLibrary = snapshot.muscleTagLibrary;
   fresh.activeWorkoutId = snapshot.activeWorkoutId;
   fresh.statsData = snapshot.statsData?.version === STATS_DATA_VERSION
@@ -1227,13 +1231,28 @@ function addWorkoutExercise(exerciseId) {
   if (!workout) return;
   const exercise = getExercise(exerciseId);
   if (!exercise) return;
+
+  const lastWorkoutWithEx = state.workouts
+    .filter(w => w.id !== workout.id && w.endedAt)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .find(w => w.items.some(i => i.exerciseId === exerciseId));
+  const lastItem = lastWorkoutWithEx?.items.find(i => i.exerciseId === exerciseId);
+  const prefillSets = lastItem?.sets?.length
+    ? lastItem.sets.map(s => ({
+        id: uid(), type: exercise.type || "weight", tag: s.tag || "work",
+        completed: false,
+        weight: Number.isFinite(s.weight) ? s.weight : null,
+        reps: Number.isFinite(s.reps) ? s.reps : null
+      }))
+    : [{ id: uid(), type: exercise.type || "weight", tag: "work", completed: false, weight: null, reps: null }];
+
   workout.items.push({
     id: uid(),
     exerciseId: exercise.id,
     group: "",
     note: "",
     metricMode: "reps",
-    sets: []
+    sets: prefillSets
   });
   saveState();
   renderLog();
@@ -1523,6 +1542,78 @@ function deleteRoutine(routineId) {
   if (ui.editRoutineId === routineId) ui.editRoutineId = null;
   saveState();
   renderRoutines();
+}
+
+function renameRoutine(routineId, name) {
+  const routine = state.routines.find(r => r.id === routineId);
+  if (!routine) return;
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return;
+  routine.name = trimmed;
+  saveState();
+}
+
+function addRoutineExercise(routineId, exerciseId) {
+  const routine = state.routines.find(r => r.id === routineId);
+  if (!routine) return;
+  const exercise = getExercise(exerciseId);
+  if (!exercise) return;
+  routine.items.push({ id: uid(), exerciseId: exercise.id, group: "", note: "", metricMode: "reps", sets: [] });
+  saveState();
+}
+
+function removeRoutineExercise(routineId, itemId) {
+  const routine = state.routines.find(r => r.id === routineId);
+  if (!routine) return;
+  routine.items = routine.items.filter(i => i.id !== itemId);
+  saveState();
+}
+
+function deleteWorkoutFromHistory(id) {
+  state.workouts = state.workouts.filter(w => w.id !== id);
+  saveState();
+}
+
+function renameWorkout(id, name) {
+  const w = state.workouts.find(w => w.id === id);
+  if (!w) return;
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return;
+  w.name = trimmed;
+  saveState();
+}
+
+function deleteBodyMeasurement(id) {
+  state.bodyMeasurements = state.bodyMeasurements.filter(m => m.id !== id);
+  saveState();
+}
+
+function updateBodyMeasurement(id, fields) {
+  const m = state.bodyMeasurements.find(m => m.id === id);
+  if (!m) return;
+  Object.assign(m, fields);
+  saveState();
+}
+
+function getAllMuscleGroups() {
+  const custom = Array.isArray(state.customMuscleGroups) ? state.customMuscleGroups : [];
+  return [...CANONICAL_MUSCLE_GROUPS, ...custom];
+}
+
+function addCustomMuscleGroup(name) {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return false;
+  if (!state.customMuscleGroups) state.customMuscleGroups = [];
+  if (getAllMuscleGroups().some(g => g.toLowerCase() === trimmed.toLowerCase())) return false;
+  state.customMuscleGroups.push(trimmed);
+  saveState();
+  return true;
+}
+
+function deleteCustomMuscleGroup(name) {
+  if (!state.customMuscleGroups) return;
+  state.customMuscleGroups = state.customMuscleGroups.filter(g => g !== name);
+  saveState();
 }
 
   function addRoutineItem() {
