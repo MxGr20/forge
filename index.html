@@ -52,11 +52,14 @@ body{background:var(--bg)}
 .tu{animation:sU .22s cubic-bezier(.22,1,.36,1)}
 @keyframes shup{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .sheet{
-  position:absolute;bottom:0;left:0;right:0;border-radius:24px 24px 0 0;
+  position:fixed;bottom:0;left:0;right:0;border-radius:24px 24px 0 0;
   background:#0d1438;border-top:1px solid rgba(255,255,255,.13);
-  z-index:50;animation:shup .32s cubic-bezier(.22,1,.36,1);
+  z-index:200;animation:shup .32s cubic-bezier(.22,1,.36,1);
 }
-.sheet-scrim{position:absolute;inset:0;background:rgba(0,0,0,.58);z-index:49}
+@media(min-width:600px){
+  .sheet{left:50%;right:auto;width:var(--max);margin-left:calc(var(--max)/ -2)}
+}
+.sheet-scrim{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:199}
 @keyframes rpulse{
   0%,100%{box-shadow:0 0 0 0 rgba(var(--brgb),0)}
   50%{box-shadow:0 0 0 8px rgba(var(--brgb),.13),0 0 18px rgba(var(--brgb),.07)}
@@ -343,27 +346,38 @@ function TemplateEditSheet({routine,onClose}){
   };
   const doAdd=(exId)=>{addRoutineExercise(routine.id,exId);tick();setAddOpen(false);setQ('');};
   const doRemove=(itemId)=>{removeRoutineExercise(routine.id,itemId);tick();};
+  const doMove=(itemId,delta)=>{moveRoutineItem(routine.id,itemId,delta);tick();};
   const filtered=state.exercises.filter(e=>e.name.toLowerCase().includes(q.toLowerCase())).slice(0,40);
+  const BtnIcon=({children,onClick,style})=>(
+    <button onClick={onClick} style={{width:28,height:28,borderRadius:8,background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--t2)',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,...style}}>{children}</button>
+  );
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
-      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'88%',display:'flex',flexDirection:'column'}}>
-        <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 14px'}}/>
-        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>Edit Template</div>
-        <input value={name} onChange={e=>setName(e.target.value)} onBlur={saveName}
-          style={{width:'100%',height:52,borderRadius:14,background:'var(--s2)',border:'1px solid var(--bbd)',color:'var(--text)',
-            fontFamily:'var(--fh)',fontSize:18,fontWeight:700,padding:'0 16px',marginBottom:16,outline:'none',flexShrink:0}}/>
-        <div style={{overflowY:'auto',flex:1}}>
+      <div className="sheet" style={{maxHeight:'88%',display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'14px 22px 12px',flexShrink:0}}>
+          <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 14px'}}/>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>Edit Template</div>
+          <input value={name} onChange={e=>setName(e.target.value)} onBlur={saveName}
+            style={{width:'100%',height:52,borderRadius:14,background:'var(--s2)',border:'1px solid var(--bbd)',color:'var(--text)',
+              fontFamily:'var(--fh)',fontSize:18,fontWeight:700,padding:'0 16px',outline:'none'}}/>
+        </div>
+        <div style={{overflowY:'auto',flex:1,padding:'8px 22px 0'}}>
           {routine.items.length===0?(
             <div style={{textAlign:'center',padding:'16px 0',color:'var(--t3)',fontSize:13}}>No exercises yet. Add some below.</div>
           ):(
             routine.items.map((item,idx)=>{
               const ex=getExercise(item.exerciseId);
+              const isFirst=idx===0, isLast=idx===routine.items.length-1;
               return(
-                <div key={item.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:idx<routine.items.length-1?'1px solid var(--bd)':'none'}}>
-                  <div style={{width:24,height:24,borderRadius:7,background:'var(--s2)',border:'1px solid var(--bd)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--fh)',fontSize:10,fontWeight:700,color:'var(--t3)',flexShrink:0}}>{idx+1}</div>
+                <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:!isLast?'1px solid var(--bd)':'none'}}>
+                  <div style={{display:'flex',flexDirection:'column',gap:3,flexShrink:0}}>
+                    <BtnIcon onClick={()=>!isFirst&&doMove(item.id,-1)} style={{opacity:isFirst?.25:1}}>↑</BtnIcon>
+                    <BtnIcon onClick={()=>!isLast&&doMove(item.id,1)} style={{opacity:isLast?.25:1}}>↓</BtnIcon>
+                  </div>
+                  <div style={{width:22,height:22,borderRadius:6,background:'var(--s2)',border:'1px solid var(--bd)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--fh)',fontSize:10,fontWeight:700,color:'var(--t3)',flexShrink:0}}>{idx+1}</div>
                   <span style={{flex:1,fontSize:14,color:'var(--text)'}}>{ex?.name||'Unknown'}</span>
-                  <button onClick={()=>doRemove(item.id)} style={{width:26,height:26,borderRadius:'50%',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',color:'var(--danger)',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>−</button>
+                  <BtnIcon onClick={()=>doRemove(item.id)} style={{background:'rgba(239,68,68,.1)',borderColor:'rgba(239,68,68,.3)',color:'var(--danger)',fontSize:16}}>−</BtnIcon>
                 </div>
               );
             })
@@ -374,16 +388,16 @@ function TemplateEditSheet({routine,onClose}){
               <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises…"
                 style={{width:'100%',height:42,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',marginBottom:8,outline:'none'}}/>
               {filtered.map(ex=>(
-                <div key={ex.id} style={{padding:'11px 0',borderBottom:'1px solid var(--bd)',cursor:'pointer',fontSize:14,color:'var(--text)'}}
-                  onClick={()=>doAdd(ex.id)}>
-                  {ex.name}
-                </div>
+                <div key={ex.id} style={{padding:'11px 0',borderBottom:'1px solid var(--bd)',cursor:'pointer',fontSize:14,color:'var(--text)'}} onClick={()=>doAdd(ex.id)}>{ex.name}</div>
               ))}
               {filtered.length===0&&<div style={{fontSize:13,color:'var(--t3)',padding:'12px 0'}}>No exercises found</div>}
             </div>
           )}
+          <div style={{height:16}}/>
         </div>
-        <button className="cta" style={{marginTop:16,flexShrink:0}} onClick={onClose}>Done</button>
+        <div style={{padding:'12px 22px 24px',flexShrink:0,borderTop:'1px solid var(--bd)'}}>
+          <button className="cta" onClick={onClose}>Done</button>
+        </div>
       </div>
     </>
   );
@@ -761,7 +775,8 @@ function StatsView({onBodyLog}){
 /* ── HISTORY VIEW ── */
 function HistoryView({refresh}){
   const [f,setF]=useState('all');
-  const [sel,setSel]=useState(null);
+  const [editWorkout,setEditWorkout]=useState(null);
+  const [editMeas,setEditMeas]=useState(null);
   const [,tick]=useReducer(x=>x+1,0);
   const reload=()=>{tick();if(refresh)refresh();};
   const all=[
@@ -788,37 +803,50 @@ function HistoryView({refresh}){
           <div style={{fontSize:12,color:'var(--t3)',lineHeight:1.5}}>{f==='body'?'Log body measurements in Stats':'Complete a workout to see your history'}</div>
         </div>
       ):(
-        <div className="card" style={{padding:'0 16px'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {list.map((entry,i)=>{
             if(entry.type==='workout'){
               const w=entry.data;
               const vol=workoutVolume(w);
               const dur=w.endedAt?Math.round((new Date(w.endedAt)-new Date(w.createdAt))/60000):null;
               return(
-                <div key={w.id} className="hi" onClick={()=>setSel(entry)}>
-                  <div className="hd"/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:3}}>{w.name}</div>
-                    <div style={{fontSize:12,color:'var(--t2)'}}>{formatDate(w.createdAt)}{dur?` · ${dur} min`:''}</div>
+                <div key={w.id} style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:18,padding:'14px 16px'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                        <div style={{width:7,height:7,borderRadius:'50%',background:'var(--brand)',flexShrink:0}}/>
+                        <div style={{fontSize:14,fontWeight:600,color:'var(--text)'}}>{w.name}</div>
+                      </div>
+                      <div style={{fontSize:12,color:'var(--t2)',paddingLeft:15}}>{formatDate(w.createdAt)}{dur?` · ${dur} min`:''} · {Math.round(vol).toLocaleString()} kg</div>
+                    </div>
                   </div>
-                  <div style={{textAlign:'right',flexShrink:0}}>
-                    <div style={{fontFamily:'var(--fh)',fontSize:13,color:'var(--text)',fontVariantNumeric:'tabular-nums'}}>{Math.round(vol).toLocaleString()} kg</div>
-                    {w.items.length>0&&<div style={{fontSize:12,color:'var(--t2)'}}>{w.items.length} exercises</div>}
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="gh" style={{flex:1,height:34,fontSize:12}} onClick={()=>setEditWorkout(w)}>Edit</button>
+                    <button className="gh" style={{height:34,fontSize:12,padding:'0 14px',color:'var(--danger)',borderColor:'rgba(239,68,68,.3)'}}
+                      onClick={()=>{if(confirm('Delete this workout?')){deleteWorkoutFromHistory(w.id);reload();}}}>Delete</button>
                   </div>
                 </div>
               );
             } else {
               const m=entry.data;
               return(
-                <div key={m.id||i} className="hi" onClick={()=>setSel(entry)}>
-                  <div className="hd meas"/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:3}}>Body Measurement</div>
-                    <div style={{fontSize:12,color:'var(--t2)'}}>{formatDate(m.createdAt)}</div>
+                <div key={m.id||i} style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:18,padding:'14px 16px'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
+                    <div>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                        <div style={{width:7,height:7,borderRadius:'50%',background:'var(--t3)',flexShrink:0}}/>
+                        <div style={{fontSize:14,fontWeight:600,color:'var(--text)'}}>Body Measurement</div>
+                      </div>
+                      <div style={{fontSize:12,color:'var(--t2)',paddingLeft:15}}>
+                        {formatDate(m.createdAt)}{m.bodyWeight?` · ${m.bodyWeight} kg`:''}
+                        {m.bodyFat?` · ${m.bodyFat}% fat`:''}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{textAlign:'right',flexShrink:0}}>
-                    {m.bodyWeight&&<div style={{fontFamily:'var(--fh)',fontSize:13,color:'var(--text)',fontVariantNumeric:'tabular-nums'}}>{m.bodyWeight} kg</div>}
-                    {m.bodyFat&&<div style={{fontSize:12,color:'var(--t2)'}}>{m.bodyFat}% BF</div>}
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="gh" style={{flex:1,height:34,fontSize:12}} onClick={()=>setEditMeas(m)}>Edit</button>
+                    <button className="gh" style={{height:34,fontSize:12,padding:'0 14px',color:'var(--danger)',borderColor:'rgba(239,68,68,.3)'}}
+                      onClick={()=>{if(confirm('Delete this measurement?')){deleteBodyMeasurement(m.id);reload();}}}>Delete</button>
                   </div>
                 </div>
               );
@@ -826,52 +854,89 @@ function HistoryView({refresh}){
           })}
         </div>
       )}
-      {sel&&sel.type==='workout'&&<WorkoutHistorySheet workout={sel.data} onClose={()=>setSel(null)} onSaved={()=>{setSel(null);reload();}}/>}
-      {sel&&sel.type==='measurement'&&<MeasurementHistorySheet measurement={sel.data} onClose={()=>setSel(null)} onSaved={()=>{setSel(null);reload();}}/>}
+      {editWorkout&&<WorkoutHistorySheet workout={editWorkout} onClose={()=>setEditWorkout(null)} onSaved={()=>{setEditWorkout(null);reload();}}/>}
+      {editMeas&&<MeasurementHistorySheet measurement={editMeas} onClose={()=>setEditMeas(null)} onSaved={()=>{setEditMeas(null);reload();}}/>}
     </div>
   );
 }
 
 function WorkoutHistorySheet({workout,onClose,onSaved}){
   const [name,setName]=useState(workout.name);
+  const [addOpen,setAddOpen]=useState(false);
+  const [q,setQ]=useState('');
+  const [,tick]=useReducer(x=>x+1,0);
   const dur=workout.endedAt?Math.round((new Date(workout.endedAt)-new Date(workout.createdAt))/60000):null;
-  const vol=workoutVolume(workout);
-  const doSave=()=>{renameWorkout(workout.id,name);onSaved();window._forgeToast?.('Workout updated');};
+
+  const saveName=()=>{if(name.trim()!==workout.name){renameWorkout(workout.id,name.trim());}};
   const doDelete=()=>{deleteWorkoutFromHistory(workout.id);onSaved();window._forgeToast?.('Workout deleted');};
+
+  const updSet=(itemId,setId,field,val)=>{updateWorkoutHistorySet(workout.id,itemId,setId,field,val);tick();};
+  const doAddSet=(itemId)=>{addWorkoutHistorySet(workout.id,itemId);tick();};
+  const doRemoveSet=(itemId,setId)=>{removeWorkoutHistorySet(workout.id,itemId,setId);tick();};
+  const doRemoveItem=(itemId)=>{removeWorkoutItem(workout.id,itemId);tick();};
+  const doAddExercise=(exId)=>{addWorkoutItem(workout.id,exId);tick();setAddOpen(false);setQ('');};
+
+  const filtered=state.exercises.filter(e=>e.name.toLowerCase().includes(q.toLowerCase())).slice(0,40);
+
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
-      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'85%',overflowY:'auto',display:'flex',flexDirection:'column'}}>
-        <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
-        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:12}}>Workout Session</div>
-        <input value={name} onChange={e=>setName(e.target.value)}
-          style={{width:'100%',height:52,borderRadius:14,background:'var(--s2)',border:'1px solid var(--bbd)',color:'var(--text)',
-            fontFamily:'var(--fh)',fontSize:18,fontWeight:700,padding:'0 16px',marginBottom:12,outline:'none'}}/>
-        <div style={{display:'flex',gap:8,marginBottom:20}}>
-          <div className="st" style={{flex:1}}><div className="sl2">Date</div><div style={{fontSize:13,color:'var(--text)',fontWeight:600,marginTop:4}}>{formatDate(workout.createdAt)}</div></div>
-          {dur&&<div className="st" style={{flex:1}}><div className="sl2">Duration</div><div style={{fontSize:13,color:'var(--text)',fontWeight:600,marginTop:4}}>{dur} min</div></div>}
-          <div className="st" style={{flex:1}}><div className="sl2">Volume</div><div style={{fontSize:13,color:'var(--text)',fontWeight:600,marginTop:4}}>{Math.round(vol)} kg</div></div>
+      <div className="sheet" style={{maxHeight:'92%',display:'flex',flexDirection:'column'}}>
+        {/* sticky header */}
+        <div style={{padding:'14px 20px 12px',borderBottom:'1px solid var(--bd)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+          <input value={name} onChange={e=>setName(e.target.value)} onBlur={saveName}
+            style={{flex:1,height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bbd)',color:'var(--text)',
+              fontFamily:'var(--fh)',fontSize:17,fontWeight:700,padding:'0 14px',outline:'none'}}/>
+          <button className="cta" style={{width:'auto',height:38,padding:'0 18px',borderRadius:19,fontSize:13,flexShrink:0,boxShadow:'none'}}
+            onClick={()=>{saveName();onSaved();window._forgeToast?.('Saved');}}>Save</button>
         </div>
-        {workout.items.length>0&&(
-          <div style={{marginBottom:20}}>
-            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>Exercises</div>
-            {workout.items.map((item,idx)=>{
-              const ex=getExercise(item.exerciseId);
-              const done=item.sets.filter(s=>s.completed).length;
-              return(
-                <div key={item.id} style={{padding:'10px 0',borderBottom:idx<workout.items.length-1?'1px solid var(--bd)':'none'}}>
-                  <div style={{fontSize:14,fontWeight:600,color:'var(--text)',marginBottom:4}}>{ex?.name||'Unknown Exercise'}</div>
-                  <div style={{fontSize:12,color:'var(--t2)'}}>{done} / {item.sets.length} sets completed</div>
-                  {item.sets.filter(s=>s.completed&&s.weight).map((s,si)=>(
-                    <div key={s.id} style={{fontSize:11,color:'var(--t3)',marginTop:2}}>Set {si+1}: {s.weight}kg × {s.reps} reps</div>
+        {/* stats strip */}
+        <div style={{display:'flex',gap:8,padding:'10px 20px',borderBottom:'1px solid var(--bd)',flexShrink:0}}>
+          <div className="st" style={{flex:1,padding:'8px 10px'}}><div className="sl2">Date</div><div style={{fontSize:12,color:'var(--text)',fontWeight:600,marginTop:2}}>{formatDate(workout.createdAt)}</div></div>
+          {dur&&<div className="st" style={{flex:1,padding:'8px 10px'}}><div className="sl2">Duration</div><div style={{fontSize:12,color:'var(--text)',fontWeight:600,marginTop:2}}>{dur} min</div></div>}
+          <div className="st" style={{flex:1,padding:'8px 10px'}}><div className="sl2">Volume</div><div style={{fontSize:12,color:'var(--text)',fontWeight:600,marginTop:2}}>{Math.round(workoutVolume(workout))} kg</div></div>
+        </div>
+        {/* scrollable body */}
+        <div style={{overflowY:'auto',flex:1,padding:'16px 20px 24px'}}>
+          {workout.items.map(item=>{
+            const ex=getExercise(item.exerciseId);
+            return(
+              <div key={item.id} className="ec" style={{marginBottom:10}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                  <div className="en">{ex?.name||'Unknown Exercise'}</div>
+                  <button onClick={()=>doRemoveItem(item.id)} style={{width:26,height:26,borderRadius:'50%',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',color:'var(--danger)',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>−</button>
+                </div>
+                <div className="sw">
+                  <div className="shd"><span>Set</span><span>kg</span><span>Reps</span><span></span></div>
+                  {item.sets.map((s,i)=>(
+                    <div key={s.id} className="sr done">
+                      <div className="sn">{i+1}</div>
+                      <input className="si" type="number" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
+                        onBlur={e=>updSet(item.id,s.id,'weight',e.target.value)}/>
+                      <input className="si" type="number" inputMode="numeric" defaultValue={s.reps??''} placeholder="—"
+                        onBlur={e=>updSet(item.id,s.id,'reps',e.target.value)}/>
+                      <button onClick={()=>doRemoveSet(item.id,s.id)} style={{width:44,height:44,borderRadius:12,background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',color:'var(--danger)',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>−</button>
+                    </div>
                   ))}
                 </div>
-              );
-            })}
-          </div>
-        )}
-        <button className="cta" style={{marginBottom:10}} onClick={doSave}>Save Changes</button>
-        <button onClick={doDelete} style={{width:'100%',height:44,borderRadius:22,background:'transparent',border:'1px solid rgba(239,68,68,.3)',color:'var(--danger)',fontFamily:'var(--fh)',fontSize:14,fontWeight:700,cursor:'pointer'}}>Delete Workout</button>
+                <button className="gh" style={{width:'100%',marginTop:10,height:38,fontSize:13}} onClick={()=>doAddSet(item.id)}>+ Add Set</button>
+              </div>
+            );
+          })}
+          {/* add exercise */}
+          <button className="gh" style={{width:'100%',height:46,fontSize:14,marginTop:4}} onClick={()=>setAddOpen(v=>!v)}>+ Add Exercise</button>
+          {addOpen&&(
+            <div style={{marginTop:10}}>
+              <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises…"
+                style={{width:'100%',height:42,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',marginBottom:8,outline:'none'}}/>
+              {filtered.map(ex=>(
+                <div key={ex.id} style={{padding:'11px 0',borderBottom:'1px solid var(--bd)',cursor:'pointer',fontSize:14,color:'var(--text)'}} onClick={()=>doAddExercise(ex.id)}>{ex.name}</div>
+              ))}
+            </div>
+          )}
+          <div style={{height:14}}/>
+          <button onClick={doDelete} style={{width:'100%',height:44,borderRadius:22,background:'transparent',border:'1px solid rgba(239,68,68,.3)',color:'var(--danger)',fontFamily:'var(--fh)',fontSize:14,fontWeight:700,cursor:'pointer'}}>Delete Workout</button>
+        </div>
       </div>
     </>
   );
@@ -933,7 +998,7 @@ function ExMusclePills({primary,secondary}){
 
 function MuscleGroupPicker({selected,onChange,label,accent}){
   const toggle=(m)=>onChange(selected.includes(m)?selected.filter(x=>x!==m):[...selected,m]);
-  const allGroups=[...CANONICAL_MUSCLE_GROUPS,...(state.customMuscleGroups||[])];
+  const allGroups=getMuscleGroups();
   const selStyle=accent==='primary'
     ?{background:'var(--bsoft)',border:'1px solid var(--bbd)',color:'var(--brand2)'}
     :{background:'rgba(255,255,255,.12)',border:'1px solid rgba(255,255,255,.25)',color:'var(--t1)'};
@@ -963,8 +1028,10 @@ function ExercisesView(){
   const [q,setQ]=useState('');
   const [editMode,setEditMode]=useState(false);
   const [exSheet,setExSheet]=useState(null);
-  const [showMuscleGroups,setShowMuscleGroups]=useState(false);
+  const [showMuscles,setShowMuscles]=useState(false);
   const [newMuscle,setNewMuscle]=useState('');
+  const [renaming,setRenaming]=useState(null);
+  const [renamVal,setRenamVal]=useState('');
   const [,tick]=useReducer(x=>x+1,0);
   const refresh=()=>tick();
   const list=state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name)).filter(e=>e.name.toLowerCase().includes(q.toLowerCase()));
@@ -978,8 +1045,13 @@ function ExercisesView(){
   };
   const doAddMuscle=()=>{
     if(!newMuscle.trim())return;
-    const ok=addCustomMuscleGroup(newMuscle.trim());
-    if(ok){setNewMuscle('');refresh();}else{window._forgeToast?.('Muscle group already exists');}
+    const ok=addMuscleGroup(newMuscle.trim());
+    if(ok){setNewMuscle('');refresh();}else{window._forgeToast?.('Muscle already exists');}
+  };
+  const doRename=(old)=>{
+    if(!renamVal.trim())return;
+    const ok=renameMuscleGroup(old,renamVal.trim());
+    if(ok){setRenaming(null);setRenamVal('');refresh();}else{window._forgeToast?.('Name already used');}
   };
   return(
     <div className="sc" style={{padding:'16px 20px 20px'}}>
@@ -1020,40 +1092,40 @@ function ExercisesView(){
 
       <div className="div"/>
       <div className="sh">
-        <span className="sl">Muscle Groups</span>
+        <span className="sl">Muscles</span>
         <button className="gh" style={{height:28,fontSize:11,padding:'0 10px',
-          color:showMuscleGroups?'var(--brand2)':'var(--t2)',background:showMuscleGroups?'var(--bsoft)':'rgba(255,255,255,.05)',borderColor:showMuscleGroups?'var(--bbd)':'var(--bd2)'}}
-          onClick={()=>setShowMuscleGroups(v=>!v)}>{showMuscleGroups?'Hide':'Manage'}</button>
+          color:showMuscles?'var(--brand2)':'var(--t2)',background:showMuscles?'var(--bsoft)':'rgba(255,255,255,.05)',borderColor:showMuscles?'var(--bbd)':'var(--bd2)'}}
+          onClick={()=>setShowMuscles(v=>!v)}>{showMuscles?'Hide':'Manage'}</button>
       </div>
-      {showMuscleGroups&&(
+      {showMuscles&&(
         <div style={{marginBottom:16}}>
-          <div style={{display:'flex',gap:8,marginBottom:14}}>
+          <div style={{display:'flex',gap:8,marginBottom:16}}>
             <input value={newMuscle} onChange={e=>setNewMuscle(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&doAddMuscle()}
-              placeholder="New muscle group name…"
+              placeholder="Add new muscle…"
               style={{flex:1,height:42,borderRadius:12,background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',outline:'none'}}/>
             <button className="gh" style={{height:42,padding:'0 14px',flexShrink:0}} onClick={doAddMuscle}>+ Add</button>
           </div>
-          {(state.customMuscleGroups||[]).length>0&&(
-            <div>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--t3)',marginBottom:8}}>Custom Groups</div>
-              <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
-                {(state.customMuscleGroups||[]).map(g=>(
-                  <div key={g} style={{display:'flex',alignItems:'center',gap:6,padding:'5px 10px 5px 12px',borderRadius:99,background:'var(--s1)',border:'1px solid var(--bd)'}}>
-                    <span style={{fontSize:12,fontWeight:600,color:'var(--text)'}}>{g}</span>
-                    <button onClick={()=>{deleteCustomMuscleGroup(g);refresh();}} style={{width:18,height:18,borderRadius:'50%',background:'rgba(239,68,68,.12)',border:'none',color:'var(--danger)',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',lineHeight:1,padding:0}}>×</button>
-                  </div>
-                ))}
+          <div className="card" style={{padding:'0 14px'}}>
+            {getMuscleGroups().map((g,idx)=>(
+              <div key={g} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:idx<getMuscleGroups().length-1?'1px solid var(--bd)':'none'}}>
+                {renaming===g?(
+                  <>
+                    <input autoFocus value={renamVal} onChange={e=>setRenamVal(e.target.value)}
+                      onKeyDown={e=>{if(e.key==='Enter')doRename(g);if(e.key==='Escape'){setRenaming(null);setRenamVal('');}}}
+                      style={{flex:1,height:36,borderRadius:10,background:'var(--s2)',border:'1px solid var(--bbd)',color:'var(--text)',fontSize:13,padding:'0 10px',outline:'none',fontFamily:'inherit'}}/>
+                    <button className="gh" style={{height:32,padding:'0 10px',fontSize:11,color:'var(--ok)',borderColor:'var(--okbd)',background:'var(--oksoft)'}} onClick={()=>doRename(g)}>Save</button>
+                    <button className="gh" style={{height:32,padding:'0 10px',fontSize:11}} onClick={()=>{setRenaming(null);setRenamVal('');}}>Cancel</button>
+                  </>
+                ):(
+                  <>
+                    <span style={{flex:1,fontSize:13,fontWeight:500,color:'var(--text)'}}>{g}</span>
+                    <button className="gh" style={{height:28,padding:'0 10px',fontSize:11}} onClick={()=>{setRenaming(g);setRenamVal(g);}}>Rename</button>
+                    <button onClick={()=>{if(confirm(`Delete "${g}"?`)){deleteMuscleGroup(g);refresh();}}} style={{width:28,height:28,borderRadius:8,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',color:'var(--danger)',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>×</button>
+                  </>
+                )}
               </div>
-            </div>
-          )}
-          <div style={{marginTop:12}}>
-            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--t3)',marginBottom:8}}>Built-in Groups</div>
-            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-              {CANONICAL_MUSCLE_GROUPS.map(g=>(
-                <span key={g} style={{padding:'4px 10px',borderRadius:99,fontSize:11,fontWeight:600,background:'rgba(255,255,255,.04)',border:'1px solid var(--bd)',color:'var(--t3)'}}>{g}</span>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       )}
@@ -1083,8 +1155,8 @@ function ExerciseSheet({item,onSave,onDelete,onClose}){
           style={{width:'100%',height:52,borderRadius:14,background:'var(--s2)',outline:'none',display:'block',
             border:'1px solid '+(name.trim()?'var(--bbd)':'var(--bd)'),color:'var(--text)',fontFamily:'var(--fh)',
             fontSize:18,fontWeight:700,padding:'0 16px',marginBottom:20}}/>
-        <MuscleGroupPicker selected={primary} onChange={setPrimary} label="Primary Muscles" accent="primary"/>
-        <MuscleGroupPicker selected={detailed} onChange={setDetailed} label="Secondary Muscles" accent="secondary"/>
+        <MuscleGroupPicker selected={primary} onChange={setPrimary} label="Primary Muscles" accent="primary" key={`pm-${(state.muscleGroups||[]).length}`}/>
+        <MuscleGroupPicker selected={detailed} onChange={setDetailed} label="Secondary Muscles" accent="secondary" key={`sm-${(state.muscleGroups||[]).length}`}/>
         <button className="cta" style={{marginBottom:10,opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}} onClick={doSave}>
           {isNew?'Add Exercise':'Save Changes'}
         </button>

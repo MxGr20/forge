@@ -115,7 +115,7 @@ const DEFAULT_STATE = {
   routines: [],
   workouts: [],
   bodyMeasurements: [],
-  customMuscleGroups: [],
+  muscleGroups: [...CANONICAL_MUSCLE_GROUPS],
   muscleTagLibrary: {
     primary: [],
     detailed: []
@@ -580,7 +580,11 @@ function createPersistedStateSnapshot(sourceState, options = {}) {
   const priorLastModified = Number.isFinite(source.lastModified) ? source.lastModified : 0;
   const lastModified = options.touchLastModified ? Date.now() : priorLastModified;
   const statsData = buildStatsDataSnapshot(exercises, workouts, bodyMeasurements);
-  const customMuscleGroups = Array.isArray(source?.customMuscleGroups) ? source.customMuscleGroups : [];
+  const muscleGroups = Array.isArray(source?.muscleGroups) && source.muscleGroups.length > 0
+    ? source.muscleGroups
+    : Array.isArray(source?.customMuscleGroups) && source.customMuscleGroups.length > 0
+      ? [...CANONICAL_MUSCLE_GROUPS, ...source.customMuscleGroups]
+      : [...CANONICAL_MUSCLE_GROUPS];
   return {
     version: STORAGE_VERSION,
     lastModified,
@@ -591,7 +595,7 @@ function createPersistedStateSnapshot(sourceState, options = {}) {
       workouts,
       bodyMeasurements
     },
-    customMuscleGroups,
+    muscleGroups,
     muscleTagLibrary,
     activeWorkoutId,
     statsData
@@ -612,7 +616,9 @@ function hydrateState(source) {
   fresh.routines = routines;
   fresh.workouts = workouts;
   fresh.bodyMeasurements = bodyMeasurements;
-  fresh.customMuscleGroups = Array.isArray(source?.customMuscleGroups) ? source.customMuscleGroups : [];
+  fresh.muscleGroups = Array.isArray(snapshot.muscleGroups) && snapshot.muscleGroups.length > 0
+    ? snapshot.muscleGroups
+    : [...CANONICAL_MUSCLE_GROUPS];
   fresh.muscleTagLibrary = snapshot.muscleTagLibrary;
   fresh.activeWorkoutId = snapshot.activeWorkoutId;
   fresh.statsData = snapshot.statsData?.version === STATS_DATA_VERSION
@@ -1595,24 +1601,87 @@ function updateBodyMeasurement(id, fields) {
   saveState();
 }
 
-function getAllMuscleGroups() {
-  const custom = Array.isArray(state.customMuscleGroups) ? state.customMuscleGroups : [];
-  return [...CANONICAL_MUSCLE_GROUPS, ...custom];
+function getMuscleGroups() {
+  return Array.isArray(state.muscleGroups) && state.muscleGroups.length > 0
+    ? state.muscleGroups
+    : [...CANONICAL_MUSCLE_GROUPS];
 }
 
-function addCustomMuscleGroup(name) {
+function addMuscleGroup(name) {
   const trimmed = String(name || "").trim();
   if (!trimmed) return false;
-  if (!state.customMuscleGroups) state.customMuscleGroups = [];
-  if (getAllMuscleGroups().some(g => g.toLowerCase() === trimmed.toLowerCase())) return false;
-  state.customMuscleGroups.push(trimmed);
+  if (!state.muscleGroups) state.muscleGroups = [...CANONICAL_MUSCLE_GROUPS];
+  if (state.muscleGroups.some(g => g.toLowerCase() === trimmed.toLowerCase())) return false;
+  state.muscleGroups.push(trimmed);
   saveState();
   return true;
 }
 
-function deleteCustomMuscleGroup(name) {
-  if (!state.customMuscleGroups) return;
-  state.customMuscleGroups = state.customMuscleGroups.filter(g => g !== name);
+function deleteMuscleGroup(name) {
+  if (!state.muscleGroups) return;
+  state.muscleGroups = state.muscleGroups.filter(g => g !== name);
+  saveState();
+}
+
+function renameMuscleGroup(oldName, newName) {
+  const trimmed = String(newName || "").trim();
+  if (!trimmed || !state.muscleGroups) return false;
+  const idx = state.muscleGroups.indexOf(oldName);
+  if (idx < 0) return false;
+  if (state.muscleGroups.some((g, i) => i !== idx && g.toLowerCase() === trimmed.toLowerCase())) return false;
+  state.muscleGroups[idx] = trimmed;
+  saveState();
+  return true;
+}
+
+function addWorkoutItem(workoutId, exerciseId) {
+  const w = state.workouts.find(w => w.id === workoutId);
+  if (!w) return;
+  const ex = getExercise(exerciseId);
+  if (!ex) return;
+  w.items.push({ id: uid(), exerciseId: ex.id, group: "", note: "", metricMode: "reps", sets: [] });
+  saveState();
+}
+
+function removeWorkoutItem(workoutId, itemId) {
+  const w = state.workouts.find(w => w.id === workoutId);
+  if (!w) return;
+  w.items = w.items.filter(i => i.id !== itemId);
+  saveState();
+}
+
+function addWorkoutHistorySet(workoutId, itemId) {
+  const w = state.workouts.find(w => w.id === workoutId);
+  if (!w) return;
+  const item = w.items.find(i => i.id === itemId);
+  if (!item) return;
+  const last = item.sets[item.sets.length - 1];
+  const ex = getExercise(item.exerciseId);
+  item.sets.push({
+    id: uid(), type: ex?.type || "weight", tag: "work", completed: true,
+    weight: last?.weight ?? null, reps: last?.reps ?? null
+  });
+  saveState();
+}
+
+function removeWorkoutHistorySet(workoutId, itemId, setId) {
+  const w = state.workouts.find(w => w.id === workoutId);
+  if (!w) return;
+  const item = w.items.find(i => i.id === itemId);
+  if (!item) return;
+  item.sets = item.sets.filter(s => s.id !== setId);
+  saveState();
+}
+
+function updateWorkoutHistorySet(workoutId, itemId, setId, field, val) {
+  const w = state.workouts.find(w => w.id === workoutId);
+  if (!w) return;
+  const item = w.items.find(i => i.id === itemId);
+  if (!item) return;
+  const set = item.sets.find(s => s.id === setId);
+  if (!set) return;
+  if (field === "weight" || field === "reps") { const n = parseFloat(val); set[field] = isNaN(n) ? null : n; }
+  else set[field] = val;
   saveState();
 }
 
