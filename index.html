@@ -344,59 +344,83 @@ function TemplateEditSheet({routine,onClose}){
   const saveName=()=>{
     if(name.trim()&&name.trim()!==routine.name){renameRoutine(routine.id,name.trim());window._forgeToast?.('Template updated');}
   };
-  const doAdd=(exId)=>{addRoutineExercise(routine.id,exId);tick();setAddOpen(false);setQ('');};
-  const doRemove=(itemId)=>{removeRoutineExercise(routine.id,itemId);tick();};
+  const doAddEx=(exId)=>{addRoutineExercise(routine.id,exId);tick();setAddOpen(false);setQ('');};
+  const doRemoveEx=(itemId)=>{removeRoutineExercise(routine.id,itemId);tick();};
   const doMove=(itemId,delta)=>{moveRoutineItem(routine.id,itemId,delta);tick();};
+  const doAddSet=(itemId)=>{addRoutineSet(routine.id,itemId);tick();};
+  const doRemoveSet=(itemId,setId)=>{removeRoutineSet(routine.id,itemId,setId);tick();};
+  const doUpdSet=(itemId,setId,field,val)=>{updateRoutineSet(routine.id,itemId,setId,field,val);};
   const filtered=state.exercises.filter(e=>e.name.toLowerCase().includes(q.toLowerCase())).slice(0,40);
-  const BtnIcon=({children,onClick,style})=>(
-    <button onClick={onClick} style={{width:28,height:28,borderRadius:8,background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--t2)',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,...style}}>{children}</button>
+  const Ico=({children,onClick,style})=>(
+    <button onClick={onClick} style={{width:30,height:30,borderRadius:9,background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--t2)',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,...style}}>{children}</button>
   );
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
-      <div className="sheet" style={{maxHeight:'88%',display:'flex',flexDirection:'column'}}>
-        <div style={{padding:'14px 22px 12px',flexShrink:0}}>
-          <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 14px'}}/>
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>Edit Template</div>
+      <div className="sheet" style={{maxHeight:'92%',display:'flex',flexDirection:'column'}}>
+        {/* sticky header */}
+        <div style={{padding:'14px 22px 12px',flexShrink:0,borderBottom:'1px solid var(--bd)'}}>
+          <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 12px'}}/>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:8}}>Edit Template</div>
           <input value={name} onChange={e=>setName(e.target.value)} onBlur={saveName}
-            style={{width:'100%',height:52,borderRadius:14,background:'var(--s2)',border:'1px solid var(--bbd)',color:'var(--text)',
-              fontFamily:'var(--fh)',fontSize:18,fontWeight:700,padding:'0 16px',outline:'none'}}/>
+            style={{width:'100%',height:50,borderRadius:14,background:'var(--s2)',border:'1px solid var(--bbd)',color:'var(--text)',
+              fontFamily:'var(--fh)',fontSize:17,fontWeight:700,padding:'0 16px',outline:'none'}}/>
         </div>
-        <div style={{overflowY:'auto',flex:1,padding:'8px 22px 0'}}>
-          {routine.items.length===0?(
+        {/* scrollable body */}
+        <div style={{overflowY:'auto',flex:1,padding:'12px 18px 0',WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
+          {routine.items.length===0&&(
             <div style={{textAlign:'center',padding:'16px 0',color:'var(--t3)',fontSize:13}}>No exercises yet. Add some below.</div>
-          ):(
-            routine.items.map((item,idx)=>{
-              const ex=getExercise(item.exerciseId);
-              const isFirst=idx===0, isLast=idx===routine.items.length-1;
-              return(
-                <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:!isLast?'1px solid var(--bd)':'none'}}>
-                  <div style={{display:'flex',flexDirection:'column',gap:3,flexShrink:0}}>
-                    <BtnIcon onClick={()=>!isFirst&&doMove(item.id,-1)} style={{opacity:isFirst?.25:1}}>↑</BtnIcon>
-                    <BtnIcon onClick={()=>!isLast&&doMove(item.id,1)} style={{opacity:isLast?.25:1}}>↓</BtnIcon>
-                  </div>
-                  <div style={{width:22,height:22,borderRadius:6,background:'var(--s2)',border:'1px solid var(--bd)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--fh)',fontSize:10,fontWeight:700,color:'var(--t3)',flexShrink:0}}>{idx+1}</div>
-                  <span style={{flex:1,fontSize:14,color:'var(--text)'}}>{ex?.name||'Unknown'}</span>
-                  <BtnIcon onClick={()=>doRemove(item.id)} style={{background:'rgba(239,68,68,.1)',borderColor:'rgba(239,68,68,.3)',color:'var(--danger)',fontSize:16}}>−</BtnIcon>
-                </div>
-              );
-            })
           )}
-          <button className="gh" style={{width:'100%',height:44,marginTop:14}} onClick={()=>setAddOpen(v=>!v)}>+ Add Exercise</button>
+          {routine.items.map((item,idx)=>{
+            const ex=getExercise(item.exerciseId);
+            const isFirst=idx===0, isLast=idx===routine.items.length-1;
+            return(
+              <div key={item.id} className="ec" style={{marginBottom:10}}>
+                {/* exercise header row */}
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                  <div style={{display:'flex',flexDirection:'column',gap:3,flexShrink:0}}>
+                    <Ico onClick={()=>!isFirst&&doMove(item.id,-1)} style={{opacity:isFirst?.25:1,height:26,width:26,fontSize:12}}>↑</Ico>
+                    <Ico onClick={()=>!isLast&&doMove(item.id,1)} style={{opacity:isLast?.25:1,height:26,width:26,fontSize:12}}>↓</Ico>
+                  </div>
+                  <div style={{width:20,height:20,borderRadius:6,background:'var(--s2)',border:'1px solid var(--bd)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--fh)',fontSize:10,fontWeight:700,color:'var(--t3)',flexShrink:0}}>{idx+1}</div>
+                  <span style={{flex:1,fontSize:14,fontWeight:600,color:'var(--text)'}}>{ex?.name||'Unknown'}</span>
+                  <Ico onClick={()=>doRemoveEx(item.id)} style={{background:'rgba(239,68,68,.1)',borderColor:'rgba(239,68,68,.3)',color:'var(--danger)',fontSize:16}}>−</Ico>
+                </div>
+                {/* sets */}
+                {item.sets.length>0&&(
+                  <div className="sw">
+                    <div className="shd"><span>Set</span><span>kg</span><span>Reps</span><span></span></div>
+                    {item.sets.map((s,si)=>(
+                      <div key={s.id} className="sr done">
+                        <div className="sn">{si+1}</div>
+                        <input className="si" type="number" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
+                          onBlur={e=>doUpdSet(item.id,s.id,'weight',e.target.value)}/>
+                        <input className="si" type="number" inputMode="numeric" defaultValue={s.reps??''} placeholder="—"
+                          onBlur={e=>doUpdSet(item.id,s.id,'reps',e.target.value)}/>
+                        <button onClick={()=>doRemoveSet(item.id,s.id)} style={{width:44,height:44,borderRadius:12,background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',color:'var(--danger)',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>−</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button className="gh" style={{width:'100%',marginTop:8,height:36,fontSize:13}} onClick={()=>doAddSet(item.id)}>+ Add Set</button>
+              </div>
+            );
+          })}
+          {/* add exercise */}
+          <button className="gh" style={{width:'100%',height:44,fontSize:14,marginTop:4}} onClick={()=>setAddOpen(v=>!v)}>+ Add Exercise</button>
           {addOpen&&(
             <div style={{marginTop:10}}>
               <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises…"
                 style={{width:'100%',height:42,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',marginBottom:8,outline:'none'}}/>
               {filtered.map(ex=>(
-                <div key={ex.id} style={{padding:'11px 0',borderBottom:'1px solid var(--bd)',cursor:'pointer',fontSize:14,color:'var(--text)'}} onClick={()=>doAdd(ex.id)}>{ex.name}</div>
+                <div key={ex.id} style={{padding:'11px 0',borderBottom:'1px solid var(--bd)',cursor:'pointer',fontSize:14,color:'var(--text)'}} onClick={()=>doAddEx(ex.id)}>{ex.name}</div>
               ))}
               {filtered.length===0&&<div style={{fontSize:13,color:'var(--t3)',padding:'12px 0'}}>No exercises found</div>}
             </div>
           )}
-          <div style={{height:16}}/>
-        </div>
-        <div style={{padding:'12px 22px 24px',flexShrink:0,borderTop:'1px solid var(--bd)'}}>
-          <button className="cta" onClick={onClose}>Done</button>
+          <div style={{height:20}}/>
+          <button className="cta" onClick={()=>{saveName();onClose();}}>Done</button>
+          <div style={{height:'max(24px, env(safe-area-inset-bottom, 24px))'}}/>
         </div>
       </div>
     </>
@@ -556,7 +580,7 @@ function AddExerciseToSession({workout,onAdd}){
         <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises…"
           style={{width:'100%',height:44,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',
             color:'var(--text)',fontSize:14,padding:'0 14px',fontFamily:'inherit',marginBottom:12,flexShrink:0}}/>
-        <div style={{overflowY:'auto',flex:1}}>
+        <div style={{overflowY:'auto',flex:1,WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
           {filtered.map(ex=>(
             <div key={ex.id} style={{padding:'12px 0',borderBottom:'1px solid var(--bd)',cursor:'pointer',fontSize:14,color:'var(--text)'}}
               onClick={()=>{addWorkoutExercise(ex.id);setOpen(false);setQ('');onAdd();}}>
@@ -897,7 +921,7 @@ function WorkoutHistorySheet({workout,onClose,onSaved}){
           <div className="st" style={{flex:1,padding:'8px 10px'}}><div className="sl2">Volume</div><div style={{fontSize:12,color:'var(--text)',fontWeight:600,marginTop:2}}>{Math.round(workoutVolume(workout))} kg</div></div>
         </div>
         {/* scrollable body */}
-        <div style={{overflowY:'auto',flex:1,padding:'16px 20px 24px'}}>
+        <div style={{overflowY:'auto',flex:1,padding:'16px 20px 24px',WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
           {workout.items.map(item=>{
             const ex=getExercise(item.exerciseId);
             return(
@@ -958,7 +982,7 @@ function MeasurementHistorySheet({measurement,onClose,onSaved}){
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
-      <div className="sheet" style={{padding:'18px 22px 44px'}}>
+      <div className="sheet" style={{padding:'18px 22px 44px',overflowY:'auto',maxHeight:'90%',WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
         <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
         <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:4}}>Body Measurement</div>
         <div style={{fontSize:12,color:'var(--t3)',marginBottom:18}}>{formatDate(measurement.createdAt)}</div>
@@ -1148,7 +1172,7 @@ function ExerciseSheet({item,onSave,onDelete,onClose}){
   return(
     <>
       <div className="sheet-scrim" onClick={onClose}/>
-      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'90%',overflowY:'auto'}}>
+      <div className="sheet" style={{padding:'18px 22px 44px',maxHeight:'90%',overflowY:'auto',WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
         <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 18px'}}/>
         <div style={{fontSize:10,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--t3)',marginBottom:10}}>{isNew?'New Exercise':'Edit Exercise'}</div>
         <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Exercise name"

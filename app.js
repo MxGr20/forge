@@ -1735,6 +1735,41 @@ function moveRoutineItem(routineId, itemId, delta) {
   renderRoutines();
 }
 
+function addRoutineSet(routineId, itemId) {
+  const routine = state.routines.find(r => r.id === routineId);
+  if (!routine) return;
+  const item = routine.items.find(i => i.id === itemId);
+  if (!item) return;
+  const ex = getExercise(item.exerciseId);
+  const last = item.sets[item.sets.length - 1];
+  item.sets.push({
+    id: uid(), type: ex?.type || 'weight', tag: 'work', completed: false,
+    weight: last?.weight ?? null, reps: last?.reps ?? null
+  });
+  saveState();
+}
+
+function removeRoutineSet(routineId, itemId, setId) {
+  const routine = state.routines.find(r => r.id === routineId);
+  if (!routine) return;
+  const item = routine.items.find(i => i.id === itemId);
+  if (!item) return;
+  item.sets = item.sets.filter(s => s.id !== setId);
+  saveState();
+}
+
+function updateRoutineSet(routineId, itemId, setId, field, val) {
+  const routine = state.routines.find(r => r.id === routineId);
+  if (!routine) return;
+  const item = routine.items.find(i => i.id === itemId);
+  if (!item) return;
+  const set = item.sets.find(s => s.id === setId);
+  if (!set) return;
+  if (field === 'weight' || field === 'reps') { const n = parseFloat(val); set[field] = isNaN(n) ? null : n; }
+  else set[field] = val;
+  saveState();
+}
+
 function toggleRoutineItemMetricMode(routineId, itemId) {
   const routine = state.routines.find((r) => r.id === routineId);
   if (!routine) return;
