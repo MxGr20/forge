@@ -1076,6 +1076,10 @@ function ExercisesView(){
   const doRemove=(id)=>{deleteExercise(id);refresh();};
   const doSave=(ex)=>{
     const idx=state.exercises.findIndex(e=>e.id===ex.id);
+    if(idx<0){
+      const dup=state.exercises.some(e=>e.name.trim().toLowerCase()===ex.name.trim().toLowerCase());
+      if(dup){window._forgeToast?.('Exercise already exists');return;}
+    }
     const normalized=normalizeExercise(ex);
     if(idx>=0){state.exercises[idx]=normalized;}else{state.exercises.push(normalized);}
     rememberMuscleTags('primary',parseMuscleGroups(ex.primaryMuscleGroups));
