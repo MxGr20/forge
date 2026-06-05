@@ -1780,6 +1780,15 @@ function toggleRoutineItemMetricMode(routineId, itemId) {
   renderRoutines();
 }
 
+function updateRoutineItemNote(routineId, itemId, note) {
+  const routine = state.routines.find(r => r.id === routineId);
+  if (!routine) return;
+  const item = routine.items.find(i => i.id === itemId);
+  if (!item) return;
+  item.note = note;
+  saveState();
+}
+
 function toggleWorkoutItemMetricMode(itemId) {
   const workout = getActiveWorkout();
   if (!workout) return;
