@@ -233,13 +233,14 @@ function WorkoutsView({onStart,refresh}){
   const weekSets=doneWorkouts.reduce((s,w)=>s+w.items.reduce((a,i)=>a+i.sets.length,0),0);
 
   const streak=(()=>{
-    const completed=state.workouts.filter(w=>w.endedAt).map(w=>new Date(w.createdAt));
+    const completed=state.workouts.filter(w=>w.endedAt&&w.id!==state.activeWorkoutId).map(w=>fmt8(new Date(w.createdAt)));
+    const daySet=new Set(completed);
     let wk=0;
     let cur=new Date(); cur.setHours(0,0,0,0);
     cur.setDate(cur.getDate()-((cur.getDay()+6)%7));
     while(true){
-      const wkEnd=new Date(cur); wkEnd.setDate(cur.getDate()+7);
-      const hasWk=completed.some(d=>d>=cur&&d<wkEnd);
+      let hasWk=false;
+      for(let d=0;d<7;d++){const dd=new Date(cur);dd.setDate(cur.getDate()+d);if(daySet.has(fmt8(dd))){hasWk=true;break;}}
       if(!hasWk)break;
       wk++; cur.setDate(cur.getDate()-7);
     }
