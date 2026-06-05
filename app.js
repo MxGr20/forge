@@ -1602,9 +1602,10 @@ function updateBodyMeasurement(id, fields) {
 }
 
 function getMuscleGroups() {
-  return Array.isArray(state.muscleGroups) && state.muscleGroups.length > 0
+  const groups = Array.isArray(state.muscleGroups) && state.muscleGroups.length > 0
     ? state.muscleGroups
     : [...CANONICAL_MUSCLE_GROUPS];
+  return [...groups].sort((a, b) => a.localeCompare(b));
 }
 
 function addMuscleGroup(name) {
@@ -1613,6 +1614,7 @@ function addMuscleGroup(name) {
   if (!state.muscleGroups) state.muscleGroups = [...CANONICAL_MUSCLE_GROUPS];
   if (state.muscleGroups.some(g => g.toLowerCase() === trimmed.toLowerCase())) return false;
   state.muscleGroups.push(trimmed);
+  state.muscleGroups.sort((a, b) => a.localeCompare(b));
   saveState();
   return true;
 }
