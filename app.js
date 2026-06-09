@@ -1543,6 +1543,82 @@ function createRoutine(name) {
   return routine;
 }
 
+function importTemplatesFromJSON(data) {
+  // Step 1: Validate — return null to signal "bad file" (distinct from {0,0} = "nothing new")
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const valid = data.every(t => typeof t.templateName === "string" && Array.isArray(t.exercises));
+  if (!valid) return null;
+
+  // Local helper — centralises the metricMode → type derivation used in steps 2 and 3
+  const typeOf = m => m === "seconds" ? "duration" : "weight";
+
+  // Step 2: Ensure muscle tags (rememberMuscleTags already guards muscleTagLibrary internally)
+  rememberMuscleTags("primary",  data.flatMap(t => t.exercises.flatMap(ex => (ex.primaryMuscles  || []).filter(Boolean))));
+  rememberMuscleTags("detailed", data.flatMap(t => t.exercises.flatMap(ex => (ex.secondaryMuscles || []).filter(Boolean))));
+
+  // Step 3: Find-or-create exercises (deduplicated by lowercase name)
+  // Pre-build a lookup map from the existing library to avoid O(N) find() inside the loop
+  const existingMap = Object.fromEntries(state.exercises.map(e => [(e.name || "").toLowerCase(), e.id]));
+  const nameToId = {};
+  let exercisesAdded = 0;
+  data.forEach(t => t.exercises.forEach(ex => {
+    const key = (ex.name || "").toLowerCase().trim();
+    if (!key || nameToId[key] !== undefined) return;
+    if (existingMap[key] !== undefined) {
+      nameToId[key] = existingMap[key];
+    } else {
+      // normalizeExercise handles name trimming, type coercion, and muscle-group text normalisation
+      const created = normalizeExercise({
+        id: uid(),
+        name: ex.name,
+        category: "",
+        type: typeOf(ex.metricMode),
+        primaryMuscleGroups: ex.primaryMuscles || [],
+        detailedMuscleGroups: ex.secondaryMuscles || []
+      });
+      state.exercises.push(created);
+      nameToId[key] = created.id;
+      exercisesAdded++;
+    }
+  }));
+
+  // Step 4: Find-or-create routine templates
+  let templatesAdded = 0;
+  data.forEach(t => {
+    const nameLower = t.templateName.toLowerCase();
+    const exists = state.routines.find(r => (r.name || "").toLowerCase() === nameLower);
+    if (exists) return;
+    const routine = {
+      id: uid(),
+      name: t.templateName,
+      items: t.exercises.map(ex => {
+        const key = (ex.name || "").toLowerCase().trim();
+        return {
+          id: uid(),
+          exerciseId: nameToId[key] || null,
+          group: null,
+          note: ex.note || "",
+          metricMode: ex.metricMode,
+          sets: Array.from({ length: ex.sets > 0 ? ex.sets : 1 }, () => ({
+            id: uid(),
+            type: typeOf(ex.metricMode),
+            tag: "work",
+            completed: false,
+            weight: null,
+            reps: ex.reps ?? null
+          }))
+        };
+      })
+    };
+    state.routines.push(routine);
+    templatesAdded++;
+  });
+
+  saveState();
+  renderRoutines();
+  return { templatesAdded, exercisesAdded };
+}
+
 function deleteRoutine(routineId) {
   state.routines = state.routines.filter((r) => r.id !== routineId);
   if (ui.editRoutineId === routineId) ui.editRoutineId = null;
@@ -2005,11 +2081,9 @@ function renderExerciseCard(item, options) {
             ${actions}
           </div>
         </div>
-        ${owner === "workout"
-          ? `<div class="exercise-note-line">
-              <input type="text" data-field="item-note" data-owner="${owner}" data-item-id="${item.id}" placeholder="Note (optional)" value="${esc(item.note || "")}">
-            </div>`
-          : ""}
+        <div class="exercise-note-line">
+          <input type="text" data-field="item-note" data-owner="${owner}" data-item-id="${item.id}" placeholder="Note (optional)" value="${esc(item.note || "")}">
+        </div>
         <div class="sets">${setsHtml}</div>
         ${tagHelp}
         <div class="add-set">

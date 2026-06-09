@@ -1,4 +1,4 @@
-const CACHE = "forge-cache-v10";
+const CACHE = "forge-cache-v13";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,7 +6,9 @@ const ASSETS = [
   "./tweaks-panel.jsx",
   "./manifest.json",
   "./icon.svg",
-  "./offline.html"
+  "./offline.html",
+  "./data/wod.json",
+  "./data/templates.json"
 ];
 
 self.addEventListener("install", (event) => {

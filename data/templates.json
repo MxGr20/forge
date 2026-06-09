@@ -1,0 +1,616 @@
+[
+  {
+    "templateName": "WORKOUT A — LEGS + MOBILITY + LOWER BACK",
+    "exercises": [
+      {
+        "name": "Bulgarian Split Squat",
+        "sets": 3,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Quads",
+          "Glutes"
+        ],
+        "secondaryMuscles": [
+          "Hip Flexors",
+          "Hamstrings",
+          "Core"
+        ],
+        "note": "Slow 3-sec eccentric. Knee tracks over toe."
+      },
+      {
+        "name": "Copenhagen Plank",
+        "sets": 3,
+        "reps": 45,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "Adductors"
+        ],
+        "secondaryMuscles": [
+          "Hip Flexors",
+          "Obliques",
+          "Core"
+        ],
+        "note": "NON-NEGOTIABLE. Right side priority. Build 5 sec/week. Adductor fix."
+      },
+      {
+        "name": "Hip Thrust",
+        "sets": 3,
+        "reps": 12,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Glutes"
+        ],
+        "secondaryMuscles": [
+          "Hamstrings",
+          "Core",
+          "Hip Extensors"
+        ],
+        "note": "Add weight weekly. Full hip extension at top. Squeeze glutes."
+      },
+      {
+        "name": "Single Leg Press",
+        "sets": 3,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Quads",
+          "Glutes"
+        ],
+        "secondaryMuscles": [
+          "Hamstrings",
+          "Calves"
+        ],
+        "note": "Control the descent. Don't lock knee at top."
+      },
+      {
+        "name": "Hamstring Curl",
+        "sets": 3,
+        "reps": 12,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Hamstrings"
+        ],
+        "secondaryMuscles": [
+          "Glutes",
+          "Calves"
+        ],
+        "note": "Full range. Slow eccentric. Single leg from wk 8."
+      },
+      {
+        "name": "Back Extension",
+        "sets": 3,
+        "reps": 12,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Erector Spinae",
+          "Glutes"
+        ],
+        "secondaryMuscles": [
+          "Hamstrings",
+          "QL"
+        ],
+        "note": "Slow and controlled. Feel glute and hamstring, not lower back."
+      },
+      {
+        "name": "Standing Hip Flexion with Band",
+        "sets": 3,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Hip Flexors"
+        ],
+        "secondaryMuscles": [
+          "Rectus Femoris",
+          "Core"
+        ],
+        "note": "Band low anchor. Drive knee to hip height. Trains the exact running pattern."
+      },
+      {
+        "name": "Calf Raises",
+        "sets": 3,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Gastrocnemius"
+        ],
+        "secondaryMuscles": [
+          "Soleus",
+          "Tibialis Posterior"
+        ],
+        "note": "Both legs wks 1-3. Single leg from wk 4. Full range."
+      },
+      {
+        "name": "Suitcase Carry",
+        "sets": 3,
+        "reps": 30,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Obliques",
+          "QL"
+        ],
+        "secondaryMuscles": [
+          "Glutes",
+          "Traps",
+          "Forearms"
+        ],
+        "note": "Heavy. Hips level. Lateral core for trail stability."
+      },
+      {
+        "name": "Single Leg Glute Bridge",
+        "sets": 3,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Glutes"
+        ],
+        "secondaryMuscles": [
+          "Hamstrings",
+          "Core",
+          "Hip Stabilisers"
+        ],
+        "note": "Right side will shake more — that's the weakness. Drive through heel. Pelvis level."
+      },
+      {
+        "name": "Lateral Band Walk",
+        "sets": 3,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Glute Med"
+        ],
+        "secondaryMuscles": [
+          "TFL",
+          "Hip Abductors",
+          "Core"
+        ],
+        "note": "Band above knees. Small steps, stay low. Trains glute med firing timing for running."
+      },
+      {
+        "name": "Dead Bug",
+        "sets": 3,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Transverse Abdominis",
+          "Deep Core"
+        ],
+        "secondaryMuscles": [
+          "Hip Flexors",
+          "Erector Spinae"
+        ],
+        "note": "Right arm/left leg focus. Lower back flat on floor. Stops QL compensating."
+      },
+      {
+        "name": "Hip 90/90 Rotation with Hold",
+        "sets": 2,
+        "reps": 8,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Hip Capsule",
+          "Piriformis"
+        ],
+        "secondaryMuscles": [
+          "Adductors",
+          "Glute Med",
+          "TFL"
+        ],
+        "note": "Sit in 90/90. Rotate forward over each leg. Hold 3 sec. Fixes right hip capsule stiffness."
+      },
+      {
+        "name": "QL Trigger Point — Iliac Crest",
+        "sets": 1,
+        "reps": 90,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "QL"
+        ],
+        "secondaryMuscles": [
+          "Iliac Crest Attachments"
+        ],
+        "note": "Lacrosse ball on iliac crest top. Find tender point, hold, breathe. Do BEFORE foam roll. Every morning first."
+      },
+      {
+        "name": "QL Foam Roll (right side)",
+        "sets": 1,
+        "reps": 60,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "QL"
+        ],
+        "secondaryMuscles": [
+          "Erector Spinae",
+          "Lat"
+        ],
+        "note": "Between hip and lower ribs. Slow, not painful. After trigger point hold."
+      },
+      {
+        "name": "Adductor Rock-Back",
+        "sets": 2,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Adductors"
+        ],
+        "secondaryMuscles": [
+          "Hip Capsule",
+          "Groin"
+        ],
+        "note": "Half-kneeling. Rock sideways into groin. Right side extra attention."
+      },
+      {
+        "name": "Couch Stretch",
+        "sets": 1,
+        "reps": 90,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "Hip Flexors (iliopsoas",
+          "rectus femoris)"
+        ],
+        "secondaryMuscles": [
+          "Quads",
+          "TFL"
+        ],
+        "note": "Push hips forward, stay tall. Critical pre-run."
+      },
+      {
+        "name": "90/90 Hip Switches",
+        "sets": 2,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Hip Internal + External Rotators"
+        ],
+        "secondaryMuscles": [
+          "Piriformis",
+          "Glute Med",
+          "Adductors"
+        ],
+        "note": "Slow rotation. Don't force range."
+      },
+      {
+        "name": "Calf + Soleus Stretch",
+        "sets": 1,
+        "reps": 60,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "Gastrocnemius"
+        ],
+        "secondaryMuscles": [
+          "Soleus"
+        ],
+        "note": "Straight knee = calf. Bent knee = soleus. Both matter for running."
+      },
+      {
+        "name": "QL Side Bend Stretch",
+        "sets": 1,
+        "reps": 45,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "QL"
+        ],
+        "secondaryMuscles": [
+          "Obliques",
+          "Lat"
+        ],
+        "note": "Right arm overhead in doorframe, lean left, push right hip out. Every morning + post session."
+      },
+      {
+        "name": "90/90 Breathing",
+        "sets": 1,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Diaphragm",
+          "QL"
+        ],
+        "secondaryMuscles": [
+          "Deep Core",
+          "Pelvic Floor"
+        ],
+        "note": "On back, knees bent 90°. Breathe into lower back. Passive QL release. Every morning on waking."
+      }
+    ]
+  },
+  {
+    "templateName": "WORKOUT B — PULL + MOBILITY",
+    "exercises": [
+      {
+        "name": "Pull-ups",
+        "sets": 4,
+        "reps": null,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Lats",
+          "Biceps"
+        ],
+        "secondaryMuscles": [
+          "Rhomboids",
+          "Rear Delts",
+          "Core"
+        ],
+        "note": "Add weight when hitting 10 clean reps. Full hang at bottom."
+      },
+      {
+        "name": "One Arm Dumbbell Row",
+        "sets": 3,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Lats",
+          "Rhomboids"
+        ],
+        "secondaryMuscles": [
+          "Biceps",
+          "Rear Delts",
+          "Core"
+        ],
+        "note": "Chest supported. Full range. Elbow drives back."
+      },
+      {
+        "name": "Face Pulls",
+        "sets": 4,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Rear Delts",
+          "Rotator Cuff"
+        ],
+        "secondaryMuscles": [
+          "Rhomboids",
+          "Upper Traps"
+        ],
+        "note": "Increased volume. Shoulder health priority (dislocation history)."
+      },
+      {
+        "name": "External Rotations",
+        "sets": 3,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Infraspinatus",
+          "Teres Minor"
+        ],
+        "secondaryMuscles": [
+          "Rear Delts",
+          "Rotator Cuff"
+        ],
+        "note": "Light weight. Slow. Full range. Rotator cuff health."
+      },
+      {
+        "name": "Hip Abduction",
+        "sets": 3,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Glute Med",
+          "TFL"
+        ],
+        "secondaryMuscles": [
+          "Hip Abductors",
+          "Glute Min"
+        ],
+        "note": "Moved from Workout A. Lateral hip strength for trail stability."
+      },
+      {
+        "name": "Back Extension",
+        "sets": 3,
+        "reps": 12,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Erector Spinae",
+          "Glutes"
+        ],
+        "secondaryMuscles": [
+          "Hamstrings",
+          "QL"
+        ],
+        "note": "Posterior chain. Don't hyperextend at top."
+      },
+      {
+        "name": "Ankle Dorsiflexions",
+        "sets": 2,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Tibialis Anterior"
+        ],
+        "secondaryMuscles": [
+          "Ankle Stabilisers",
+          "Peroneals"
+        ],
+        "note": "Knee forward over toes. Trail ankle control."
+      },
+      {
+        "name": "Bird Dog",
+        "sets": 2,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Erector Spinae",
+          "Glutes"
+        ],
+        "secondaryMuscles": [
+          "Transverse Abdominis",
+          "Shoulder Stabilisers"
+        ],
+        "note": "Opposite arm/leg. Spine neutral. Running posture."
+      },
+      {
+        "name": "Psoas March with Band",
+        "sets": 2,
+        "reps": 20,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Iliopsoas",
+          "Hip Flexors"
+        ],
+        "secondaryMuscles": [
+          "Rectus Femoris",
+          "Core"
+        ],
+        "note": "On back, band around feet, alternate knee drives. Hip flexor endurance."
+      },
+      {
+        "name": "Thoracic Rotation",
+        "sets": 2,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Thoracic Rotators",
+          "Obliques"
+        ],
+        "secondaryMuscles": [
+          "Lats",
+          "Rhomboids"
+        ],
+        "note": "Seated or 90/90. Running posture and shoulder mobility."
+      }
+    ]
+  },
+  {
+    "templateName": "WORKOUT C — PUSH + MOBILITY",
+    "exercises": [
+      {
+        "name": "Dumbbell Bench Press",
+        "sets": 4,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Pectorals"
+        ],
+        "secondaryMuscles": [
+          "Anterior Delts",
+          "Triceps"
+        ],
+        "note": "Progressive overload weekly. Full range. Control the descent."
+      },
+      {
+        "name": "Incline Dumbbell Press",
+        "sets": 3,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Pectorals"
+        ],
+        "secondaryMuscles": [
+          "Anterior Delts",
+          "Triceps"
+        ],
+        "note": "Upper chest and anterior shoulder. 30-45 degree incline."
+      },
+      {
+        "name": "Dumbbell Shoulder Press",
+        "sets": 3,
+        "reps": 10,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Anterior + Lateral Delts"
+        ],
+        "secondaryMuscles": [
+          "Triceps",
+          "Upper Traps"
+        ],
+        "note": "Overhead stability. Important post-dislocation."
+      },
+      {
+        "name": "Lateral Raises",
+        "sets": 3,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Lateral Delts"
+        ],
+        "secondaryMuscles": [
+          "Anterior Delts",
+          "Upper Traps"
+        ],
+        "note": "Shoulder width. Light weight, slow eccentric."
+      },
+      {
+        "name": "Tricep Overhead Extension",
+        "sets": 3,
+        "reps": 12,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Triceps"
+        ],
+        "secondaryMuscles": [
+          "Lateral + Medial Triceps Head"
+        ],
+        "note": "Full range. Long head stretch."
+      },
+      {
+        "name": "Cable/Band Pushdown",
+        "sets": 3,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Triceps"
+        ],
+        "secondaryMuscles": [
+          "Forearms",
+          "Anconeus"
+        ],
+        "note": "Superset with lateral raises to save time."
+      },
+      {
+        "name": "Ankle Dorsiflexions",
+        "sets": 2,
+        "reps": 15,
+        "metricMode": "reps",
+        "primaryMuscles": [
+          "Tibialis Anterior"
+        ],
+        "secondaryMuscles": [
+          "Ankle Stabilisers",
+          "Peroneals"
+        ],
+        "note": "Consistency keeps ankles healthy under running load."
+      },
+      {
+        "name": "Soleus Stretch",
+        "sets": 1,
+        "reps": 90,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "Soleus"
+        ],
+        "secondaryMuscles": [
+          "Achilles Tendon",
+          "Gastrocnemius"
+        ],
+        "note": "Bent knee against wall. Essential for calf health in running load."
+      },
+      {
+        "name": "Hamstring Floor Stretch",
+        "sets": 1,
+        "reps": 90,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "Hamstrings"
+        ],
+        "secondaryMuscles": [
+          "Calves",
+          "Glutes"
+        ],
+        "note": "Seated or lying. Breathe into the stretch."
+      },
+      {
+        "name": "Hip Flexor Stretch",
+        "sets": 1,
+        "reps": 90,
+        "metricMode": "seconds",
+        "primaryMuscles": [
+          "Iliopsoas",
+          "Rectus Femoris"
+        ],
+        "secondaryMuscles": [
+          "TFL",
+          "Quads"
+        ],
+        "note": "Kneeling lunge. Right side extra time."
+      }
+    ]
+  }
+]

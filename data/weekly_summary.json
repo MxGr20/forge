@@ -1,0 +1,189 @@
+[
+  {
+    "week": 1,
+    "weekLabel": "Wk 1",
+    "phase": "Recovery",
+    "totalRunKm": null,
+    "keySessions": null,
+    "longRunKm": null,
+    "kmTarget": null,
+    "qualitySession": null,
+    "weeklyFocus": "Full rest. Adductor recovery. No running."
+  },
+  {
+    "week": 2,
+    "weekLabel": "Wk 2",
+    "phase": "Recovery",
+    "totalRunKm": null,
+    "keySessions": null,
+    "longRunKm": null,
+    "kmTarget": null,
+    "qualitySession": null,
+    "weeklyFocus": "Workout A resumes (50% load). Still no running."
+  },
+  {
+    "week": 3,
+    "weekLabel": "Wk 3",
+    "phase": "Phase 1 – Build",
+    "totalRunKm": 11.0,
+    "keySessions": null,
+    "longRunKm": 12.0,
+    "kmTarget": 32.0,
+    "qualitySession": null,
+    "weeklyFocus": "First runs back. 12km long run. Adductor check."
+  },
+  {
+    "week": 4,
+    "weekLabel": "Wk 4",
+    "phase": "Phase 1 – Build",
+    "totalRunKm": 22.0,
+    "keySessions": 1,
+    "longRunKm": 15.0,
+    "kmTarget": 38.0,
+    "qualitySession": null,
+    "weeklyFocus": "15km long run. Copenhagen → 30 sec."
+  },
+  {
+    "week": 5,
+    "weekLabel": "Wk 5",
+    "phase": "Phase 1 – Build",
+    "totalRunKm": 25.0,
+    "keySessions": 1,
+    "longRunKm": 17.0,
+    "kmTarget": 44.0,
+    "qualitySession": null,
+    "weeklyFocus": "17km long run. Last 3km on trail."
+  },
+  {
+    "week": 6,
+    "weekLabel": "Wk 6",
+    "phase": "Phase 1 – Build",
+    "totalRunKm": 29.0,
+    "keySessions": 1,
+    "longRunKm": 20.0,
+    "kmTarget": 48.0,
+    "qualitySession": null,
+    "weeklyFocus": "20km long run. Copenhagen → 45 sec. Key milestone."
+  },
+  {
+    "week": 7,
+    "weekLabel": "Wk 7",
+    "phase": "Phase 1 – Down Week",
+    "totalRunKm": 20.0,
+    "keySessions": 1,
+    "longRunKm": 14.0,
+    "kmTarget": 32.0,
+    "qualitySession": null,
+    "weeklyFocus": "Down week. 14km long run. Let adaptation settle."
+  },
+  {
+    "week": 8,
+    "weekLabel": "Wk 8",
+    "phase": "Phase 2 – Progression",
+    "totalRunKm": 29.0,
+    "keySessions": 2,
+    "longRunKm": 22.0,
+    "kmTarget": 48.0,
+    "qualitySession": "6×4 min @ 5:30/km",
+    "weeklyFocus": "First intervals. 22km long run (8km trail)."
+  },
+  {
+    "week": 9,
+    "weekLabel": "Wk 9",
+    "phase": "Phase 2 – Progression",
+    "totalRunKm": 33.0,
+    "keySessions": 2,
+    "longRunKm": 24.0,
+    "kmTarget": 52.0,
+    "qualitySession": "6×4 min @ 5:30/km",
+    "weeklyFocus": "Interval consistency. 24km long run."
+  },
+  {
+    "week": 10,
+    "weekLabel": "Wk 10",
+    "phase": "Phase 2 – Progression",
+    "totalRunKm": 31.0,
+    "keySessions": 2,
+    "longRunKm": 22.0,
+    "kmTarget": 54.0,
+    "qualitySession": "5×1km @ 5:10-5:20/km",
+    "weeklyFocus": "1km reps. 22km long run, last 5km working."
+  },
+  {
+    "week": 11,
+    "weekLabel": "Wk 11",
+    "phase": "Phase 2 – Peak",
+    "totalRunKm": 36.0,
+    "keySessions": 2,
+    "longRunKm": 25.0,
+    "kmTarget": 56.0,
+    "qualitySession": "5×1km @ 5:10-5:20/km",
+    "weeklyFocus": "Peak week. 25km long run. Right adductor check."
+  },
+  {
+    "week": 12,
+    "weekLabel": "Wk 12",
+    "phase": "Phase 2 – Down Week",
+    "totalRunKm": 24.0,
+    "keySessions": 2,
+    "longRunKm": 16.0,
+    "kmTarget": 38.0,
+    "qualitySession": "4×2km @ 5:20/km",
+    "weeklyFocus": "Down week. 4×2km. 16km long run."
+  },
+  {
+    "week": 13,
+    "weekLabel": "Wk 13",
+    "phase": "Phase 2 – Race Specific",
+    "totalRunKm": 29.0,
+    "keySessions": 2,
+    "longRunKm": 20.0,
+    "kmTarget": 52.0,
+    "qualitySession": "3×3km @ 5:30/km",
+    "weeklyFocus": "Race pace intro. 20km trail long run."
+  },
+  {
+    "week": 14,
+    "weekLabel": "Wk 14",
+    "phase": "Phase 2 – Race Specific",
+    "totalRunKm": 29.0,
+    "keySessions": 2,
+    "longRunKm": 18.0,
+    "kmTarget": 50.0,
+    "qualitySession": "2×5km @ 5:35/km",
+    "weeklyFocus": "Race pace. 18km trail at race feel."
+  },
+  {
+    "week": 15,
+    "weekLabel": "Wk 15",
+    "phase": "Phase 2 – Race Specific",
+    "totalRunKm": 25.0,
+    "keySessions": 2,
+    "longRunKm": 12.0,
+    "kmTarget": 44.0,
+    "qualitySession": "1×8km @ 5:40/km continuous",
+    "weeklyFocus": "Longest race pace block. 12km easy trail."
+  },
+  {
+    "week": 16,
+    "weekLabel": "Wk 16",
+    "phase": "Phase 2 – Sharpener",
+    "totalRunKm": 20.0,
+    "keySessions": 2,
+    "longRunKm": 8.0,
+    "kmTarget": 36.0,
+    "qualitySession": "3×2km @ 5:20/km",
+    "weeklyFocus": "Sharpener. 8km easy trail. Race in 1 week."
+  },
+  {
+    "week": 17,
+    "weekLabel": "Wk 17",
+    "phase": "Phase 3 – Taper",
+    "totalRunKm": 29.0,
+    "keySessions": 1,
+    "longRunKm": null,
+    "kmTarget": 18.0,
+    "qualitySession": "4×100m strides",
+    "weeklyFocus": "RACE WEEK. 26 September. Target sub-2:00."
+  }
+]
