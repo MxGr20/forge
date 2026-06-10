@@ -589,7 +589,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
     if(!s)return;
     s.completed=!s.completed;
     saveState();
-    if(s.completed){setRest(getRestSeconds(s.tag));setRestOn(true);}
+    if(s.completed&&state.settings.autoRest){setRest(getRestSeconds(s.tag));setRestOn(true);}
     tick();
   };
   const updField=(itemId,setId,field,val)=>{
@@ -1372,6 +1372,14 @@ function ToolsView({refresh}){
             </div>
           </div>
         ))}
+        {[{l:'Auto-start Rest Timer',k:'autoRest'},{l:'Rest Audio Alert',k:'audioRestAlert'}].map(row=>(
+          <div key={row.k} className="setr">
+            <span style={{fontSize:13,color:'var(--text)'}}>{row.l}</span>
+            <input type="checkbox" defaultChecked={!!s[row.k]}
+              onChange={e=>updSetting(row.k,e.target.checked)}
+              style={{width:18,height:18,accentColor:'var(--brand)',cursor:'pointer'}}/>
+          </div>
+        ))}
       </div>
 
       <div className="sh"><span className="sl">Plate Calculator</span></div>
@@ -1500,6 +1508,19 @@ function BodyLogSheet({onClose,onSaved}){
 const ACCENT_MAP={'#4f66ff':{r:79,g:102,b:255,b2:'#7c8cff'},'#8b5cf6':{r:139,g:92,b:246,b2:'#a78bfa'},'#0ea5e9':{r:14,g:165,b:233,b2:'#38bdf8'}};
 const TDEFS={accent:'#4f66ff'};
 
+function playRestAlertTone(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.type='sine';osc.frequency.value=440;
+    gain.gain.value=0.3;
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.start();osc.stop(ctx.currentTime+0.12);
+    osc.onended=()=>ctx.close();
+  }catch(e){}
+}
+
 function App(){
   const [t,setTweak]=useTweaks(TDEFS);
   const [view,setView]=useState('workouts');
@@ -1541,7 +1562,7 @@ function App(){
 
   useEffect(()=>{
     if(!restOn)return;
-    const t2=setInterval(()=>setRest(s=>{if(s<=1){setRestOn(false);window._forgeToast?.('Rest complete');return 0;}return s-1;}),1000);
+    const t2=setInterval(()=>setRest(s=>{if(s<=1){setRestOn(false);window._forgeToast?.('Rest complete');if(state.settings.audioRestAlert)playRestAlertTone();return 0;}return s-1;}),1000);
     return()=>clearInterval(t2);
   },[restOn]);
 

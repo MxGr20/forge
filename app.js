@@ -106,6 +106,7 @@ const DEFAULT_STATE = {
     restSecondsWork: 90,
     restSecondsDrop: 45,
     autoRest: true,
+    audioRestAlert: false,
     barWeight: 20,
     plates: [25, 20, 15, 10, 5, 2.5, 1.25],
     bodyweight: 75,
