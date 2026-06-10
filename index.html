@@ -598,6 +598,7 @@ function SetRow({s,i,itemId,prevSets,updField,onToggle,repsLbl}){
   const [reps,setReps]=useState(s.reps??'');
   const prev=prevSets?.[i];
   const hasPrev=prev&&(prev.weight!=null||prev.reps!=null);
+  const isWarmup=normalizeSetTag(s.tag)==='warmup';
   const fillPrev=()=>{
     const w=prev.weight??'';const r=prev.reps??'';
     setWeight(w);setReps(r);
@@ -605,8 +606,8 @@ function SetRow({s,i,itemId,prevSets,updField,onToggle,repsLbl}){
     updField(itemId,s.id,'reps',String(r));
   };
   return(
-    <div className={`sr${s.completed?' done':''}`}>
-      <div className="sn">{i+1}</div>
+    <div className={`sr${s.completed?' done':''}`} style={isWarmup?{background:'rgba(var(--brgb),.06)',borderRadius:6}:undefined}>
+      <div className="sn">{isWarmup?'WU':i+1}</div>
       <div style={{display:'flex',flexDirection:'column',gap:1}}>
         <input className="si" type="number" inputMode="decimal" value={weight} placeholder="—"
           onChange={e=>setWeight(e.target.value)}
@@ -734,6 +735,8 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
         const pct=total>0?(done/total)*100:0;
         const repsLbl=item.metricMode==='seconds'?'Sec':'Reps';
         const prevSets=getLastSessionSetsForExercise(item.exerciseId,workout.id);
+        const prevWeight=getWorkingWeightForExercise(item.exerciseId);
+        const hasWarmups=item.sets.some(s=>normalizeSetTag(s.tag)==='warmup');
         return(
           <div key={item.id} className="ec">
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
@@ -752,6 +755,12 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
                 {item.metricMode==='seconds'?'→ Reps':'→ Sec'}
               </button>
             </div>
+            {prevWeight!=null&&!hasWarmups&&(
+              <button className="gh" style={{width:'100%',height:38,fontSize:12,marginBottom:8}}
+                onClick={()=>{addWarmupSets(item.id);tick();}}>
+                Add Warmups — {Math.round(prevWeight*0.5*2)/2} / {Math.round(prevWeight*0.7*2)/2} / {Math.round(prevWeight*0.85*2)/2} kg
+              </button>
+            )}
             <input type="text" className="si" placeholder="Note…" defaultValue={item.note||''}
               style={{width:'100%',marginBottom:8,fontSize:12}}
               onBlur={e=>{item.note=e.target.value;saveState();}}/>

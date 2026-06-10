@@ -1005,7 +1005,7 @@ const restTimer = {
 
 function getRestSeconds(tag = "work") {
   const normalizedTag = String(tag || "work").toLowerCase();
-  const key = normalizedTag === "drop" || normalizedTag === "dropset" || normalizedTag === "drop-set"
+  const key = normalizedTag === "drop" || normalizedTag === "dropset" || normalizedTag === "drop-set" || normalizedTag === "warmup"
     ? "restSecondsDrop"
     : "restSecondsWork";
   const value = state.settings[key];
@@ -1241,6 +1241,35 @@ function getLastSessionSetsForExercise(exerciseId, currentWorkoutId) {
   return last?.items.find(i => i.exerciseId === exerciseId)?.sets || [];
 }
 
+function getWorkingWeightForExercise(exerciseId) {
+  const last = state.workouts
+    .filter(w => w.endedAt)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .find(w => w.items.some(i => i.exerciseId === exerciseId));
+  if (!last) return null;
+  const item = last.items.find(i => i.exerciseId === exerciseId);
+  const workSet = item?.sets.find(s => normalizeSetTag(s.tag) === 'work' && Number.isFinite(s.weight));
+  return workSet ? workSet.weight : null;
+}
+
+function addWarmupSets(itemId) {
+  const workout = getActiveWorkout();
+  if (!workout) return;
+  const item = workout.items.find(i => i.id === itemId);
+  if (!item) return;
+  const base = getWorkingWeightForExercise(item.exerciseId);
+  if (base == null) return;
+  const r = kg => Math.round(kg / 2.5) * 2.5;
+  const warmups = [
+    { id: uid(), tag: 'warmup', weight: r(base * 0.50), reps: 5, completed: false },
+    { id: uid(), tag: 'warmup', weight: r(base * 0.70), reps: 3, completed: false },
+    { id: uid(), tag: 'warmup', weight: r(base * 0.85), reps: 1, completed: false },
+  ];
+  item.sets.unshift(...warmups);
+  saveState();
+  renderLog();
+}
+
 function addWorkoutExercise(exerciseId) {
   const workout = getActiveWorkout();
   if (!workout) return;
@@ -1461,11 +1490,12 @@ function normalizeSetTag(tag) {
   if (normalized === "dropset") return "drop";
   if (normalized === "failure") return "failure";
   if (normalized === "drop") return "drop";
+  if (normalized === "warmup") return "warmup";
   return "work";
 }
 
 function nextSetTag(tag) {
-  const order = ["work", "failure", "drop"];
+  const order = ["work", "failure", "drop", "warmup"];
   const current = normalizeSetTag(tag);
   const idx = order.indexOf(current);
   return order[(idx + 1) % order.length];
@@ -1475,6 +1505,7 @@ function setTagShort(tag) {
   const current = normalizeSetTag(tag);
   if (current === "failure") return "F";
   if (current === "drop") return "D";
+  if (current === "warmup") return "WU";
   return "W";
 }
 
@@ -1482,6 +1513,7 @@ function setTagLabel(tag) {
   const current = normalizeSetTag(tag);
   if (current === "failure") return "Failure";
   if (current === "drop") return "Drop";
+  if (current === "warmup") return "Warmup";
   return "Work";
 }
 
