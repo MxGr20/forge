@@ -2756,6 +2756,29 @@ function getStatsDataSnapshot() {
   return state.statsData;
 }
 
+function heatmapCellColor(count) {
+  if (!count) return 'var(--s3)';
+  return `rgba(var(--brgb), ${Math.min(0.4 + count * 0.22, 1).toFixed(2)})`;
+}
+
+function getHeatmapData() {
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const dow = (now.getDay() + 6) % 7; // 0=Mon
+  const currentMonday = new Date(now); currentMonday.setHours(0,0,0,0); currentMonday.setDate(now.getDate() - dow);
+  const cutoff = new Date(currentMonday); cutoff.setDate(currentMonday.getDate() - 51 * 7);
+  const data = {};
+  state.workouts
+    .filter(w => w.endedAt && new Date(w.createdAt) >= cutoff)
+    .forEach(w => {
+      const d = fmt8(new Date(w.createdAt));
+      if (!data[d]) data[d] = { count: 0, names: [] };
+      data[d].count++;
+      data[d].names.push(w.name || 'Workout');
+    });
+  return { data, currentMonday };
+}
+
 function getWeeklyMuscleRollup() {
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const counts = {};
