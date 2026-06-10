@@ -903,6 +903,50 @@ function ConsistencyHeatmap(){
   );
 }
 
+function BodySilhouette({regionVolume,maxRegion}){
+  const rf=id=>{const v=regionVolume[id]??0;if(!v)return'var(--s2)';return`rgba(var(--brgb),${Math.max(0.18,v/maxRegion).toFixed(2)})`;};
+  return(
+    <div>
+      <div style={{display:'flex',justifyContent:'space-around',marginBottom:6}}>
+        <span style={{fontSize:9,fontWeight:700,letterSpacing:'.12em',color:'var(--t3)'}}>FRONT</span>
+        <span style={{fontSize:9,fontWeight:700,letterSpacing:'.12em',color:'var(--t3)'}}>BACK</span>
+      </div>
+      <svg viewBox="0 0 280 260" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',maxWidth:300,display:'block'}}>
+        {/* FRONT (center x=70) */}
+        <circle cx="70" cy="14" r="12" fill="var(--s2)" stroke="var(--bd)" strokeWidth="1"/>
+        <ellipse cx="44" cy="48" rx="13" ry="9" fill={rf('front-delts')}/>
+        <ellipse cx="96" cy="48" rx="13" ry="9" fill={rf('front-delts')}/>
+        <rect x="50" y="38" width="40" height="26" rx="8" fill={rf('chest')}/>
+        <rect x="23" y="52" width="14" height="30" rx="7" fill={rf('biceps')}/>
+        <rect x="103" y="52" width="14" height="30" rx="7" fill={rf('biceps')}/>
+        <rect x="21" y="84" width="12" height="24" rx="6" fill={rf('forearms-front')}/>
+        <rect x="107" y="84" width="12" height="24" rx="6" fill={rf('forearms-front')}/>
+        <rect x="51" y="64" width="38" height="44" rx="8" fill={rf('abs')}/>
+        <rect x="37" y="110" width="23" height="50" rx="8" fill={rf('quads-front')}/>
+        <rect x="80" y="110" width="23" height="50" rx="8" fill={rf('quads-front')}/>
+        <rect x="57" y="126" width="9" height="30" rx="4" fill={rf('adductors')}/>
+        <rect x="74" y="126" width="9" height="30" rx="4" fill={rf('adductors')}/>
+        <rect x="40" y="163" width="17" height="38" rx="7" fill={rf('calves-front')}/>
+        <rect x="83" y="163" width="17" height="38" rx="7" fill={rf('calves-front')}/>
+        {/* BACK (center x=210) */}
+        <circle cx="210" cy="14" r="12" fill="var(--s2)" stroke="var(--bd)" strokeWidth="1"/>
+        <rect x="178" y="32" width="64" height="17" rx="7" fill={rf('traps')}/>
+        <rect x="170" y="49" width="80" height="42" rx="8" fill={rf('upper-back')}/>
+        <rect x="152" y="52" width="14" height="30" rx="7" fill={rf('triceps')}/>
+        <rect x="244" y="52" width="14" height="30" rx="7" fill={rf('triceps')}/>
+        <rect x="150" y="84" width="12" height="24" rx="6" fill={rf('forearms-back')}/>
+        <rect x="248" y="84" width="12" height="24" rx="6" fill={rf('forearms-back')}/>
+        <rect x="186" y="91" width="48" height="22" rx="7" fill={rf('lower-back')}/>
+        <rect x="172" y="112" width="76" height="30" rx="12" fill={rf('glutes')}/>
+        <rect x="174" y="144" width="26" height="50" rx="8" fill={rf('hamstrings')}/>
+        <rect x="220" y="144" width="26" height="50" rx="8" fill={rf('hamstrings')}/>
+        <rect x="178" y="197" width="17" height="38" rx="7" fill={rf('calves-back')}/>
+        <rect x="225" y="197" width="17" height="38" rx="7" fill={rf('calves-back')}/>
+      </svg>
+    </div>
+  );
+}
+
 /* ── STATS VIEW ── */
 function StatsView({onBodyLog}){
   const statsData=getStatsDataSnapshot();
@@ -994,16 +1038,18 @@ function StatsView({onBodyLog}){
       <div className="div"/>
       <div className="sh"><span className="sl">Muscle Volume</span></div>
       <div style={{display:'flex',gap:6,marginBottom:16}}>
-        {[1,2,3].map(m=>(
+        {[0.25,1,2,3].map(m=>(
           <button key={m} onClick={()=>setMusMonths(m)} style={{flex:1,height:26,borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
             background:musMonths===m?'var(--s3)':'transparent',border:`1px solid ${musMonths===m?'var(--bbd)':'var(--bd)'}`,
-            color:musMonths===m?'var(--brand2)':'var(--t3)',transition:'all .15s'}}>{m===1?'4w':m===2?'8w':'12w'}</button>
+            color:musMonths===m?'var(--brand2)':'var(--t3)',transition:'all .15s'}}>{m===0.25?'1w':m===1?'4w':m===2?'8w':'12w'}</button>
         ))}
       </div>
       {musDisplay.length===0?(
         <div style={{textAlign:'center',padding:'16px 0 22px',color:'var(--t3)',fontSize:12}}>Complete workouts with tagged exercises to see muscle volume</div>
       ):(
         <div style={{marginBottom:22}}>
+          {(()=>{const {regionVolume,maxRegion}=getMuscleSilhouetteData(musDisplay);return <BodySilhouette regionVolume={regionVolume} maxRegion={maxRegion}/>;})()}
+          <div style={{height:14}}/>
           {musDisplay.map((s,idx)=>{
             const barColors=['var(--brand)','var(--ok)','var(--warn)','#a78bfa','#f472b6','#38bdf8','#fb923c','#4ade80'];
             const c=barColors[idx%barColors.length];

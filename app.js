@@ -2873,6 +2873,38 @@ function updateWorkoutNote(workoutId, note) {
   saveState();
 }
 
+const MUSCLE_SILHOUETTE_MAP = {
+  'Chest':      ['chest'],
+  'Shoulders':  ['front-delts'],
+  'Biceps':     ['biceps'],
+  'Triceps':    ['triceps'],
+  'Forearms':   ['forearms-front','forearms-back'],
+  'Abdominals': ['abs'],
+  'Quadriceps': ['quads-front'],
+  'Adductors':  ['adductors'],
+  'Abductors':  ['abductors'],
+  'Calves':     ['calves-front','calves-back'],
+  'Lower Legs': ['calves-front','calves-back'],
+  'Traps':      ['traps'],
+  'Upper Back': ['upper-back'],
+  'Lats':       ['upper-back'],
+  'Lower Back': ['lower-back'],
+  'Glutes':     ['glutes'],
+  'Hamstrings': ['hamstrings'],
+  'Upper Legs': ['quads-front','hamstrings'],
+};
+
+function getMuscleSilhouetteData(musDisplay) {
+  const regionVolume = {};
+  (musDisplay || []).forEach(({name, total}) => {
+    const ids = MUSCLE_SILHOUETTE_MAP[name];
+    if (!ids) return;
+    ids.forEach(id => { regionVolume[id] = (regionVolume[id] || 0) + total; });
+  });
+  const maxRegion = Math.max(...Object.values(regionVolume), 1);
+  return { regionVolume, maxRegion };
+}
+
 function getWeeklyMuscleRollup() {
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const counts = {};
