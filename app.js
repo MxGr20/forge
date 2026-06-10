@@ -2811,6 +2811,43 @@ function getHeatmapData() {
   return { data, currentMonday };
 }
 
+function getSessionPRs(workoutId) {
+  const workout = state.workouts.find(w => w.id === workoutId);
+  if (!workout || !workout.endedAt) return [];
+  // build all-time best map from other completed workouts
+  const best = {};
+  state.workouts
+    .filter(w => w.endedAt && w.id !== workoutId)
+    .forEach(w => w.items.forEach(item =>
+      item.sets.forEach(s => {
+        if (normalizeSetTag(s.tag) !== 'work' || !s.completed) return;
+        if (!Number.isFinite(s.weight) || !Number.isFinite(s.reps)) return;
+        const k = `${item.exerciseId}:${s.reps}`;
+        if (!best[k] || s.weight > best[k]) best[k] = s.weight;
+      })
+    ));
+  const prs = [];
+  workout.items.forEach(item => {
+    item.sets.forEach(s => {
+      if (normalizeSetTag(s.tag) !== 'work' || !s.completed) return;
+      if (!Number.isFinite(s.weight) || !Number.isFinite(s.reps)) return;
+      const k = `${item.exerciseId}:${s.reps}`;
+      const isFirstEver = best[k] == null;
+      if (isFirstEver || s.weight > best[k]) {
+        prs.push({ exerciseId: item.exerciseId, exerciseName: getExercise(item.exerciseId)?.name || 'Exercise', weight: s.weight, reps: s.reps, isFirstEver });
+      }
+    });
+  });
+  return prs;
+}
+
+function updateWorkoutNote(workoutId, note) {
+  const w = state.workouts.find(w => w.id === workoutId);
+  if (!w) return;
+  w.note = note;
+  saveState();
+}
+
 function getWeeklyMuscleRollup() {
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const counts = {};

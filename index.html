@@ -1620,6 +1620,61 @@ function BodyLogSheet({onClose,onSaved}){
 const ACCENT_MAP={'#4f66ff':{r:79,g:102,b:255,b2:'#7c8cff'},'#8b5cf6':{r:139,g:92,b:246,b2:'#a78bfa'},'#0ea5e9':{r:14,g:165,b:233,b2:'#38bdf8'}};
 const TDEFS={accent:'#4f66ff'};
 
+function SessionSummarySheet({workoutId,onDismiss}){
+  const workout=state.workouts.find(w=>w.id===workoutId);
+  const prs=getSessionPRs(workoutId);
+  const [note,setNote]=useState(workout?.note||'');
+  if(!workout)return null;
+  const mins=workout.endedAt&&workout.createdAt
+    ?Math.max(1,Math.round((new Date(workout.endedAt)-new Date(workout.createdAt))/60000))
+    :null;
+  const vol=Math.round(workoutVolume(workout)).toLocaleString();
+  const exCount=workout.items.length;
+  const handleDismiss=()=>{updateWorkoutNote(workoutId,note);onDismiss();};
+  return(
+    <SheetPortal>
+      <div className="sheet" style={{maxHeight:'92%',display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'18px 22px 12px',flexShrink:0}}>
+          <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 14px'}}/>
+          <div style={{fontFamily:'var(--fh)',fontSize:23,fontWeight:800,color:'var(--text)',marginBottom:2}}>{workout.name||'Workout'}</div>
+          <div style={{fontSize:11,color:'var(--t3)'}}>Great work!</div>
+        </div>
+        <div style={{overflowY:'auto',flex:1,padding:'4px 22px 20px',WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
+          <div className="sg" style={{marginBottom:16}}>
+            {mins&&<div className="st"><div className="sl2">Duration</div><div className="sv">{mins}<span>min</span></div></div>}
+            <div className="st"><div className="sl2">Volume</div><div className="sv" style={{fontSize:16}}>{vol}<span>kg</span></div></div>
+            <div className="st"><div className="sl2">Exercises</div><div className="sv">{exCount}</div></div>
+            {prs.length>0&&<div className="st"><div className="sl2">PRs</div><div className="sv" style={{color:'var(--ok)'}}>{prs.length}</div></div>}
+          </div>
+          {prs.length>0&&(
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)',marginBottom:8}}>Personal Records</div>
+              {prs.map((pr,i)=>(
+                <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:i<prs.length-1?'1px solid var(--bd)':'none'}}>
+                  <div>
+                    <div style={{fontSize:13,color:'var(--text)',fontWeight:500}}>{pr.exerciseName}</div>
+                    <div style={{fontSize:11,color:'var(--t2)'}}>{pr.weight} kg × {pr.reps} reps</div>
+                  </div>
+                  <span className="chip" style={{background:pr.isFirstEver?'var(--bsoft)':'rgba(var(--okrgb),.15)',color:pr.isFirstEver?'var(--brand2)':'var(--ok)',border:`1px solid ${pr.isFirstEver?'var(--bbd)':'rgba(var(--okrgb),.3)'}`,fontSize:10,padding:'3px 8px'}}>
+                    {pr.isFirstEver?'First!':'PR'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)',marginBottom:8}}>Session Note</div>
+            <textarea value={note} onChange={e=>setNote(e.target.value)} onBlur={()=>updateWorkoutNote(workoutId,note)}
+              placeholder="How did it feel? Any notes…"
+              style={{width:'100%',minHeight:80,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--text)',fontSize:13,padding:'10px 12px',fontFamily:'inherit',resize:'none',boxSizing:'border-box'}}/>
+          </div>
+          <button className="cta" onClick={handleDismiss}>Done →</button>
+        </div>
+      </div>
+    </SheetPortal>
+  );
+}
+
 function playRestAlertTone(){
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
@@ -1643,6 +1698,7 @@ function App(){
   const [toastMsg,setToastMsg]=useState(null);
   const [rest,setRest]=useState(0);
   const [restOn,setRestOn]=useState(false);
+  const [summaryWorkoutId,setSummaryWorkoutId]=useState(null);
   const [,forceUpdate]=useReducer(x=>x+1,0);
   const toastTimer=useRef(null);
 
@@ -1687,7 +1743,8 @@ function App(){
     else{startWorkout(null);setInSess(true);}
   };
   const confirmSess=(routine)=>{setSheet(null);startWorkout(routine.id);setInSess(true);};
-  const finishSess=()=>{endWorkout();setInSess(false);setDir(-1);};
+  const finishSess=()=>{const cid=state.activeWorkoutId;endWorkout();setSummaryWorkoutId(cid);};
+  const dismissSummary=()=>{setSummaryWorkoutId(null);setInSess(false);setDir(-1);};
   const discardSess=()=>{cancelWorkout();setInSess(false);setDir(-1);};
 
   const animCls=dir===0?'tu':dir>0?'tr':'tl';
@@ -1718,6 +1775,7 @@ function App(){
         {inSess&&<div style={{height:'env(safe-area-inset-bottom, 0px)'}}/>}
         {sheet&&<TemplateSheet routine={sheet} onStart={()=>confirmSess(sheet)} onClose={()=>setSheet(null)}/>}
         {bodyLogOpen&&<BodyLogSheet onClose={()=>setBodyLogOpen(false)} onSaved={refresh}/>}
+        {summaryWorkoutId&&<SessionSummarySheet workoutId={summaryWorkoutId} onDismiss={dismissSummary}/>}
       </div>
       {toastMsg&&<div className="toast">{toastMsg}</div>}
       <TweaksPanel>
