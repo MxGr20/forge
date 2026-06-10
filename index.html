@@ -904,44 +904,77 @@ function ConsistencyHeatmap(){
 }
 
 function BodySilhouette({regionVolume,maxRegion}){
-  const rf=id=>{const v=regionVolume[id]??0;if(!v)return'var(--s2)';return`rgba(var(--brgb),${Math.max(0.18,v/maxRegion).toFixed(2)})`;};
+  const rf=id=>{const v=regionVolume[id]??0;if(!v)return'transparent';return`rgba(var(--brgb),${Math.max(0.22,v/maxRegion).toFixed(2)})`;};
+  const sw={stroke:'var(--bd)',strokeWidth:'.5'};
   return(
     <div>
       <div style={{display:'flex',justifyContent:'space-around',marginBottom:6}}>
         <span style={{fontSize:9,fontWeight:700,letterSpacing:'.12em',color:'var(--t3)'}}>FRONT</span>
         <span style={{fontSize:9,fontWeight:700,letterSpacing:'.12em',color:'var(--t3)'}}>BACK</span>
       </div>
-      <svg viewBox="0 0 280 260" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',maxWidth:300,display:'block'}}>
-        {/* FRONT (center x=70) */}
-        <circle cx="70" cy="14" r="12" fill="var(--s2)" stroke="var(--bd)" strokeWidth="1"/>
-        <ellipse cx="44" cy="48" rx="13" ry="9" fill={rf('front-delts')}/>
-        <ellipse cx="96" cy="48" rx="13" ry="9" fill={rf('front-delts')}/>
-        <rect x="50" y="38" width="40" height="26" rx="8" fill={rf('chest')}/>
-        <rect x="23" y="52" width="14" height="30" rx="7" fill={rf('biceps')}/>
-        <rect x="103" y="52" width="14" height="30" rx="7" fill={rf('biceps')}/>
-        <rect x="21" y="84" width="12" height="24" rx="6" fill={rf('forearms-front')}/>
-        <rect x="107" y="84" width="12" height="24" rx="6" fill={rf('forearms-front')}/>
-        <rect x="51" y="64" width="38" height="44" rx="8" fill={rf('abs')}/>
-        <rect x="37" y="110" width="23" height="50" rx="8" fill={rf('quads-front')}/>
-        <rect x="80" y="110" width="23" height="50" rx="8" fill={rf('quads-front')}/>
-        <rect x="57" y="126" width="9" height="30" rx="4" fill={rf('adductors')}/>
-        <rect x="74" y="126" width="9" height="30" rx="4" fill={rf('adductors')}/>
-        <rect x="40" y="163" width="17" height="38" rx="7" fill={rf('calves-front')}/>
-        <rect x="83" y="163" width="17" height="38" rx="7" fill={rf('calves-front')}/>
-        {/* BACK (center x=210) */}
-        <circle cx="210" cy="14" r="12" fill="var(--s2)" stroke="var(--bd)" strokeWidth="1"/>
-        <rect x="178" y="32" width="64" height="17" rx="7" fill={rf('traps')}/>
-        <rect x="170" y="49" width="80" height="42" rx="8" fill={rf('upper-back')}/>
-        <rect x="152" y="52" width="14" height="30" rx="7" fill={rf('triceps')}/>
-        <rect x="244" y="52" width="14" height="30" rx="7" fill={rf('triceps')}/>
-        <rect x="150" y="84" width="12" height="24" rx="6" fill={rf('forearms-back')}/>
-        <rect x="248" y="84" width="12" height="24" rx="6" fill={rf('forearms-back')}/>
-        <rect x="186" y="91" width="48" height="22" rx="7" fill={rf('lower-back')}/>
-        <rect x="172" y="112" width="76" height="30" rx="12" fill={rf('glutes')}/>
-        <rect x="174" y="144" width="26" height="50" rx="8" fill={rf('hamstrings')}/>
-        <rect x="220" y="144" width="26" height="50" rx="8" fill={rf('hamstrings')}/>
-        <rect x="178" y="197" width="17" height="38" rx="7" fill={rf('calves-back')}/>
-        <rect x="225" y="197" width="17" height="38" rx="7" fill={rf('calves-back')}/>
+      <svg viewBox="0 0 280 244" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',maxWidth:300,display:'block'}}>
+
+        {/* ── FRONT base silhouette (cx=70) ── */}
+        <ellipse cx="70" cy="13" rx="11" ry="12" fill="var(--s3)" stroke="var(--bd)" strokeWidth=".8"/>
+        <path d="M66,24 L74,24 L75,33 L65,33 Z" fill="var(--s3)"/>
+        <path d="M47,35 C40,37 38,45 40,56 L42,68 L98,68 L100,56 C102,45 100,37 93,35 C84,31 56,31 47,35 Z" fill="var(--s3)"/>
+        <path d="M44,68 L44,82 C44,98 46,112 52,116 L70,118 L88,116 C94,112 96,98 96,82 L96,68 Z" fill="var(--s3)"/>
+        <path d="M38,37 C30,40 26,52 28,66 C30,74 36,78 42,76 C46,74 48,64 46,52 C44,44 42,36 38,37 Z" fill="var(--s3)"/>
+        <path d="M102,37 C110,40 114,52 112,66 C110,74 104,78 98,76 C94,74 92,64 94,52 C96,44 98,36 102,37 Z" fill="var(--s3)"/>
+        <path d="M28,76 C22,80 20,94 22,108 C24,116 30,118 36,116 C40,112 40,100 38,84 C36,78 30,74 28,76 Z" fill="var(--s3)"/>
+        <path d="M112,76 C118,80 120,94 118,108 C116,116 110,118 104,116 C100,112 100,100 102,84 C104,78 110,74 112,76 Z" fill="var(--s3)"/>
+        <path d="M52,122 C44,126 40,142 42,162 C44,174 50,180 58,178 C64,176 68,164 66,150 C64,134 60,120 52,122 Z" fill="var(--s3)"/>
+        <path d="M88,122 C96,126 100,142 98,162 C96,174 90,180 82,178 C76,176 72,164 74,150 C76,134 80,120 88,122 Z" fill="var(--s3)"/>
+        <path d="M44,182 C38,186 36,200 38,214 C40,222 46,226 52,224 C58,220 60,208 58,196 C56,184 50,180 44,182 Z" fill="var(--s3)"/>
+        <path d="M96,182 C102,186 104,200 102,214 C100,222 94,226 88,224 C82,220 80,208 82,196 C84,184 90,180 96,182 Z" fill="var(--s3)"/>
+
+        {/* ── FRONT muscle regions ── */}
+        <path d="M44,34 C36,36 34,46 36,54 C38,60 44,62 50,58 C54,52 54,44 50,38 C48,34 46,32 44,34 Z" fill={rf('front-delts')} {...sw}/>
+        <path d="M96,34 C104,36 106,46 104,54 C102,60 96,62 90,58 C86,52 86,44 90,38 C92,34 94,32 96,34 Z" fill={rf('front-delts')} {...sw}/>
+        <path d="M52,36 C46,38 44,50 46,60 C48,66 54,68 62,66 C68,64 70,56 68,50 C66,42 60,34 52,36 Z" fill={rf('chest')} {...sw}/>
+        <path d="M88,36 C94,38 96,50 94,60 C92,66 86,68 78,66 C72,64 70,56 72,50 C74,42 80,34 88,36 Z" fill={rf('chest')} {...sw}/>
+        <path d="M30,40 C24,42 20,54 22,68 C24,76 30,80 36,76 C40,72 40,60 38,50 C36,44 32,38 30,40 Z" fill={rf('biceps')} {...sw}/>
+        <path d="M110,40 C116,42 120,54 118,68 C116,76 110,80 104,76 C100,72 100,60 102,50 C104,44 108,38 110,40 Z" fill={rf('biceps')} {...sw}/>
+        <path d="M24,76 C18,80 16,94 18,108 C20,116 26,118 32,114 C36,110 36,98 34,84 C32,78 26,74 24,76 Z" fill={rf('forearms-front')} {...sw}/>
+        <path d="M116,76 C122,80 124,94 122,108 C120,116 114,118 108,114 C104,110 104,98 106,84 C108,78 114,74 116,76 Z" fill={rf('forearms-front')} {...sw}/>
+        <path d="M59,68 C53,70 51,84 53,98 C55,110 59,118 70,118 C81,118 85,110 87,98 C89,84 87,70 81,68 C75,64 65,64 59,68 Z" fill={rf('abs')} {...sw}/>
+        <path d="M48,124 C40,128 36,146 38,164 C40,176 46,182 56,180 C62,178 66,166 64,150 C62,132 58,120 48,124 Z" fill={rf('quads-front')} {...sw}/>
+        <path d="M92,124 C100,128 104,146 102,164 C100,176 94,182 84,180 C78,178 74,166 76,150 C78,132 82,120 92,124 Z" fill={rf('quads-front')} {...sw}/>
+        <path d="M63,126 C59,132 59,148 61,158 C63,164 67,166 70,162 C72,158 70,142 66,128 Z" fill={rf('adductors')} {...sw}/>
+        <path d="M77,126 C81,132 81,148 79,158 C77,164 73,166 70,162 C68,158 70,142 74,128 Z" fill={rf('adductors')} {...sw}/>
+        <path d="M40,184 C34,188 32,204 34,216 C36,224 42,228 48,226 C54,222 56,210 54,198 C52,186 46,182 40,184 Z" fill={rf('calves-front')} {...sw}/>
+        <path d="M100,184 C106,188 108,204 106,216 C104,224 98,228 92,226 C86,222 84,210 86,198 C88,186 94,182 100,184 Z" fill={rf('calves-front')} {...sw}/>
+
+        {/* ── BACK base silhouette (cx=210) ── */}
+        <ellipse cx="210" cy="13" rx="11" ry="12" fill="var(--s3)" stroke="var(--bd)" strokeWidth=".8"/>
+        <path d="M206,24 L214,24 L215,33 L205,33 Z" fill="var(--s3)"/>
+        <path d="M187,35 C180,37 178,45 180,56 L182,68 L238,68 L240,56 C242,45 240,37 233,35 C224,31 196,31 187,35 Z" fill="var(--s3)"/>
+        <path d="M184,68 L184,82 C184,98 186,112 192,116 L210,118 L228,116 C234,112 236,98 236,82 L236,68 Z" fill="var(--s3)"/>
+        <path d="M178,37 C170,40 166,52 168,66 C170,74 176,78 182,76 C186,74 188,64 186,52 C184,44 182,36 178,37 Z" fill="var(--s3)"/>
+        <path d="M242,37 C250,40 254,52 252,66 C250,74 244,78 238,76 C234,74 232,64 234,52 C236,44 238,36 242,37 Z" fill="var(--s3)"/>
+        <path d="M168,76 C162,80 160,94 162,108 C164,116 170,118 176,116 C180,112 180,100 178,84 C176,78 170,74 168,76 Z" fill="var(--s3)"/>
+        <path d="M252,76 C258,80 260,94 258,108 C256,116 250,118 244,116 C240,112 240,100 242,84 C244,78 250,74 252,76 Z" fill="var(--s3)"/>
+        <path d="M192,122 C184,126 180,142 182,162 C184,174 190,180 198,178 C204,176 208,164 206,150 C204,134 200,120 192,122 Z" fill="var(--s3)"/>
+        <path d="M228,122 C236,126 240,142 238,162 C236,174 230,180 222,178 C216,176 212,164 214,150 C216,134 220,120 228,122 Z" fill="var(--s3)"/>
+        <path d="M184,182 C178,186 176,200 178,214 C180,222 186,226 192,224 C198,220 200,208 198,196 C196,184 190,180 184,182 Z" fill="var(--s3)"/>
+        <path d="M236,182 C242,186 244,200 242,214 C240,222 234,226 228,224 C222,220 220,208 222,196 C224,184 230,180 236,182 Z" fill="var(--s3)"/>
+
+        {/* ── BACK muscle regions ── */}
+        <path d="M188,32 C180,38 180,48 186,52 C194,56 210,56 210,56 C210,56 226,56 234,52 C240,48 240,38 232,32 C224,28 196,28 188,32 Z" fill={rf('traps')} {...sw}/>
+        <path d="M180,54 C172,60 168,76 170,92 C172,102 178,108 186,106 C192,104 194,90 192,76 C190,62 186,50 180,54 Z" fill={rf('upper-back')} {...sw}/>
+        <path d="M240,54 C248,60 252,76 250,92 C248,102 242,108 234,106 C228,104 226,90 228,76 C230,62 234,50 240,54 Z" fill={rf('upper-back')} {...sw}/>
+        <path d="M190,56 C184,62 182,78 184,90 C188,96 210,98 210,98 C210,98 232,96 236,90 C238,78 236,62 230,56 C224,50 196,50 190,56 Z" fill={rf('upper-back')} {...sw}/>
+        <path d="M190,96 C184,100 182,114 184,124 C186,130 192,132 210,132 C228,132 234,130 236,124 C238,114 236,100 230,96 C222,90 198,90 190,96 Z" fill={rf('lower-back')} {...sw}/>
+        <path d="M170,40 C164,42 160,56 162,70 C164,78 170,82 176,78 C180,74 180,62 178,50 C176,44 172,38 170,40 Z" fill={rf('triceps')} {...sw}/>
+        <path d="M250,40 C256,42 260,56 258,70 C256,78 250,82 244,78 C240,74 240,62 242,50 C244,44 248,38 250,40 Z" fill={rf('triceps')} {...sw}/>
+        <path d="M164,76 C158,80 156,94 158,108 C160,116 166,118 172,114 C176,110 176,98 174,84 C172,78 166,74 164,76 Z" fill={rf('forearms-back')} {...sw}/>
+        <path d="M256,76 C262,80 264,94 262,108 C260,116 254,118 248,114 C244,110 244,98 246,84 C248,78 254,74 256,76 Z" fill={rf('forearms-back')} {...sw}/>
+        <path d="M184,120 C174,126 170,142 172,158 C174,166 182,172 192,168 C200,164 202,150 200,134 C198,122 190,116 184,120 Z" fill={rf('glutes')} {...sw}/>
+        <path d="M236,120 C246,126 250,142 248,158 C246,166 238,172 228,168 C220,164 218,150 220,134 C222,122 230,116 236,120 Z" fill={rf('glutes')} {...sw}/>
+        <path d="M186,160 C178,166 174,184 176,200 C178,212 186,218 196,214 C202,210 204,194 202,178 C200,166 192,158 186,160 Z" fill={rf('hamstrings')} {...sw}/>
+        <path d="M234,160 C242,166 246,184 244,200 C242,212 234,218 224,214 C218,210 216,194 218,178 C220,166 226,158 234,160 Z" fill={rf('hamstrings')} {...sw}/>
+        <path d="M180,184 C174,188 172,204 174,216 C176,224 182,228 188,226 C194,222 196,210 194,198 C192,186 186,182 180,184 Z" fill={rf('calves-back')} {...sw}/>
+        <path d="M240,184 C246,188 248,204 246,216 C244,224 238,228 232,226 C226,222 224,210 226,198 C228,186 234,182 240,184 Z" fill={rf('calves-back')} {...sw}/>
       </svg>
     </div>
   );
@@ -1069,10 +1102,6 @@ function StatsView({onBodyLog}){
           })}
         </div>
       )}
-
-      <div className="div"/>
-      <div className="sh"><span className="sl">Consistency</span></div>
-      <div style={{marginBottom:22}}><ConsistencyHeatmap/></div>
 
       <div className="div"/>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
@@ -1243,16 +1272,16 @@ function WorkoutHistorySheet({workout,onClose,onSaved}){
                 </div>
                 <div className="sw">
                   <div className="shd"><span>Set</span><span>kg</span><span>Reps</span><span></span></div>
-                  {item.sets.map((s,i)=>(
+                  {(()=>{let wi=0;return item.sets.map(s=>{const isWu=normalizeSetTag(s.tag)==='warmup';const lbl=isWu?'WU':++wi;return(
                     <div key={s.id} className="sr done">
-                      <div className="sn">{i+1}</div>
+                      <div className="sn" style={isWu?{fontSize:9,color:'var(--t2)'}:{}}>{lbl}</div>
                       <input className="si" type="number" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
                         onBlur={e=>updSet(item.id,s.id,'weight',e.target.value)}/>
                       <input className="si" type="number" inputMode="numeric" defaultValue={s.reps??''} placeholder="—"
                         onBlur={e=>updSet(item.id,s.id,'reps',e.target.value)}/>
                       <button onClick={()=>doRemoveSet(item.id,s.id)} style={{width:44,height:44,borderRadius:12,background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',color:'var(--danger)',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>−</button>
                     </div>
-                  ))}
+                  );});})()}
                 </div>
                 <button className="gh" style={{width:'100%',marginTop:10,height:38,fontSize:13}} onClick={()=>doAddSet(item.id)}>+ Add Set</button>
               </div>
