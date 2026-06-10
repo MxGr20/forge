@@ -283,6 +283,23 @@ function WodCard({wod,onTap}){
   );
 }
 
+function MuscleLoadRollup(){
+  const rollup=getWeeklyMuscleRollup();
+  if(!rollup.length)return null;
+  return(
+    <div style={{marginBottom:18}}>
+      <div className="sh" style={{marginBottom:8}}><span className="sl">Muscles This Week</span></div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        {rollup.map(({muscle,sets})=>(
+          <div key={muscle} className="chip" style={{fontSize:11,padding:'4px 10px'}}>
+            {muscle} <span style={{opacity:.6,marginLeft:3}}>{sets}s</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── WORKOUTS VIEW ── */
 function WorkoutsView({onStart,refresh}){
   const fileInputRef=useRef(null);
@@ -296,13 +313,14 @@ function WorkoutsView({onStart,refresh}){
   const DLBL=['M','T','W','T','F','S','S'];
   const [templateSheet,setTemplateSheet]=useState(null);
   const [editSheet,setEditSheet]=useState(null);
+  const [heatmapSheet,setHeatmapSheet]=useState(false);
   const [,tick]=useReducer(x=>x+1,0);
 
   const weekStart=getWeekStart();
   const doneWorkouts=state.workouts.filter(w=>w.endedAt&&new Date(w.createdAt)>=weekStart&&w.id!==state.activeWorkoutId);
   const doneDays=new Set(doneWorkouts.map(w=>fmt8(new Date(w.createdAt))));
   let weekVol=0,weekSets=0;
-  doneWorkouts.forEach(w=>{weekVol+=workoutVolume(w);weekSets+=w.items.reduce((a,i)=>a+i.sets.length,0);});
+  doneWorkouts.forEach(w=>{weekVol+=workoutVolume(w);weekSets+=w.items.reduce((a,i)=>a+i.sets.filter(s=>normalizeSetTag(s.tag)!=='warmup').length,0);});
 
   const [wods,setWods]=useState(null);
   useEffect(()=>{
@@ -343,7 +361,7 @@ function WorkoutsView({onStart,refresh}){
         <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:800,letterSpacing:'.1em',color:'var(--text)',paddingTop:6}}>FORGE</div>
       </div>
 
-      <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:16,padding:'13px 16px',marginBottom:20,display:'flex',alignItems:'center'}}>
+      <div onClick={()=>setHeatmapSheet(true)} style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:16,padding:'13px 16px',marginBottom:20,display:'flex',alignItems:'center',cursor:'pointer'}}>
         <div style={{flex:1,display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
           {weekDays.map((wd,i)=>{
             const ds=fmt8(wd);
@@ -388,6 +406,8 @@ function WorkoutsView({onStart,refresh}){
         <div className="st"><div className="sl2">Best Day</div><div className="sv" style={{fontSize:16,letterSpacing:'-.01em'}}>{doneWorkouts.length>0?doneWorkouts.reduce((b,w)=>workoutVolume(w)>workoutVolume(b)?w:b).name.split(' ').slice(0,2).join(' '):'—'}</div></div>
       </div>
 
+      <MuscleLoadRollup/>
+
       <div className="div"/>
       <div className="sh">
         <span className="sl">Templates</span>
@@ -429,6 +449,20 @@ function WorkoutsView({onStart,refresh}){
       )}
       {templateSheet&&<TemplateSheet routine={templateSheet} onStart={()=>{setTemplateSheet(null);onStart(templateSheet);}} onClose={()=>setTemplateSheet(null)}/>}
       {editSheet&&<TemplateEditSheet routine={editSheet} onClose={()=>{setEditSheet(null);tick();refresh();}}/>}
+      {heatmapSheet&&(
+        <SheetPortal>
+          <div className="sheet-scrim" onClick={()=>setHeatmapSheet(false)}/>
+          <div className="sheet" style={{maxHeight:'92%',display:'flex',flexDirection:'column'}}>
+            <div style={{padding:'18px 22px 12px',flexShrink:0}}>
+              <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 14px'}}/>
+              <div style={{fontFamily:'var(--fh)',fontSize:23,fontWeight:800,color:'var(--text)'}}>Consistency</div>
+            </div>
+            <div style={{overflowY:'auto',flex:1,padding:'10px 22px 20px',WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
+              <ConsistencyHeatmap/>
+            </div>
+          </div>
+        </SheetPortal>
+      )}
       <input ref={fileInputRef} type="file" accept=".json" style={{display:'none'}}
         onChange={e=>{
           const file=e.target.files[0];
@@ -559,6 +593,38 @@ function TemplateEditSheet({routine,onClose}){
   );
 }
 
+function SetRow({s,i,itemId,prevSets,updField,onToggle,repsLbl}){
+  const [weight,setWeight]=useState(s.weight??'');
+  const [reps,setReps]=useState(s.reps??'');
+  const prev=prevSets?.[i];
+  const hasPrev=prev&&(prev.weight!=null||prev.reps!=null);
+  const isWarmup=normalizeSetTag(s.tag)==='warmup';
+  const fillPrev=()=>{
+    const w=prev.weight??'';const r=prev.reps??'';
+    setWeight(w);setReps(r);
+    updField(itemId,s.id,'weight',String(w));
+    updField(itemId,s.id,'reps',String(r));
+  };
+  return(
+    <div className={`sr${s.completed?' done':''}`} style={isWarmup?{background:'rgba(var(--brgb),.06)',borderRadius:6}:undefined}>
+      <div className="sn">{isWarmup?'WU':i+1}</div>
+      <div style={{display:'flex',flexDirection:'column',gap:1}}>
+        <input className="si" type="number" inputMode="decimal" value={weight} placeholder="—"
+          onChange={e=>setWeight(e.target.value)}
+          onBlur={e=>updField(itemId,s.id,'weight',e.target.value)}/>
+        {hasPrev&&<span onClick={fillPrev} style={{fontSize:9,color:'var(--t3)',textAlign:'center',lineHeight:1,cursor:'pointer'}}>{prev.weight??'—'}</span>}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:1}}>
+        <input className="si" type="number" inputMode="numeric" value={reps} placeholder="—"
+          onChange={e=>setReps(e.target.value)}
+          onBlur={e=>updField(itemId,s.id,'reps',e.target.value)}/>
+        {hasPrev&&<span onClick={fillPrev} style={{fontSize:9,color:'var(--t3)',textAlign:'center',lineHeight:1,cursor:'pointer'}}>{prev.reps??'—'}</span>}
+      </div>
+      <div className="ck" onClick={()=>onToggle(itemId,s.id)}>{s.completed?'✓':''}</div>
+    </div>
+  );
+}
+
 /* ── SESSION VIEW ── */
 function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
   const workout=getActiveWorkout();
@@ -566,6 +632,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
   const [,tick]=useReducer(x=>x+1,0);
   const [showWarn,setShowWarn]=useState(false);
   const [showDiscard,setShowDiscard]=useState(false);
+  const [dismissed,setDismissed]=useState({});
 
   useEffect(()=>{
     if(!workout)return;
@@ -589,7 +656,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
     if(!s)return;
     s.completed=!s.completed;
     saveState();
-    if(s.completed){setRest(getRestSeconds(s.tag));setRestOn(true);}
+    if(s.completed&&state.settings.autoRest){setRest(getRestSeconds(s.tag));setRestOn(true);}
     tick();
   };
   const updField=(itemId,setId,field,val)=>{
@@ -668,6 +735,9 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
         const total=item.sets.length;
         const pct=total>0?(done/total)*100:0;
         const repsLbl=item.metricMode==='seconds'?'Sec':'Reps';
+        const prevSets=getLastSessionSetsForExercise(item.exerciseId,workout.id);
+        const prevWeight=getWorkingWeightForExercise(item.exerciseId);
+        const hasWarmups=item.sets.some(s=>normalizeSetTag(s.tag)==='warmup');
         return(
           <div key={item.id} className="ec">
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
@@ -686,21 +756,27 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
                 {item.metricMode==='seconds'?'→ Reps':'→ Sec'}
               </button>
             </div>
+            {(()=>{const pg=dismissed[item.exerciseId]?null:getProgressionStatus(item.exerciseId);if(!pg)return null;const isSug=pg.type==='suggest';return(
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',marginBottom:8,borderRadius:10,background:isSug?'var(--bsoft)':'rgba(239,68,68,.08)',border:`1px solid ${isSug?'var(--bbd)':'rgba(239,68,68,.2)'}`}}>
+                <span style={{fontSize:12,color:isSug?'var(--brand2)':'var(--danger)',flex:1}}>{isSug?`Try ${pg.weight} kg today (+${getExercise(item.exerciseId)?.progressionIncrement} kg)`:'Consider deloading — recent sessions had failures'}</span>
+                <button onClick={()=>setDismissed(d=>({...d,[item.exerciseId]:true}))} style={{background:'none',border:'none',color:'var(--t3)',fontSize:16,cursor:'pointer',padding:'0 0 0 8px',lineHeight:1}}>×</button>
+              </div>
+            );})()}
+            {prevWeight!=null&&!hasWarmups&&(
+              <button className="gh" style={{width:'100%',height:38,fontSize:12,marginBottom:8}}
+                onClick={()=>{addWarmupSets(item.id);tick();}}>
+                Add Warmups — {Math.round(prevWeight*0.5*2)/2} / {Math.round(prevWeight*0.7*2)/2} / {Math.round(prevWeight*0.85*2)/2} kg
+              </button>
+            )}
             <input type="text" className="si" placeholder="Note…" defaultValue={item.note||''}
               style={{width:'100%',marginBottom:8,fontSize:12}}
               onBlur={e=>{item.note=e.target.value;saveState();}}/>
             <div className="sw">
               <div className="shd"><span>Set</span><span>kg</span><span>{repsLbl}</span><span>✓</span></div>
-              {item.sets.map((s,i)=>(
-                <div key={s.id} className={`sr${s.completed?' done':''}`}>
-                  <div className="sn">{i+1}</div>
-                  <input className="si" type="number" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
-                    onBlur={e=>updField(item.id,s.id,'weight',e.target.value)}/>
-                  <input className="si" type="number" inputMode="numeric" defaultValue={s.reps??''} placeholder="—"
-                    onBlur={e=>updField(item.id,s.id,'reps',e.target.value)}/>
-                  <div className="ck" onClick={()=>toggle(item.id,s.id)}>{s.completed?'✓':''}</div>
-                </div>
-              ))}
+              {(()=>{let wi=0;return item.sets.map(s=>{const isWu=normalizeSetTag(s.tag)==='warmup';const idx=isWu?-1:wi++;return(
+                <SetRow key={s.id} s={s} i={idx} itemId={item.id} prevSets={isWu?null:prevSets}
+                  updField={updField} onToggle={toggle} repsLbl={repsLbl}/>
+              );});})()}
             </div>
             <button className="gh" style={{width:'100%',marginTop:12,height:40,fontSize:13}} onClick={()=>doAddSet(item.id)}>+ Add Set</button>
           </div>
@@ -785,6 +861,122 @@ function Chart({data,labels,color,gid}){
         </g>);
       })()}
     </svg>
+  );
+}
+
+function ConsistencyHeatmap(){
+  const {data,currentMonday}=getHeatmapData();
+  const today=fmt8(new Date());
+  const [tip,setTip]=useState(null);
+  const DAY_LABELS=['M','T','W','T','F','S','S'];
+  const rows=[];
+  for(let r=0;r<52;r++){
+    const weekStart=new Date(currentMonday);weekStart.setDate(currentMonday.getDate()-r*7);
+    const cells=[];
+    for(let c=0;c<7;c++){
+      const d=new Date(weekStart);d.setDate(weekStart.getDate()+c);
+      const ds=fmt8(d);
+      const isFuture=ds>today;
+      const entry=data[ds];
+      const count=isFuture?0:(entry?.count||0);
+      cells.push(
+        <div key={c} onClick={()=>count>0?setTip(t=>t===ds?null:ds):null}
+          style={{width:10,height:10,borderRadius:3,background:isFuture?'transparent':heatmapCellColor(count),
+            cursor:count>0?'pointer':'default',flexShrink:0}}/>
+      );
+    }
+    rows.push(<div key={r} style={{display:'flex',gap:2}}>{cells}</div>);
+  }
+  return(
+    <div>
+      <div style={{display:'flex',gap:2,marginBottom:4}}>
+        {DAY_LABELS.map((l,i)=><div key={i} style={{width:10,fontSize:8,color:'var(--t3)',textAlign:'center',flexShrink:0}}>{l}</div>)}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:2}}>{rows}</div>
+      {tip&&data[tip]&&(
+        <div style={{marginTop:10,padding:'8px 12px',background:'var(--s2)',border:'1px solid var(--bd)',borderRadius:10,fontSize:12,color:'var(--text)'}}>
+          <div style={{fontWeight:600,marginBottom:2}}>{tip.slice(0,4)+'-'+tip.slice(4,6)+'-'+tip.slice(6)}</div>
+          {data[tip].names.map((n,i)=><div key={i} style={{color:'var(--t2)'}}>{n}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BodySilhouette({regionVolume,maxRegion}){
+  const rf=id=>{const v=regionVolume[id]??0;if(!v)return'transparent';return`rgba(var(--brgb),${Math.max(0.22,v/maxRegion).toFixed(2)})`;};
+  const sw={stroke:'var(--bd)',strokeWidth:'.5'};
+  return(
+    <div>
+      <div style={{display:'flex',justifyContent:'space-around',marginBottom:6}}>
+        <span style={{fontSize:9,fontWeight:700,letterSpacing:'.12em',color:'var(--t3)'}}>FRONT</span>
+        <span style={{fontSize:9,fontWeight:700,letterSpacing:'.12em',color:'var(--t3)'}}>BACK</span>
+      </div>
+      <svg viewBox="0 0 280 244" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',maxWidth:300,display:'block'}}>
+
+        {/* ── FRONT base silhouette (cx=70) ── */}
+        <ellipse cx="70" cy="13" rx="11" ry="12" fill="var(--s3)" stroke="var(--bd)" strokeWidth=".8"/>
+        <path d="M66,24 L74,24 L75,33 L65,33 Z" fill="var(--s3)"/>
+        <path d="M47,35 C40,37 38,45 40,56 L42,68 L98,68 L100,56 C102,45 100,37 93,35 C84,31 56,31 47,35 Z" fill="var(--s3)"/>
+        <path d="M44,68 L44,82 C44,98 46,112 52,116 L70,118 L88,116 C94,112 96,98 96,82 L96,68 Z" fill="var(--s3)"/>
+        <path d="M38,37 C30,40 26,52 28,66 C30,74 36,78 42,76 C46,74 48,64 46,52 C44,44 42,36 38,37 Z" fill="var(--s3)"/>
+        <path d="M102,37 C110,40 114,52 112,66 C110,74 104,78 98,76 C94,74 92,64 94,52 C96,44 98,36 102,37 Z" fill="var(--s3)"/>
+        <path d="M28,76 C22,80 20,94 22,108 C24,116 30,118 36,116 C40,112 40,100 38,84 C36,78 30,74 28,76 Z" fill="var(--s3)"/>
+        <path d="M112,76 C118,80 120,94 118,108 C116,116 110,118 104,116 C100,112 100,100 102,84 C104,78 110,74 112,76 Z" fill="var(--s3)"/>
+        <path d="M52,122 C44,126 40,142 42,162 C44,174 50,180 58,178 C64,176 68,164 66,150 C64,134 60,120 52,122 Z" fill="var(--s3)"/>
+        <path d="M88,122 C96,126 100,142 98,162 C96,174 90,180 82,178 C76,176 72,164 74,150 C76,134 80,120 88,122 Z" fill="var(--s3)"/>
+        <path d="M44,182 C38,186 36,200 38,214 C40,222 46,226 52,224 C58,220 60,208 58,196 C56,184 50,180 44,182 Z" fill="var(--s3)"/>
+        <path d="M96,182 C102,186 104,200 102,214 C100,222 94,226 88,224 C82,220 80,208 82,196 C84,184 90,180 96,182 Z" fill="var(--s3)"/>
+
+        {/* ── FRONT muscle regions ── */}
+        <path d="M44,34 C36,36 34,46 36,54 C38,60 44,62 50,58 C54,52 54,44 50,38 C48,34 46,32 44,34 Z" fill={rf('front-delts')} {...sw}/>
+        <path d="M96,34 C104,36 106,46 104,54 C102,60 96,62 90,58 C86,52 86,44 90,38 C92,34 94,32 96,34 Z" fill={rf('front-delts')} {...sw}/>
+        <path d="M52,36 C46,38 44,50 46,60 C48,66 54,68 62,66 C68,64 70,56 68,50 C66,42 60,34 52,36 Z" fill={rf('chest')} {...sw}/>
+        <path d="M88,36 C94,38 96,50 94,60 C92,66 86,68 78,66 C72,64 70,56 72,50 C74,42 80,34 88,36 Z" fill={rf('chest')} {...sw}/>
+        <path d="M30,40 C24,42 20,54 22,68 C24,76 30,80 36,76 C40,72 40,60 38,50 C36,44 32,38 30,40 Z" fill={rf('biceps')} {...sw}/>
+        <path d="M110,40 C116,42 120,54 118,68 C116,76 110,80 104,76 C100,72 100,60 102,50 C104,44 108,38 110,40 Z" fill={rf('biceps')} {...sw}/>
+        <path d="M24,76 C18,80 16,94 18,108 C20,116 26,118 32,114 C36,110 36,98 34,84 C32,78 26,74 24,76 Z" fill={rf('forearms-front')} {...sw}/>
+        <path d="M116,76 C122,80 124,94 122,108 C120,116 114,118 108,114 C104,110 104,98 106,84 C108,78 114,74 116,76 Z" fill={rf('forearms-front')} {...sw}/>
+        <path d="M59,68 C53,70 51,84 53,98 C55,110 59,118 70,118 C81,118 85,110 87,98 C89,84 87,70 81,68 C75,64 65,64 59,68 Z" fill={rf('abs')} {...sw}/>
+        <path d="M48,124 C40,128 36,146 38,164 C40,176 46,182 56,180 C62,178 66,166 64,150 C62,132 58,120 48,124 Z" fill={rf('quads-front')} {...sw}/>
+        <path d="M92,124 C100,128 104,146 102,164 C100,176 94,182 84,180 C78,178 74,166 76,150 C78,132 82,120 92,124 Z" fill={rf('quads-front')} {...sw}/>
+        <path d="M63,126 C59,132 59,148 61,158 C63,164 67,166 70,162 C72,158 70,142 66,128 Z" fill={rf('adductors')} {...sw}/>
+        <path d="M77,126 C81,132 81,148 79,158 C77,164 73,166 70,162 C68,158 70,142 74,128 Z" fill={rf('adductors')} {...sw}/>
+        <path d="M40,184 C34,188 32,204 34,216 C36,224 42,228 48,226 C54,222 56,210 54,198 C52,186 46,182 40,184 Z" fill={rf('calves-front')} {...sw}/>
+        <path d="M100,184 C106,188 108,204 106,216 C104,224 98,228 92,226 C86,222 84,210 86,198 C88,186 94,182 100,184 Z" fill={rf('calves-front')} {...sw}/>
+
+        {/* ── BACK base silhouette (cx=210) ── */}
+        <ellipse cx="210" cy="13" rx="11" ry="12" fill="var(--s3)" stroke="var(--bd)" strokeWidth=".8"/>
+        <path d="M206,24 L214,24 L215,33 L205,33 Z" fill="var(--s3)"/>
+        <path d="M187,35 C180,37 178,45 180,56 L182,68 L238,68 L240,56 C242,45 240,37 233,35 C224,31 196,31 187,35 Z" fill="var(--s3)"/>
+        <path d="M184,68 L184,82 C184,98 186,112 192,116 L210,118 L228,116 C234,112 236,98 236,82 L236,68 Z" fill="var(--s3)"/>
+        <path d="M178,37 C170,40 166,52 168,66 C170,74 176,78 182,76 C186,74 188,64 186,52 C184,44 182,36 178,37 Z" fill="var(--s3)"/>
+        <path d="M242,37 C250,40 254,52 252,66 C250,74 244,78 238,76 C234,74 232,64 234,52 C236,44 238,36 242,37 Z" fill="var(--s3)"/>
+        <path d="M168,76 C162,80 160,94 162,108 C164,116 170,118 176,116 C180,112 180,100 178,84 C176,78 170,74 168,76 Z" fill="var(--s3)"/>
+        <path d="M252,76 C258,80 260,94 258,108 C256,116 250,118 244,116 C240,112 240,100 242,84 C244,78 250,74 252,76 Z" fill="var(--s3)"/>
+        <path d="M192,122 C184,126 180,142 182,162 C184,174 190,180 198,178 C204,176 208,164 206,150 C204,134 200,120 192,122 Z" fill="var(--s3)"/>
+        <path d="M228,122 C236,126 240,142 238,162 C236,174 230,180 222,178 C216,176 212,164 214,150 C216,134 220,120 228,122 Z" fill="var(--s3)"/>
+        <path d="M184,182 C178,186 176,200 178,214 C180,222 186,226 192,224 C198,220 200,208 198,196 C196,184 190,180 184,182 Z" fill="var(--s3)"/>
+        <path d="M236,182 C242,186 244,200 242,214 C240,222 234,226 228,224 C222,220 220,208 222,196 C224,184 230,180 236,182 Z" fill="var(--s3)"/>
+
+        {/* ── BACK muscle regions ── */}
+        <path d="M188,32 C180,38 180,48 186,52 C194,56 210,56 210,56 C210,56 226,56 234,52 C240,48 240,38 232,32 C224,28 196,28 188,32 Z" fill={rf('traps')} {...sw}/>
+        <path d="M180,54 C172,60 168,76 170,92 C172,102 178,108 186,106 C192,104 194,90 192,76 C190,62 186,50 180,54 Z" fill={rf('upper-back')} {...sw}/>
+        <path d="M240,54 C248,60 252,76 250,92 C248,102 242,108 234,106 C228,104 226,90 228,76 C230,62 234,50 240,54 Z" fill={rf('upper-back')} {...sw}/>
+        <path d="M190,56 C184,62 182,78 184,90 C188,96 210,98 210,98 C210,98 232,96 236,90 C238,78 236,62 230,56 C224,50 196,50 190,56 Z" fill={rf('upper-back')} {...sw}/>
+        <path d="M190,96 C184,100 182,114 184,124 C186,130 192,132 210,132 C228,132 234,130 236,124 C238,114 236,100 230,96 C222,90 198,90 190,96 Z" fill={rf('lower-back')} {...sw}/>
+        <path d="M170,40 C164,42 160,56 162,70 C164,78 170,82 176,78 C180,74 180,62 178,50 C176,44 172,38 170,40 Z" fill={rf('triceps')} {...sw}/>
+        <path d="M250,40 C256,42 260,56 258,70 C256,78 250,82 244,78 C240,74 240,62 242,50 C244,44 248,38 250,40 Z" fill={rf('triceps')} {...sw}/>
+        <path d="M164,76 C158,80 156,94 158,108 C160,116 166,118 172,114 C176,110 176,98 174,84 C172,78 166,74 164,76 Z" fill={rf('forearms-back')} {...sw}/>
+        <path d="M256,76 C262,80 264,94 262,108 C260,116 254,118 248,114 C244,110 244,98 246,84 C248,78 254,74 256,76 Z" fill={rf('forearms-back')} {...sw}/>
+        <path d="M184,120 C174,126 170,142 172,158 C174,166 182,172 192,168 C200,164 202,150 200,134 C198,122 190,116 184,120 Z" fill={rf('glutes')} {...sw}/>
+        <path d="M236,120 C246,126 250,142 248,158 C246,166 238,172 228,168 C220,164 218,150 220,134 C222,122 230,116 236,120 Z" fill={rf('glutes')} {...sw}/>
+        <path d="M186,160 C178,166 174,184 176,200 C178,212 186,218 196,214 C202,210 204,194 202,178 C200,166 192,158 186,160 Z" fill={rf('hamstrings')} {...sw}/>
+        <path d="M234,160 C242,166 246,184 244,200 C242,212 234,218 224,214 C218,210 216,194 218,178 C220,166 226,158 234,160 Z" fill={rf('hamstrings')} {...sw}/>
+        <path d="M180,184 C174,188 172,204 174,216 C176,224 182,228 188,226 C194,222 196,210 194,198 C192,186 186,182 180,184 Z" fill={rf('calves-back')} {...sw}/>
+        <path d="M240,184 C246,188 248,204 246,216 C244,224 238,228 232,226 C226,222 224,210 226,198 C228,186 234,182 240,184 Z" fill={rf('calves-back')} {...sw}/>
+      </svg>
+    </div>
   );
 }
 
@@ -879,16 +1071,18 @@ function StatsView({onBodyLog}){
       <div className="div"/>
       <div className="sh"><span className="sl">Muscle Volume</span></div>
       <div style={{display:'flex',gap:6,marginBottom:16}}>
-        {[1,2,3].map(m=>(
+        {[0.25,1,2,3].map(m=>(
           <button key={m} onClick={()=>setMusMonths(m)} style={{flex:1,height:26,borderRadius:13,cursor:'pointer',fontSize:10,fontWeight:700,
             background:musMonths===m?'var(--s3)':'transparent',border:`1px solid ${musMonths===m?'var(--bbd)':'var(--bd)'}`,
-            color:musMonths===m?'var(--brand2)':'var(--t3)',transition:'all .15s'}}>{m===1?'4w':m===2?'8w':'12w'}</button>
+            color:musMonths===m?'var(--brand2)':'var(--t3)',transition:'all .15s'}}>{m===0.25?'1w':m===1?'4w':m===2?'8w':'12w'}</button>
         ))}
       </div>
       {musDisplay.length===0?(
         <div style={{textAlign:'center',padding:'16px 0 22px',color:'var(--t3)',fontSize:12}}>Complete workouts with tagged exercises to see muscle volume</div>
       ):(
         <div style={{marginBottom:22}}>
+          {(()=>{const {regionVolume,maxRegion}=getMuscleSilhouetteData(musDisplay);return <BodySilhouette regionVolume={regionVolume} maxRegion={maxRegion}/>;})()}
+          <div style={{height:14}}/>
           {musDisplay.map((s,idx)=>{
             const barColors=['var(--brand)','var(--ok)','var(--warn)','#a78bfa','#f472b6','#38bdf8','#fb923c','#4ade80'];
             const c=barColors[idx%barColors.length];
@@ -1078,16 +1272,16 @@ function WorkoutHistorySheet({workout,onClose,onSaved}){
                 </div>
                 <div className="sw">
                   <div className="shd"><span>Set</span><span>kg</span><span>Reps</span><span></span></div>
-                  {item.sets.map((s,i)=>(
+                  {(()=>{let wi=0;return item.sets.map(s=>{const isWu=normalizeSetTag(s.tag)==='warmup';const lbl=isWu?'WU':++wi;return(
                     <div key={s.id} className="sr done">
-                      <div className="sn">{i+1}</div>
+                      <div className="sn" style={isWu?{fontSize:9,color:'var(--t2)'}:{}}>{lbl}</div>
                       <input className="si" type="number" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
                         onBlur={e=>updSet(item.id,s.id,'weight',e.target.value)}/>
                       <input className="si" type="number" inputMode="numeric" defaultValue={s.reps??''} placeholder="—"
                         onBlur={e=>updSet(item.id,s.id,'reps',e.target.value)}/>
                       <button onClick={()=>doRemoveSet(item.id,s.id)} style={{width:44,height:44,borderRadius:12,background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',color:'var(--danger)',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>−</button>
                     </div>
-                  ))}
+                  );});})()}
                 </div>
                 <button className="gh" style={{width:'100%',marginTop:10,height:38,fontSize:13}} onClick={()=>doAddSet(item.id)}>+ Add Set</button>
               </div>
@@ -1314,10 +1508,13 @@ function ExerciseSheet({item,onSave,onDelete,onClose}){
   const [name,setName]=useState(item?.name||'');
   const [primary,setPrimary]=useState(()=>parseMuscleGroups(item?.primaryMuscleGroups||''));
   const [detailed,setDetailed]=useState(()=>parseMuscleGroups(item?.detailedMuscleGroups||''));
+  const [increment,setIncrement]=useState(item?.progressionIncrement!=null?String(item.progressionIncrement):'');
   const valid=name.trim().length>0;
   const doSave=()=>onSave({
+    ...item,
     id:item?.id||uid(),name:name.trim(),category:item?.category||'',type:item?.type||'weight',
-    primaryMuscleGroups:primary.join(', '),detailedMuscleGroups:detailed.join(', ')
+    primaryMuscleGroups:primary.join(', '),detailedMuscleGroups:detailed.join(', '),
+    progressionIncrement:increment!==''?parseFloat(increment)||null:null,
   });
   return(
     <SheetPortal>
@@ -1331,6 +1528,14 @@ function ExerciseSheet({item,onSave,onDelete,onClose}){
             fontSize:18,fontWeight:700,padding:'0 16px',marginBottom:20}}/>
         <MuscleGroupPicker selected={primary} onChange={setPrimary} label="Primary Muscles" accent="primary" key={`pm-${(state.muscleGroups||[]).length}`}/>
         <MuscleGroupPicker selected={detailed} onChange={setDetailed} label="Secondary Muscles" accent="secondary" key={`sm-${(state.muscleGroups||[]).length}`}/>
+        <div className="setr" style={{marginTop:16,marginBottom:4}}>
+          <span style={{fontSize:13,color:'var(--text)'}}>Progression step</span>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <input className="seti" type="number" step="0.5" placeholder="—" value={increment} onChange={e=>setIncrement(e.target.value)}/>
+            <span style={{fontSize:12,color:'var(--t3)',width:24}}>kg</span>
+          </div>
+        </div>
+        <div style={{fontSize:11,color:'var(--t3)',marginBottom:16,paddingLeft:2}}>Leave blank to disable auto-progression.</div>
         <button className="cta" style={{marginBottom:10,opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}} onClick={doSave}>
           {isNew?'Add Exercise':'Save Changes'}
         </button>
@@ -1370,6 +1575,14 @@ function ToolsView({refresh}){
                 onBlur={e=>{const v=parseFloat(e.target.value);if(!isNaN(v))updSetting(row.k,v);}}/>
               <span style={{fontSize:12,color:'var(--t3)',width:24}}>{row.u}</span>
             </div>
+          </div>
+        ))}
+        {[{l:'Auto-start Rest Timer',k:'autoRest'},{l:'Rest Audio Alert',k:'audioRestAlert'}].map(row=>(
+          <div key={row.k} className="setr">
+            <span style={{fontSize:13,color:'var(--text)'}}>{row.l}</span>
+            <input type="checkbox" defaultChecked={!!s[row.k]}
+              onChange={e=>updSetting(row.k,e.target.checked)}
+              style={{width:18,height:18,accentColor:'var(--brand)',cursor:'pointer'}}/>
           </div>
         ))}
       </div>
@@ -1500,6 +1713,74 @@ function BodyLogSheet({onClose,onSaved}){
 const ACCENT_MAP={'#4f66ff':{r:79,g:102,b:255,b2:'#7c8cff'},'#8b5cf6':{r:139,g:92,b:246,b2:'#a78bfa'},'#0ea5e9':{r:14,g:165,b:233,b2:'#38bdf8'}};
 const TDEFS={accent:'#4f66ff'};
 
+function SessionSummarySheet({workoutId,onDismiss}){
+  const workout=state.workouts.find(w=>w.id===workoutId);
+  const prs=getSessionPRs(workoutId);
+  const [note,setNote]=useState(workout?.note||'');
+  if(!workout)return null;
+  const mins=workout.endedAt&&workout.createdAt
+    ?Math.max(1,Math.round((new Date(workout.endedAt)-new Date(workout.createdAt))/60000))
+    :null;
+  const vol=Math.round(workoutVolume(workout)).toLocaleString();
+  const exCount=workout.items.length;
+  const handleDismiss=()=>{updateWorkoutNote(workoutId,note);onDismiss();};
+  return(
+    <SheetPortal>
+      <div className="sheet" style={{maxHeight:'92%',display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'18px 22px 12px',flexShrink:0}}>
+          <div style={{width:36,height:4,borderRadius:2,background:'var(--bd2)',margin:'0 auto 14px'}}/>
+          <div style={{fontFamily:'var(--fh)',fontSize:23,fontWeight:800,color:'var(--text)',marginBottom:2}}>{workout.name||'Workout'}</div>
+          <div style={{fontSize:11,color:'var(--t3)'}}>Great work!</div>
+        </div>
+        <div style={{overflowY:'auto',flex:1,padding:'4px 22px 20px',WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
+          <div className="sg" style={{marginBottom:16}}>
+            {mins&&<div className="st"><div className="sl2">Duration</div><div className="sv">{mins}<span>min</span></div></div>}
+            <div className="st"><div className="sl2">Volume</div><div className="sv" style={{fontSize:16}}>{vol}<span>kg</span></div></div>
+            <div className="st"><div className="sl2">Exercises</div><div className="sv">{exCount}</div></div>
+            {prs.length>0&&<div className="st"><div className="sl2">PRs</div><div className="sv" style={{color:'var(--ok)'}}>{prs.length}</div></div>}
+          </div>
+          {prs.length>0&&(
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)',marginBottom:8}}>Personal Records</div>
+              {prs.map((pr,i)=>(
+                <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:i<prs.length-1?'1px solid var(--bd)':'none'}}>
+                  <div>
+                    <div style={{fontSize:13,color:'var(--text)',fontWeight:500}}>{pr.exerciseName}</div>
+                    <div style={{fontSize:11,color:'var(--t2)'}}>{pr.weight} kg × {pr.reps} reps</div>
+                  </div>
+                  <span className="chip" style={{background:pr.isFirstEver?'var(--bsoft)':'rgba(var(--okrgb),.15)',color:pr.isFirstEver?'var(--brand2)':'var(--ok)',border:`1px solid ${pr.isFirstEver?'var(--bbd)':'rgba(var(--okrgb),.3)'}`,fontSize:10,padding:'3px 8px'}}>
+                    {pr.isFirstEver?'First!':'PR'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t3)',marginBottom:8}}>Session Note</div>
+            <textarea value={note} onChange={e=>setNote(e.target.value)} onBlur={()=>updateWorkoutNote(workoutId,note)}
+              placeholder="How did it feel? Any notes…"
+              style={{width:'100%',minHeight:80,borderRadius:12,background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--text)',fontSize:13,padding:'10px 12px',fontFamily:'inherit',resize:'none',boxSizing:'border-box'}}/>
+          </div>
+          <button className="cta" onClick={handleDismiss}>Done →</button>
+        </div>
+      </div>
+    </SheetPortal>
+  );
+}
+
+function playRestAlertTone(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.type='sine';osc.frequency.value=440;
+    gain.gain.value=0.3;
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.start();osc.stop(ctx.currentTime+0.12);
+    osc.onended=()=>ctx.close();
+  }catch(e){}
+}
+
 function App(){
   const [t,setTweak]=useTweaks(TDEFS);
   const [view,setView]=useState('workouts');
@@ -1510,6 +1791,7 @@ function App(){
   const [toastMsg,setToastMsg]=useState(null);
   const [rest,setRest]=useState(0);
   const [restOn,setRestOn]=useState(false);
+  const [summaryWorkoutId,setSummaryWorkoutId]=useState(null);
   const [,forceUpdate]=useReducer(x=>x+1,0);
   const toastTimer=useRef(null);
 
@@ -1541,7 +1823,7 @@ function App(){
 
   useEffect(()=>{
     if(!restOn)return;
-    const t2=setInterval(()=>setRest(s=>{if(s<=1){setRestOn(false);window._forgeToast?.('Rest complete');return 0;}return s-1;}),1000);
+    const t2=setInterval(()=>setRest(s=>{if(s<=1){setRestOn(false);window._forgeToast?.('Rest complete');if(state.settings.audioRestAlert)playRestAlertTone();return 0;}return s-1;}),1000);
     return()=>clearInterval(t2);
   },[restOn]);
 
@@ -1554,7 +1836,8 @@ function App(){
     else{startWorkout(null);setInSess(true);}
   };
   const confirmSess=(routine)=>{setSheet(null);startWorkout(routine.id);setInSess(true);};
-  const finishSess=()=>{endWorkout();setInSess(false);setDir(-1);};
+  const finishSess=()=>{const cid=state.activeWorkoutId;endWorkout();setSummaryWorkoutId(cid);};
+  const dismissSummary=()=>{setSummaryWorkoutId(null);setInSess(false);setDir(-1);};
   const discardSess=()=>{cancelWorkout();setInSess(false);setDir(-1);};
 
   const animCls=dir===0?'tu':dir>0?'tr':'tl';
@@ -1585,6 +1868,7 @@ function App(){
         {inSess&&<div style={{height:'env(safe-area-inset-bottom, 0px)'}}/>}
         {sheet&&<TemplateSheet routine={sheet} onStart={()=>confirmSess(sheet)} onClose={()=>setSheet(null)}/>}
         {bodyLogOpen&&<BodyLogSheet onClose={()=>setBodyLogOpen(false)} onSaved={refresh}/>}
+        {summaryWorkoutId&&<SessionSummarySheet workoutId={summaryWorkoutId} onDismiss={dismissSummary}/>}
       </div>
       {toastMsg&&<div className="toast">{toastMsg}</div>}
       <TweaksPanel>

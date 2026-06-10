@@ -106,6 +106,7 @@ const DEFAULT_STATE = {
     restSecondsWork: 90,
     restSecondsDrop: 45,
     autoRest: true,
+    audioRestAlert: false,
     barWeight: 20,
     plates: [25, 20, 15, 10, 5, 2.5, 1.25],
     bodyweight: 75,
@@ -449,6 +450,7 @@ function buildStatsDataSnapshot(exercises, workouts, bodyMeasurements) {
       if (!perExercise.has(exerciseId)) perExercise.set(exerciseId, createSession());
       const session = perExercise.get(exerciseId);
       (item.sets || []).forEach((set) => {
+        if (normalizeSetTag(set.tag) === 'warmup') return;
         if (set.type === "duration") {
           const duration = Number.isFinite(set.durationSec) ? set.durationSec : 0;
           if (duration <= 0) return;
@@ -1004,7 +1006,7 @@ const restTimer = {
 
 function getRestSeconds(tag = "work") {
   const normalizedTag = String(tag || "work").toLowerCase();
-  const key = normalizedTag === "drop" || normalizedTag === "dropset" || normalizedTag === "drop-set"
+  const key = normalizedTag === "drop" || normalizedTag === "dropset" || normalizedTag === "drop-set" || normalizedTag === "warmup"
     ? "restSecondsDrop"
     : "restSecondsWork";
   const value = state.settings[key];
@@ -1232,6 +1234,44 @@ function startWorkout(routineId = null) {
     endWorkout();
   }
 
+function getLastSessionSetsForExercise(exerciseId, currentWorkoutId) {
+  const last = state.workouts
+    .filter(w => w.endedAt && w.id !== currentWorkoutId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .find(w => w.items.some(i => i.exerciseId === exerciseId));
+  return (last?.items.find(i => i.exerciseId === exerciseId)?.sets || [])
+    .filter(s => normalizeSetTag(s.tag) !== 'warmup');
+}
+
+function getWorkingWeightForExercise(exerciseId) {
+  const last = state.workouts
+    .filter(w => w.endedAt)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .find(w => w.items.some(i => i.exerciseId === exerciseId));
+  if (!last) return null;
+  const item = last.items.find(i => i.exerciseId === exerciseId);
+  const workSet = item?.sets.find(s => normalizeSetTag(s.tag) === 'work' && Number.isFinite(s.weight));
+  return workSet ? workSet.weight : null;
+}
+
+function addWarmupSets(itemId) {
+  const workout = getActiveWorkout();
+  if (!workout) return;
+  const item = workout.items.find(i => i.id === itemId);
+  if (!item) return;
+  const base = getWorkingWeightForExercise(item.exerciseId);
+  if (base == null) return;
+  const r = kg => Math.round(kg / 2.5) * 2.5;
+  const warmups = [
+    { id: uid(), tag: 'warmup', weight: r(base * 0.50), reps: 5, completed: false },
+    { id: uid(), tag: 'warmup', weight: r(base * 0.70), reps: 3, completed: false },
+    { id: uid(), tag: 'warmup', weight: r(base * 0.85), reps: 1, completed: false },
+  ];
+  item.sets.unshift(...warmups);
+  saveState();
+  renderLog();
+}
+
 function addWorkoutExercise(exerciseId) {
   const workout = getActiveWorkout();
   if (!workout) return;
@@ -1452,12 +1492,14 @@ function normalizeSetTag(tag) {
   if (normalized === "dropset") return "drop";
   if (normalized === "failure") return "failure";
   if (normalized === "drop") return "drop";
+  if (normalized === "warmup") return "warmup";
   return "work";
 }
 
 function nextSetTag(tag) {
-  const order = ["work", "failure", "drop"];
   const current = normalizeSetTag(tag);
+  if (current === 'warmup') return 'work';
+  const order = ["work", "failure", "drop"];
   const idx = order.indexOf(current);
   return order[(idx + 1) % order.length];
 }
@@ -1466,6 +1508,7 @@ function setTagShort(tag) {
   const current = normalizeSetTag(tag);
   if (current === "failure") return "F";
   if (current === "drop") return "D";
+  if (current === "warmup") return "WU";
   return "W";
 }
 
@@ -1473,6 +1516,7 @@ function setTagLabel(tag) {
   const current = normalizeSetTag(tag);
   if (current === "failure") return "Failure";
   if (current === "drop") return "Drop";
+  if (current === "warmup") return "Warmup";
   return "Work";
 }
 
@@ -2218,6 +2262,7 @@ function renderHistory() {
     let hasDuration = false;
     workout.items.forEach((item) => {
       item.sets.forEach((set) => {
+        if (normalizeSetTag(set.tag) === 'warmup') return;
         sets += 1;
         if (set.type === "duration") {
           hasDuration = true;
@@ -2263,8 +2308,9 @@ function openWorkoutHistorySheet(workoutId) {
 
     const exerciseHtml = workout.items.map((item) => {
       const ex = getExercise(item.exerciseId);
+      let wi=0;
       const setLines = item.sets.length
-        ? item.sets.map((set, idx) => `<div class="history-set">Set ${idx + 1}: ${formatHistorySet(set, workout)}</div>`).join("")
+        ? item.sets.map((set) => {const isWu=normalizeSetTag(set.tag)==='warmup';const lbl=isWu?'WU':`Set ${++wi}`;return`<div class="history-set">${lbl}: ${formatHistorySet(set,workout)}</div>`;}).join("")
         : "<div class=\"muted small\">No sets logged.</div>";
       return `
         <div class="history-exercise">
@@ -2745,6 +2791,151 @@ function getStatsDataSnapshot() {
   if (hasStatsShape) return current;
   state.statsData = buildStatsDataSnapshot(state.exercises, state.workouts, state.bodyMeasurements);
   return state.statsData;
+}
+
+function heatmapCellColor(count) {
+  if (!count) return 'var(--s3)';
+  return `rgba(var(--brgb), ${Math.min(0.4 + count * 0.22, 1).toFixed(2)})`;
+}
+
+function getHeatmapData() {
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const dow = (now.getDay() + 6) % 7; // 0=Mon
+  const currentMonday = new Date(now); currentMonday.setHours(0,0,0,0); currentMonday.setDate(now.getDate() - dow);
+  const cutoff = new Date(currentMonday); cutoff.setDate(currentMonday.getDate() - 51 * 7);
+  const data = {};
+  state.workouts
+    .filter(w => w.endedAt && new Date(w.createdAt) >= cutoff)
+    .forEach(w => {
+      const d = fmt8(new Date(w.createdAt));
+      if (!data[d]) data[d] = { count: 0, names: [] };
+      data[d].count++;
+      data[d].names.push(w.name || 'Workout');
+    });
+  return { data, currentMonday };
+}
+
+function getProgressionStatus(exerciseId) {
+  const exercise = getExercise(exerciseId);
+  if (!exercise || !exercise.progressionIncrement) return null;
+  const sessions = state.workouts
+    .filter(w => w.endedAt && w.items.some(i => i.exerciseId === exerciseId))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 3)
+    .map(w => w.items.find(i => i.exerciseId === exerciseId));
+  if (!sessions.length) return null;
+  // stall check: >= 2 of last 3 sessions have failure-tagged sets
+  const stallCount = sessions.filter(item =>
+    item.sets.some(s => normalizeSetTag(s.tag) === 'failure')
+  ).length;
+  if (stallCount >= 2) return { type: 'stall' };
+  // progress check: most recent session — work sets exist and none are failure-tagged
+  const recent = sessions[0];
+  const workSets = recent.sets.filter(s => normalizeSetTag(s.tag) === 'work');
+  const hasFailure = recent.sets.some(s => normalizeSetTag(s.tag) === 'failure');
+  if (workSets.length > 0 && !hasFailure) {
+    const base = workSets.find(s => Number.isFinite(s.weight))?.weight;
+    if (base != null) return { type: 'suggest', weight: base + exercise.progressionIncrement };
+  }
+  return null;
+}
+
+function getSessionPRs(workoutId) {
+  const workout = state.workouts.find(w => w.id === workoutId);
+  if (!workout || !workout.endedAt) return [];
+  // build all-time best map from other completed workouts
+  const best = {};
+  state.workouts
+    .filter(w => w.endedAt && w.id !== workoutId)
+    .forEach(w => w.items.forEach(item =>
+      item.sets.forEach(s => {
+        if (normalizeSetTag(s.tag) !== 'work' || !s.completed) return;
+        if (!Number.isFinite(s.weight) || !Number.isFinite(s.reps)) return;
+        const k = `${item.exerciseId}:${s.reps}`;
+        if (!best[k] || s.weight > best[k]) best[k] = s.weight;
+      })
+    ));
+  const sessionBest = {};
+  workout.items.forEach(item => {
+    item.sets.forEach(s => {
+      if (normalizeSetTag(s.tag) !== 'work' || !s.completed) return;
+      if (!Number.isFinite(s.weight) || !Number.isFinite(s.reps)) return;
+      const k = `${item.exerciseId}:${s.reps}`;
+      if (!sessionBest[k] || s.weight > sessionBest[k].weight) {
+        sessionBest[k] = { exerciseId: item.exerciseId, weight: s.weight, reps: s.reps };
+      }
+    });
+  });
+  const prs = [];
+  Object.entries(sessionBest).forEach(([k, { exerciseId, weight, reps }]) => {
+    const isFirstEver = best[k] == null;
+    if (isFirstEver || weight > best[k]) {
+      prs.push({ exerciseId, exerciseName: getExercise(exerciseId)?.name || 'Exercise', weight, reps, isFirstEver });
+    }
+  });
+  return prs;
+}
+
+function updateWorkoutNote(workoutId, note) {
+  const w = state.workouts.find(w => w.id === workoutId);
+  if (!w) return;
+  w.note = note;
+  saveState();
+}
+
+const MUSCLE_SILHOUETTE_MAP = {
+  'Chest':      ['chest'],
+  'Shoulders':  ['front-delts'],
+  'Biceps':     ['biceps'],
+  'Triceps':    ['triceps'],
+  'Forearms':   ['forearms-front','forearms-back'],
+  'Abdominals': ['abs'],
+  'Quadriceps': ['quads-front'],
+  'Adductors':  ['adductors'],
+  'Abductors':  ['abductors'],
+  'Calves':     ['calves-front','calves-back'],
+  'Lower Legs': ['calves-front','calves-back'],
+  'Traps':      ['traps'],
+  'Upper Back': ['upper-back'],
+  'Lats':       ['upper-back'],
+  'Lower Back': ['lower-back'],
+  'Glutes':     ['glutes'],
+  'Hamstrings': ['hamstrings'],
+  'Upper Legs': ['quads-front','hamstrings'],
+};
+
+function getMuscleSilhouetteData(musDisplay) {
+  const regionVolume = {};
+  (musDisplay || []).forEach(({name, total}) => {
+    const ids = MUSCLE_SILHOUETTE_MAP[name];
+    if (!ids) return;
+    ids.forEach(id => { regionVolume[id] = (regionVolume[id] || 0) + total; });
+  });
+  const maxRegion = Math.max(...Object.values(regionVolume), 1);
+  return { regionVolume, maxRegion };
+}
+
+function getWeeklyMuscleRollup() {
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const counts = {};
+  state.workouts
+    .filter(w => w.endedAt && new Date(w.createdAt).getTime() >= cutoff)
+    .forEach(w => {
+      w.items.forEach(item => {
+        const ex = getExercise(item.exerciseId);
+        if (!ex) return;
+        const tags = parseMuscleGroups(ex.primaryMuscleGroups);
+        const canonical = new Set();
+        tags.forEach(t => mapMuscleToCanonicalGroups(t).forEach(g => canonical.add(g)));
+        const workSetCount = item.sets.filter(s => normalizeSetTag(s.tag) !== 'warmup').length;
+        canonical.forEach(g => { counts[g] = (counts[g] || 0) + workSetCount; });
+      });
+    });
+  return Object.entries(counts)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([muscle, sets]) => ({ muscle, sets }));
 }
 
 function toFiniteNumber(value, fallback = 0) {
