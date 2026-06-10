@@ -2308,8 +2308,9 @@ function openWorkoutHistorySheet(workoutId) {
 
     const exerciseHtml = workout.items.map((item) => {
       const ex = getExercise(item.exerciseId);
+      let wi=0;
       const setLines = item.sets.length
-        ? item.sets.map((set, idx) => `<div class="history-set">Set ${idx + 1}: ${formatHistorySet(set, workout)}</div>`).join("")
+        ? item.sets.map((set) => {const isWu=normalizeSetTag(set.tag)==='warmup';const lbl=isWu?'WU':`Set ${++wi}`;return`<div class="history-set">${lbl}: ${formatHistorySet(set,workout)}</div>`;}).join("")
         : "<div class=\"muted small\">No sets logged.</div>";
       return `
         <div class="history-exercise">
