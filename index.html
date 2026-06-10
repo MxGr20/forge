@@ -578,6 +578,37 @@ function TemplateEditSheet({routine,onClose}){
   );
 }
 
+function SetRow({s,i,itemId,prevSets,updField,onToggle,repsLbl}){
+  const [weight,setWeight]=useState(s.weight??'');
+  const [reps,setReps]=useState(s.reps??'');
+  const prev=prevSets?.[i];
+  const hasPrev=prev&&(prev.weight!=null||prev.reps!=null);
+  const fillPrev=()=>{
+    const w=prev.weight??'';const r=prev.reps??'';
+    setWeight(w);setReps(r);
+    updField(itemId,s.id,'weight',String(w));
+    updField(itemId,s.id,'reps',String(r));
+  };
+  return(
+    <div className={`sr${s.completed?' done':''}`}>
+      <div className="sn">{i+1}</div>
+      <div style={{display:'flex',flexDirection:'column',gap:1}}>
+        <input className="si" type="number" inputMode="decimal" value={weight} placeholder="—"
+          onChange={e=>setWeight(e.target.value)}
+          onBlur={e=>updField(itemId,s.id,'weight',e.target.value)}/>
+        {hasPrev&&<span onClick={fillPrev} style={{fontSize:9,color:'var(--t3)',textAlign:'center',lineHeight:1,cursor:'pointer'}}>{prev.weight??'—'}</span>}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:1}}>
+        <input className="si" type="number" inputMode="numeric" value={reps} placeholder="—"
+          onChange={e=>setReps(e.target.value)}
+          onBlur={e=>updField(itemId,s.id,'reps',e.target.value)}/>
+        {hasPrev&&<span onClick={fillPrev} style={{fontSize:9,color:'var(--t3)',textAlign:'center',lineHeight:1,cursor:'pointer'}}>{prev.reps??'—'}</span>}
+      </div>
+      <div className="ck" onClick={()=>onToggle(itemId,s.id)}>{s.completed?'✓':''}</div>
+    </div>
+  );
+}
+
 /* ── SESSION VIEW ── */
 function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
   const workout=getActiveWorkout();
@@ -687,6 +718,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
         const total=item.sets.length;
         const pct=total>0?(done/total)*100:0;
         const repsLbl=item.metricMode==='seconds'?'Sec':'Reps';
+        const prevSets=getLastSessionSetsForExercise(item.exerciseId,workout.id);
         return(
           <div key={item.id} className="ec">
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
@@ -711,14 +743,8 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
             <div className="sw">
               <div className="shd"><span>Set</span><span>kg</span><span>{repsLbl}</span><span>✓</span></div>
               {item.sets.map((s,i)=>(
-                <div key={s.id} className={`sr${s.completed?' done':''}`}>
-                  <div className="sn">{i+1}</div>
-                  <input className="si" type="number" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
-                    onBlur={e=>updField(item.id,s.id,'weight',e.target.value)}/>
-                  <input className="si" type="number" inputMode="numeric" defaultValue={s.reps??''} placeholder="—"
-                    onBlur={e=>updField(item.id,s.id,'reps',e.target.value)}/>
-                  <div className="ck" onClick={()=>toggle(item.id,s.id)}>{s.completed?'✓':''}</div>
-                </div>
+                <SetRow key={s.id} s={s} i={i} itemId={item.id} prevSets={prevSets}
+                  updField={updField} onToggle={toggle} repsLbl={repsLbl}/>
               ))}
             </div>
             <button className="gh" style={{width:'100%',marginTop:12,height:40,fontSize:13}} onClick={()=>doAddSet(item.id)}>+ Add Set</button>

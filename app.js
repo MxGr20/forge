@@ -1233,6 +1233,14 @@ function startWorkout(routineId = null) {
     endWorkout();
   }
 
+function getLastSessionSetsForExercise(exerciseId, currentWorkoutId) {
+  const last = state.workouts
+    .filter(w => w.endedAt && w.id !== currentWorkoutId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .find(w => w.items.some(i => i.exerciseId === exerciseId));
+  return last?.items.find(i => i.exerciseId === exerciseId)?.sets || [];
+}
+
 function addWorkoutExercise(exerciseId) {
   const workout = getActiveWorkout();
   if (!workout) return;
