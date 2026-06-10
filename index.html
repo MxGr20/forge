@@ -320,7 +320,7 @@ function WorkoutsView({onStart,refresh}){
   const doneWorkouts=state.workouts.filter(w=>w.endedAt&&new Date(w.createdAt)>=weekStart&&w.id!==state.activeWorkoutId);
   const doneDays=new Set(doneWorkouts.map(w=>fmt8(new Date(w.createdAt))));
   let weekVol=0,weekSets=0;
-  doneWorkouts.forEach(w=>{weekVol+=workoutVolume(w);weekSets+=w.items.reduce((a,i)=>a+i.sets.length,0);});
+  doneWorkouts.forEach(w=>{weekVol+=workoutVolume(w);weekSets+=w.items.reduce((a,i)=>a+i.sets.filter(s=>normalizeSetTag(s.tag)!=='warmup').length,0);});
 
   const [wods,setWods]=useState(null);
   useEffect(()=>{

@@ -2927,7 +2927,8 @@ function getWeeklyMuscleRollup() {
         const tags = parseMuscleGroups(ex.primaryMuscleGroups);
         const canonical = new Set();
         tags.forEach(t => mapMuscleToCanonicalGroups(t).forEach(g => canonical.add(g)));
-        canonical.forEach(g => { counts[g] = (counts[g] || 0) + item.sets.length; });
+        const workSetCount = item.sets.filter(s => normalizeSetTag(s.tag) !== 'warmup').length;
+        canonical.forEach(g => { counts[g] = (counts[g] || 0) + workSetCount; });
       });
     });
   return Object.entries(counts)
