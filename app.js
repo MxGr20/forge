@@ -2748,6 +2748,27 @@ function getStatsDataSnapshot() {
   return state.statsData;
 }
 
+function getWeeklyMuscleRollup() {
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const counts = {};
+  state.workouts
+    .filter(w => w.endedAt && new Date(w.createdAt).getTime() >= cutoff)
+    .forEach(w => {
+      w.items.forEach(item => {
+        const ex = getExercise(item.exerciseId);
+        if (!ex) return;
+        const tags = parseMuscleGroups(ex.primaryMuscleGroups);
+        const canonical = new Set();
+        tags.forEach(t => mapMuscleToCanonicalGroups(t).forEach(g => canonical.add(g)));
+        canonical.forEach(g => { counts[g] = (counts[g] || 0) + item.sets.length; });
+      });
+    });
+  return Object.entries(counts)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([muscle, sets]) => ({ muscle, sets }));
+}
+
 function toFiniteNumber(value, fallback = 0) {
   const parsed = typeof value === "string" ? parseFloat(value) : value;
   return Number.isFinite(parsed) ? parsed : fallback;

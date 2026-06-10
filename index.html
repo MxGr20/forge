@@ -283,6 +283,23 @@ function WodCard({wod,onTap}){
   );
 }
 
+function MuscleLoadRollup(){
+  const rollup=getWeeklyMuscleRollup();
+  if(!rollup.length)return null;
+  return(
+    <div style={{marginBottom:18}}>
+      <div className="sh" style={{marginBottom:8}}><span className="sl">Muscles This Week</span></div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        {rollup.map(({muscle,sets})=>(
+          <div key={muscle} className="chip" style={{fontSize:11,padding:'4px 10px'}}>
+            {muscle} <span style={{opacity:.6,marginLeft:3}}>{sets}s</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── WORKOUTS VIEW ── */
 function WorkoutsView({onStart,refresh}){
   const fileInputRef=useRef(null);
@@ -387,6 +404,8 @@ function WorkoutsView({onStart,refresh}){
         <div className="st"><div className="sl2">Sets</div><div className="sv">{weekSets}</div></div>
         <div className="st"><div className="sl2">Best Day</div><div className="sv" style={{fontSize:16,letterSpacing:'-.01em'}}>{doneWorkouts.length>0?doneWorkouts.reduce((b,w)=>workoutVolume(w)>workoutVolume(b)?w:b).name.split(' ').slice(0,2).join(' '):'—'}</div></div>
       </div>
+
+      <MuscleLoadRollup/>
 
       <div className="div"/>
       <div className="sh">
