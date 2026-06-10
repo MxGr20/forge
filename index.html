@@ -773,10 +773,10 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
               onBlur={e=>{item.note=e.target.value;saveState();}}/>
             <div className="sw">
               <div className="shd"><span>Set</span><span>kg</span><span>{repsLbl}</span><span>✓</span></div>
-              {item.sets.map((s,i)=>(
-                <SetRow key={s.id} s={s} i={i} itemId={item.id} prevSets={prevSets}
+              {(()=>{let wi=0;return item.sets.map(s=>{const isWu=normalizeSetTag(s.tag)==='warmup';const idx=isWu?-1:wi++;return(
+                <SetRow key={s.id} s={s} i={idx} itemId={item.id} prevSets={isWu?null:prevSets}
                   updField={updField} onToggle={toggle} repsLbl={repsLbl}/>
-              ))}
+              );});})()}
             </div>
             <button className="gh" style={{width:'100%',marginTop:12,height:40,fontSize:13}} onClick={()=>doAddSet(item.id)}>+ Add Set</button>
           </div>

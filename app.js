@@ -450,6 +450,7 @@ function buildStatsDataSnapshot(exercises, workouts, bodyMeasurements) {
       if (!perExercise.has(exerciseId)) perExercise.set(exerciseId, createSession());
       const session = perExercise.get(exerciseId);
       (item.sets || []).forEach((set) => {
+        if (normalizeSetTag(set.tag) === 'warmup') return;
         if (set.type === "duration") {
           const duration = Number.isFinite(set.durationSec) ? set.durationSec : 0;
           if (duration <= 0) return;
@@ -1238,7 +1239,8 @@ function getLastSessionSetsForExercise(exerciseId, currentWorkoutId) {
     .filter(w => w.endedAt && w.id !== currentWorkoutId)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .find(w => w.items.some(i => i.exerciseId === exerciseId));
-  return last?.items.find(i => i.exerciseId === exerciseId)?.sets || [];
+  return (last?.items.find(i => i.exerciseId === exerciseId)?.sets || [])
+    .filter(s => normalizeSetTag(s.tag) !== 'warmup');
 }
 
 function getWorkingWeightForExercise(exerciseId) {
@@ -1495,8 +1497,9 @@ function normalizeSetTag(tag) {
 }
 
 function nextSetTag(tag) {
-  const order = ["work", "failure", "drop", "warmup"];
   const current = normalizeSetTag(tag);
+  if (current === 'warmup') return 'work';
+  const order = ["work", "failure", "drop"];
   const idx = order.indexOf(current);
   return order[(idx + 1) % order.length];
 }
@@ -2259,6 +2262,7 @@ function renderHistory() {
     let hasDuration = false;
     workout.items.forEach((item) => {
       item.sets.forEach((set) => {
+        if (normalizeSetTag(set.tag) === 'warmup') return;
         sets += 1;
         if (set.type === "duration") {
           hasDuration = true;
@@ -2851,17 +2855,23 @@ function getSessionPRs(workoutId) {
         if (!best[k] || s.weight > best[k]) best[k] = s.weight;
       })
     ));
-  const prs = [];
+  const sessionBest = {};
   workout.items.forEach(item => {
     item.sets.forEach(s => {
       if (normalizeSetTag(s.tag) !== 'work' || !s.completed) return;
       if (!Number.isFinite(s.weight) || !Number.isFinite(s.reps)) return;
       const k = `${item.exerciseId}:${s.reps}`;
-      const isFirstEver = best[k] == null;
-      if (isFirstEver || s.weight > best[k]) {
-        prs.push({ exerciseId: item.exerciseId, exerciseName: getExercise(item.exerciseId)?.name || 'Exercise', weight: s.weight, reps: s.reps, isFirstEver });
+      if (!sessionBest[k] || s.weight > sessionBest[k].weight) {
+        sessionBest[k] = { exerciseId: item.exerciseId, weight: s.weight, reps: s.reps };
       }
     });
+  });
+  const prs = [];
+  Object.entries(sessionBest).forEach(([k, { exerciseId, weight, reps }]) => {
+    const isFirstEver = best[k] == null;
+    if (isFirstEver || weight > best[k]) {
+      prs.push({ exerciseId, exerciseName: getExercise(exerciseId)?.name || 'Exercise', weight, reps, isFirstEver });
+    }
   });
   return prs;
 }
