@@ -2811,6 +2811,31 @@ function getHeatmapData() {
   return { data, currentMonday };
 }
 
+function getProgressionStatus(exerciseId) {
+  const exercise = getExercise(exerciseId);
+  if (!exercise || !exercise.progressionIncrement) return null;
+  const sessions = state.workouts
+    .filter(w => w.endedAt && w.items.some(i => i.exerciseId === exerciseId))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 3)
+    .map(w => w.items.find(i => i.exerciseId === exerciseId));
+  if (!sessions.length) return null;
+  // stall check: >= 2 of last 3 sessions have failure-tagged sets
+  const stallCount = sessions.filter(item =>
+    item.sets.some(s => normalizeSetTag(s.tag) === 'failure')
+  ).length;
+  if (stallCount >= 2) return { type: 'stall' };
+  // progress check: most recent session — work sets exist and none are failure-tagged
+  const recent = sessions[0];
+  const workSets = recent.sets.filter(s => normalizeSetTag(s.tag) === 'work');
+  const hasFailure = recent.sets.some(s => normalizeSetTag(s.tag) === 'failure');
+  if (workSets.length > 0 && !hasFailure) {
+    const base = workSets.find(s => Number.isFinite(s.weight))?.weight;
+    if (base != null) return { type: 'suggest', weight: base + exercise.progressionIncrement };
+  }
+  return null;
+}
+
 function getSessionPRs(workoutId) {
   const workout = state.workouts.find(w => w.id === workoutId);
   if (!workout || !workout.endedAt) return [];

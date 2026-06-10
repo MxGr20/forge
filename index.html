@@ -632,6 +632,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
   const [,tick]=useReducer(x=>x+1,0);
   const [showWarn,setShowWarn]=useState(false);
   const [showDiscard,setShowDiscard]=useState(false);
+  const [dismissed,setDismissed]=useState({});
 
   useEffect(()=>{
     if(!workout)return;
@@ -755,6 +756,12 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
                 {item.metricMode==='seconds'?'→ Reps':'→ Sec'}
               </button>
             </div>
+            {(()=>{const pg=dismissed[item.exerciseId]?null:getProgressionStatus(item.exerciseId);if(!pg)return null;const isSug=pg.type==='suggest';return(
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',marginBottom:8,borderRadius:10,background:isSug?'var(--bsoft)':'rgba(239,68,68,.08)',border:`1px solid ${isSug?'var(--bbd)':'rgba(239,68,68,.2)'}`}}>
+                <span style={{fontSize:12,color:isSug?'var(--brand2)':'var(--danger)',flex:1}}>{isSug?`Try ${pg.weight} kg today (+${getExercise(item.exerciseId)?.progressionIncrement} kg)`:'Consider deloading — recent sessions had failures'}</span>
+                <button onClick={()=>setDismissed(d=>({...d,[item.exerciseId]:true}))} style={{background:'none',border:'none',color:'var(--t3)',fontSize:16,cursor:'pointer',padding:'0 0 0 8px',lineHeight:1}}>×</button>
+              </div>
+            );})()}
             {prevWeight!=null&&!hasWarmups&&(
               <button className="gh" style={{width:'100%',height:38,fontSize:12,marginBottom:8}}
                 onClick={()=>{addWarmupSets(item.id);tick();}}>
@@ -1426,10 +1433,13 @@ function ExerciseSheet({item,onSave,onDelete,onClose}){
   const [name,setName]=useState(item?.name||'');
   const [primary,setPrimary]=useState(()=>parseMuscleGroups(item?.primaryMuscleGroups||''));
   const [detailed,setDetailed]=useState(()=>parseMuscleGroups(item?.detailedMuscleGroups||''));
+  const [increment,setIncrement]=useState(item?.progressionIncrement!=null?String(item.progressionIncrement):'');
   const valid=name.trim().length>0;
   const doSave=()=>onSave({
+    ...item,
     id:item?.id||uid(),name:name.trim(),category:item?.category||'',type:item?.type||'weight',
-    primaryMuscleGroups:primary.join(', '),detailedMuscleGroups:detailed.join(', ')
+    primaryMuscleGroups:primary.join(', '),detailedMuscleGroups:detailed.join(', '),
+    progressionIncrement:increment!==''?parseFloat(increment)||null:null,
   });
   return(
     <SheetPortal>
@@ -1443,6 +1453,14 @@ function ExerciseSheet({item,onSave,onDelete,onClose}){
             fontSize:18,fontWeight:700,padding:'0 16px',marginBottom:20}}/>
         <MuscleGroupPicker selected={primary} onChange={setPrimary} label="Primary Muscles" accent="primary" key={`pm-${(state.muscleGroups||[]).length}`}/>
         <MuscleGroupPicker selected={detailed} onChange={setDetailed} label="Secondary Muscles" accent="secondary" key={`sm-${(state.muscleGroups||[]).length}`}/>
+        <div className="setr" style={{marginTop:16,marginBottom:4}}>
+          <span style={{fontSize:13,color:'var(--text)'}}>Progression step</span>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <input className="seti" type="number" step="0.5" placeholder="—" value={increment} onChange={e=>setIncrement(e.target.value)}/>
+            <span style={{fontSize:12,color:'var(--t3)',width:24}}>kg</span>
+          </div>
+        </div>
+        <div style={{fontSize:11,color:'var(--t3)',marginBottom:16,paddingLeft:2}}>Leave blank to disable auto-progression.</div>
         <button className="cta" style={{marginBottom:10,opacity:valid?1:.35,pointerEvents:valid?'auto':'none'}} onClick={doSave}>
           {isNew?'Add Exercise':'Save Changes'}
         </button>
