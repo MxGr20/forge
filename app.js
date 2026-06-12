@@ -1005,10 +1005,8 @@ const restTimer = {
 };
 
 function getRestSeconds(tag = "work") {
-  const normalizedTag = String(tag || "work").toLowerCase();
-  const key = normalizedTag === "drop" || normalizedTag === "dropset" || normalizedTag === "drop-set" || normalizedTag === "warmup"
-    ? "restSecondsDrop"
-    : "restSecondsWork";
+  const canonical = normalizeSetTag(tag);
+  const key = canonical === "drop" || canonical === "warmup" ? "restSecondsDrop" : "restSecondsWork";
   const value = state.settings[key];
   return Math.max(10, Number.isFinite(value) ? value : 0);
 }
@@ -1488,11 +1486,8 @@ function saveExerciseEdit() {
 
 function normalizeSetTag(tag) {
   const normalized = String(tag || "work").toLowerCase();
-  if (normalized === "drop-set") return "drop";
-  if (normalized === "dropset") return "drop";
-  if (normalized === "failure") return "failure";
-  if (normalized === "drop") return "drop";
-  if (normalized === "warmup") return "warmup";
+  if (normalized === "drop-set" || normalized === "dropset") return "drop";
+  if (normalized === "failure" || normalized === "drop" || normalized === "warmup") return normalized;
   return "work";
 }
 
@@ -1504,21 +1499,14 @@ function nextSetTag(tag) {
   return order[(idx + 1) % order.length];
 }
 
-function setTagShort(tag) {
-  const current = normalizeSetTag(tag);
-  if (current === "failure") return "F";
-  if (current === "drop") return "D";
-  if (current === "warmup") return "WU";
-  return "W";
-}
-
-function setTagLabel(tag) {
-  const current = normalizeSetTag(tag);
-  if (current === "failure") return "Failure";
-  if (current === "drop") return "Drop";
-  if (current === "warmup") return "Warmup";
-  return "Work";
-}
+const TAG_META = {
+  work:    { short: 'W',  label: 'Work' },
+  failure: { short: 'F',  label: 'Failure' },
+  drop:    { short: 'D',  label: 'Drop' },
+  warmup:  { short: 'WU', label: 'Warmup' },
+};
+function setTagShort(tag) { return (TAG_META[normalizeSetTag(tag)] ?? TAG_META.work).short; }
+function setTagLabel(tag) { return (TAG_META[normalizeSetTag(tag)] ?? TAG_META.work).label; }
 
 function cycleSetTag(owner, itemId, setId) {
   const { items } = getItemCollection(owner);
@@ -2805,8 +2793,9 @@ function getHeatmapData() {
   const currentMonday = new Date(now); currentMonday.setHours(0,0,0,0); currentMonday.setDate(now.getDate() - dow);
   const cutoff = new Date(currentMonday); cutoff.setDate(currentMonday.getDate() - 51 * 7);
   const data = {};
+  const cutoffMs = cutoff.getTime();
   state.workouts
-    .filter(w => w.endedAt && new Date(w.createdAt) >= cutoff)
+    .filter(w => w.endedAt && Date.parse(w.createdAt) >= cutoffMs)
     .forEach(w => {
       const d = fmt8(new Date(w.createdAt));
       if (!data[d]) data[d] = { count: 0, names: [] };
@@ -2894,7 +2883,7 @@ const MUSCLE_SILHOUETTE_MAP = {
   'Quadriceps': ['quads-front'],
   'Adductors':  ['adductors'],
   'Abductors':  ['abductors'],
-  'Calves':     ['calves-front','calves-back'],
+  'Calves':     ['calves-front','calves-back'], // alias kept for legacy muscle-group data
   'Lower Legs': ['calves-front','calves-back'],
   'Traps':      ['traps'],
   'Upper Back': ['upper-back'],
@@ -2920,7 +2909,7 @@ function getWeeklyMuscleRollup() {
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const counts = {};
   state.workouts
-    .filter(w => w.endedAt && new Date(w.createdAt).getTime() >= cutoff)
+    .filter(w => w.endedAt && Date.parse(w.createdAt) >= cutoff)
     .forEach(w => {
       w.items.forEach(item => {
         const ex = getExercise(item.exerciseId);
