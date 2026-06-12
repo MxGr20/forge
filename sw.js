@@ -1,7 +1,8 @@
-const CACHE = "forge-cache-v13";
+const CACHE = "forge-cache-v14";
 const ASSETS = [
   "./",
   "./index.html",
+  "./config.js",
   "./app.js",
   "./tweaks-panel.jsx",
   "./manifest.json",

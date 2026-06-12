@@ -33,12 +33,16 @@ Fork this repo on GitHub so you have your own copy to modify.
 
 ### 3. Configure the app
 
-Open `app.js` and replace the two constants at the very top of the file with your own values:
+Open `config.js` and replace the two values with your own:
 
 ```js
-const SUPABASE_URL = "https://your-project-ref.supabase.co";
-const SUPABASE_ANON_KEY = "your-anon-key-here";
+window.FORGE_CONFIG = {
+  supabaseUrl: "https://your-project-ref.supabase.co",
+  supabaseKey: "your-anon-key-here",
+};
 ```
+
+`config.js` is the only file you ever need to edit. This means when the original repo gets new features, you can sync your fork with one click and nothing conflicts.
 
 ### 4. Enable magic-link auth
 
@@ -81,6 +85,7 @@ Then open `http://localhost:8080`. The service worker (`sw.js`) caches assets fo
 | `index.html` | All React components (JSX compiled at runtime) |
 | `app.js` | Global state, all state-mutation functions, rendering helpers |
 | `sw.js` | Service worker — bump `CACHE` version and add to `ASSETS` when adding new data files |
+| `config.js` | Your Supabase credentials — the only file you edit when setting up your own instance |
 | `supabase_schema.sql` | Database schema to run once in your Supabase SQL editor |
 | `data/templates.json` | Curated workout templates (3 routines, 41 exercises) |
 | `data/wod.json` | Daily WOD schedule |

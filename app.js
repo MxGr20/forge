@@ -2,8 +2,8 @@
 const STORAGE_KEY = "forge_data_v1";
 const STORAGE_VERSION = 2;
 const STATS_DATA_VERSION = 5;
-const SUPABASE_URL = "https://ruuzraihxczeeeafkbve.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1dXpyYWloeGN6ZWVlYWZrYnZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MTU5MzAsImV4cCI6MjA4NjE5MTkzMH0.OVLMNwN0e940dSd6-aZqzaFFXCY3hcbgR_-dGvF1OwE";
+const SUPABASE_URL = window.FORGE_CONFIG?.supabaseUrl ?? "";
+const SUPABASE_ANON_KEY = window.FORGE_CONFIG?.supabaseKey ?? "";
 const SUPABASE_AUTH_URL_KEYS = [
   "code",
   "type",
