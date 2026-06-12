@@ -77,12 +77,12 @@ R31. Warmup-tagged sets are excluded from PR detection (R6–R8) and progressive
 R32. The working weight source is the weight from the first work-tagged set of the most recent completed session for that exercise.
 R33. When no previous working weight exists, the "Add Warmups" button is not shown.
 
-**Silhouette Body Map**
+**Silhouette Body Map** *(implemented then removed — 2026-06-11)*
 
-R34. The Muscle Volume section in Stats renders an SVG body silhouette above the existing horizontal bar chart.
-R35. Muscle regions on the silhouette are filled proportionally to set volume over the selected time period; untrained regions render in grey.
-R36. The time range selector gains a 1w option, making it 1w / 4w / 8w / 12w; selecting a range updates both the silhouette and the bar chart.
-R37. Muscle group strings not mappable to a silhouette region are ignored in the silhouette but remain in the bar chart.
+R34. ~~The Muscle Volume section in Stats renders an SVG body silhouette above the existing horizontal bar chart.~~ *Implemented and later removed; bar chart alone is sufficient.*
+R35. ~~Muscle regions on the silhouette are filled proportionally to set volume over the selected time period; untrained regions render in grey.~~ *Implemented; removed with R34.*
+R36. The time range selector gains a 1w option, making it 1w / 4w / 8w / 12w; selecting a range updates the bar chart. *(Retained.)*
+R37. ~~Muscle group strings not mappable to a silhouette region are ignored in the silhouette but remain in the bar chart.~~ *Moot — silhouette removed.*
 
 ## Key Flows
 

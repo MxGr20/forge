@@ -1,12 +1,14 @@
 ---
 title: "feat: Silhouette Body Map in Muscle Volume"
 date: 2026-06-09
-status: active
+status: superseded
 origin: docs/brainstorms/2026-06-09-forge-next-features-requirements.md
 type: feat
 ---
 
 # feat: Silhouette Body Map in Muscle Volume
+
+> **Status note (2026-06-11):** The body silhouette was implemented in full (52 anatomical paths, front+back, organic shapes) and then removed from `StatsView` in a follow-up design decision — the bar chart alone is sufficient. The data pipeline (`MUSCLE_SILHOUETTE_MAP`, `getMuscleSilhouetteData`, `BodySilhouette` component) remains in the codebase but is not rendered. The 1w time range button was retained.
 
 Render an SVG front+back body silhouette above the existing Muscle Volume bar chart in StatsView. Muscle regions fill proportionally to training volume over the selected time range. Add a 1w option to the time range selector.
 
