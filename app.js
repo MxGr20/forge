@@ -1875,7 +1875,7 @@ function updateRoutineSet(routineId, itemId, setId, field, val) {
   if (!item) return;
   const set = item.sets.find(s => s.id === setId);
   if (!set) return;
-  if (field === 'weight' || field === 'reps') { const n = parseFloat(val); set[field] = isNaN(n) ? null : n; }
+  if (field === 'weight' || field === 'reps') { const n = parseFloat(String(val).replace(',', '.')); set[field] = isNaN(n) ? null : n; }
   else set[field] = val;
   saveState();
 }

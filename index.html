@@ -560,7 +560,7 @@ function TemplateEditSheet({routine,onClose}){
                     {item.sets.map((s,si)=>(
                       <div key={s.id} className="sr done">
                         <div className="sn">{si+1}</div>
-                        <input className="si" type="number" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
+                        <input className="si" type="text" inputMode="decimal" defaultValue={s.weight??''} placeholder="—"
                           onBlur={e=>doUpdSet(item.id,s.id,'weight',e.target.value)}/>
                         <input className="si" type="number" inputMode={isSeconds?'numeric':'numeric'} defaultValue={s.reps??''} placeholder="—"
                           onBlur={e=>doUpdSet(item.id,s.id,'reps',e.target.value)}/>
@@ -610,7 +610,7 @@ function SetRow({s,i,itemId,prevSets,updField,onToggle,repsLbl}){
     <div className={`sr${s.completed?' done':''}`} style={isWarmup?{background:'rgba(var(--brgb),.06)',borderRadius:6}:undefined}>
       <div className="sn">{isWarmup?'WU':i+1}</div>
       <div style={{display:'flex',flexDirection:'column',gap:1}}>
-        <input className="si" type="number" inputMode="decimal" value={weight} placeholder="—"
+        <input className="si" type="text" inputMode="decimal" value={weight} placeholder="—"
           onChange={e=>setWeight(e.target.value)}
           onBlur={e=>updField(itemId,s.id,'weight',e.target.value)}/>
         {hasPrev&&<span onClick={fillPrev} style={{fontSize:9,color:'var(--t3)',textAlign:'center',lineHeight:1,cursor:'pointer'}}>{prev.weight??'—'}</span>}
@@ -664,7 +664,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
     const item=workout.items.find(i=>i.id===itemId);
     const s=item?.sets.find(s=>s.id===setId);
     if(!s)return;
-    if(field==='weight'||field==='reps'){const n=parseFloat(val);s[field]=isNaN(n)?null:n;}
+    if(field==='weight'||field==='reps'){const n=parseFloat(String(val).replace(',','.'));s[field]=isNaN(n)?null:n;}
     else s[field]=val;
     saveState();
   };
@@ -724,8 +724,8 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
             <div className="rc">{fmtDur(rest)}</div>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
-            <button className="gh" style={{height:34,fontSize:12}} onClick={()=>{const nv=Math.max(0,rest-15);setRest(nv);if(nv===0)setRestOn(false);}}>−15s</button>
-            <button className="gh" style={{height:34,fontSize:12}} onClick={()=>setRest(r=>r+15)}>+15s</button>
+            <button className="gh" style={{height:34,fontSize:12}} onClick={()=>{const nv=Math.max(0,rest-15);endsAtRef.current=Date.now()+nv*1000;setRest(nv);if(nv===0)setRestOn(false);}}>−15s</button>
+            <button className="gh" style={{height:34,fontSize:12}} onClick={()=>{endsAtRef.current+=15000;setRest(r=>r+15);}}>+15s</button>
             <button className="gh" style={{height:34,fontSize:12}} onClick={()=>setRestOn(false)}>Stop</button>
           </div>
         </div>
@@ -1791,6 +1791,7 @@ function App(){
   const [toastMsg,setToastMsg]=useState(null);
   const [rest,setRest]=useState(0);
   const [restOn,setRestOn]=useState(false);
+  const endsAtRef=useRef(0);
   const [summaryWorkoutId,setSummaryWorkoutId]=useState(null);
   const [,forceUpdate]=useReducer(x=>x+1,0);
   const toastTimer=useRef(null);
@@ -1808,7 +1809,7 @@ function App(){
       if(v==='session'){setDir(0);setInSess(true);}
       else{setDir(-1);setInSess(false);if(v==='workouts')setView('workouts');}
     };
-    window._forgeStartTimer=(secs)=>{setRest(Math.round(secs));setRestOn(true);};
+    window._forgeStartTimer=(secs)=>{const s=Math.round(secs);endsAtRef.current=Date.now()+s*1000;setRest(s);setRestOn(true);};
     window._forgeStopTimer=()=>setRestOn(false);
     return()=>{delete window._forgeRefresh;delete window._forgeToast;delete window._forgeSetView;delete window._forgeStartTimer;delete window._forgeStopTimer;};
   },[refresh]);
@@ -1823,8 +1824,15 @@ function App(){
 
   useEffect(()=>{
     if(!restOn)return;
-    const t2=setInterval(()=>setRest(s=>{if(s<=1){setRestOn(false);window._forgeToast?.('Rest complete');if(state.settings.audioRestAlert)playRestAlertTone();return 0;}return s-1;}),1000);
-    return()=>clearInterval(t2);
+    const snap=()=>{
+      const remaining=Math.max(0,Math.ceil((endsAtRef.current-Date.now())/1000));
+      if(remaining<=0){setRest(0);setRestOn(false);window._forgeToast?.('Rest complete');if(state.settings.audioRestAlert)playRestAlertTone();}
+      else setRest(remaining);
+    };
+    const t2=setInterval(snap,1000);
+    const onVisible=()=>{if(document.visibilityState==='visible')snap();};
+    document.addEventListener('visibilitychange',onVisible);
+    return()=>{clearInterval(t2);document.removeEventListener('visibilitychange',onVisible);};
   },[restOn]);
 
   const goTo=(v)=>{
