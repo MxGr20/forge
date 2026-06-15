@@ -657,7 +657,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
     if(!s)return;
     s.completed=!s.completed;
     saveState();
-    if(s.completed&&state.settings.autoRest){setRest(getRestSeconds(s.tag));setRestOn(true);}
+    if(s.completed&&state.settings.autoRest){window._forgeStartTimer?.(getRestSeconds(s.tag));}
     tick();
   };
   const updField=(itemId,setId,field,val)=>{
