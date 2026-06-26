@@ -315,6 +315,8 @@ function WorkoutsView({onStart,refresh}){
   const [templateSheet,setTemplateSheet]=useState(null);
   const [editSheet,setEditSheet]=useState(null);
   const [heatmapSheet,setHeatmapSheet]=useState(false);
+  const [viewOffset,setViewOffset]=useState(0);
+  const touchStartXRef=useRef(0);
   const [,tick]=useReducer(x=>x+1,0);
 
   const weekStart=getWeekStart();
@@ -328,9 +330,13 @@ function WorkoutsView({onStart,refresh}){
     fetch('./data/wod.json').then(r=>r.json()).then(data=>setWods(data)).catch(()=>setWods('error'));
   },[]);
   const wodError=wods==='error';
-  const todayWod=Array.isArray(wods)?wods.find(w=>w.date===today8)||null:undefined;
-  const handleWodTap=todayWod?(()=>{
-    const rn=todayWod.routineName;
+  const viewDate=viewOffset===0?today8:(()=>{const d=new Date(today8+'T12:00');d.setDate(d.getDate()+viewOffset);return fmt8(d);})();
+  const viewWod=Array.isArray(wods)?wods.find(w=>w.date===viewDate)||null:undefined;
+  const dayDelta=date8=>Math.round((new Date(date8+'T12:00').getTime()-new Date(today8+'T12:00').getTime())/86400000);
+  const minOffset=Array.isArray(wods)&&wods.length?dayDelta(wods[0].date):0;
+  const maxOffset=Array.isArray(wods)&&wods.length?dayDelta(wods[wods.length-1].date):0;
+  const handleWodTap=viewOffset===0&&viewWod?(()=>{
+    const rn=viewWod.routineName;
     const matched=rn?state.routines.find(r=>r.name.toLowerCase()===rn.toLowerCase()):null;
     onStart(matched||null);
   }):null;
@@ -351,6 +357,7 @@ function WorkoutsView({onStart,refresh}){
   })();
 
   const routines=state.routines;
+  const handleWodSwipe=e=>{const dx=e.changedTouches[0].clientX-touchStartXRef.current;if(Math.abs(dx)>=40)setViewOffset(o=>Math.max(minOffset,Math.min(maxOffset,o+(dx<0?1:-1))));};
 
   return(
     <div className="sc" style={{padding:'16px 20px 20px'}}>
@@ -391,13 +398,18 @@ function WorkoutsView({onStart,refresh}){
 
       <button className="cta" style={{marginBottom:22}} onClick={()=>onStart(null)}>Start Workout</button>
 
-      <div className="sh"><span className="sl">Today's Session</span></div>
+      <div className="sh">
+        <span className="sl">{viewOffset===0?"Today's Session":new Date(viewDate+'T12:00').toLocaleDateString('en-US',{weekday:'long'})}</span>
+        {viewOffset!==0&&<button onClick={()=>setViewOffset(0)} style={{fontSize:11,color:'var(--brand2)',background:'var(--bsoft)',border:'1px solid var(--bbd)',borderRadius:10,padding:'3px 10px',cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>← Today</button>}
+      </div>
+      <div onTouchStart={e=>{touchStartXRef.current=e.touches[0].clientX;}} onTouchEnd={handleWodSwipe}>
       {wods===null
         ? <div style={{height:80,display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{fontSize:12,color:'var(--t3)'}}>Loading…</div></div>
         : wodError
           ? <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20,textAlign:'center'}}><div style={{fontSize:12,color:'var(--t3)'}}>Couldn't load today's plan — check your connection.</div></div>
-          : <WodCard wod={todayWod} onTap={handleWodTap}/>
+          : <WodCard wod={viewWod} onTap={handleWodTap}/>
       }
+      </div>
 
       <div className="sh"><span className="sl">This Week</span></div>
       <div className="sg" style={{marginBottom:22}}>
@@ -634,6 +646,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
   const [showWarn,setShowWarn]=useState(false);
   const [showDiscard,setShowDiscard]=useState(false);
   const [dismissed,setDismissed]=useState({});
+  const [lastActiveItemId,setLastActiveItemId]=useState(null);
 
   useEffect(()=>{
     if(!workout)return;
@@ -657,7 +670,7 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
     if(!s)return;
     s.completed=!s.completed;
     saveState();
-    if(s.completed&&state.settings.autoRest){window._forgeStartTimer?.(getRestSeconds(s.tag));}
+    if(s.completed&&state.settings.autoRest){window._forgeStartTimer?.(getRestSeconds(s.tag));setLastActiveItemId(itemId);}
     tick();
   };
   const updField=(itemId,setId,field,val)=>{
@@ -772,6 +785,12 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
             <input type="text" className="si" placeholder="Note…" defaultValue={item.note||''}
               style={{width:'100%',marginBottom:8,fontSize:12}}
               onBlur={e=>{item.note=e.target.value;saveState();}}/>
+            {restOn&&item.id===lastActiveItemId&&(
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',marginBottom:8,borderRadius:10,background:'var(--s2)',border:'1px solid var(--bd)'}}>
+                <span style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--t2)'}}>Rest</span>
+                <span style={{fontFamily:'var(--fh)',fontSize:18,fontWeight:800,color:'var(--brand2)',fontVariantNumeric:'tabular-nums'}}>{fmtDur(rest)}</span>
+              </div>
+            )}
             <div className="sw">
               <div className="shd"><span>Set</span><span>kg</span><span>{repsLbl}</span><span>✓</span></div>
               {(()=>{let wi=0;return item.sets.map(s=>{const isWu=normalizeSetTag(s.tag)==='warmup';const idx=isWu?-1:wi++;return(
