@@ -330,16 +330,16 @@ function WorkoutsView({onStart,refresh}){
     fetch('./data/wod.json').then(r=>r.json()).then(data=>setWods(data)).catch(()=>setWods('error'));
   },[]);
   const wodError=wods==='error';
-  const todayWod=Array.isArray(wods)?wods.find(w=>w.date===today8)||null:undefined;
-  const handleWodTap=todayWod?(()=>{
-    const rn=todayWod.routineName;
+  const viewDate=viewOffset===0?today8:(()=>{const d=new Date(today8+'T12:00');d.setDate(d.getDate()+viewOffset);return fmt8(d);})();
+  const viewWod=Array.isArray(wods)?wods.find(w=>w.date===viewDate)||null:undefined;
+  const dayDelta=date8=>Math.round((new Date(date8+'T12:00').getTime()-new Date(today8+'T12:00').getTime())/86400000);
+  const minOffset=Array.isArray(wods)&&wods.length?dayDelta(wods[0].date):0;
+  const maxOffset=Array.isArray(wods)&&wods.length?dayDelta(wods[wods.length-1].date):0;
+  const handleWodTap=viewOffset===0&&viewWod?(()=>{
+    const rn=viewWod.routineName;
     const matched=rn?state.routines.find(r=>r.name.toLowerCase()===rn.toLowerCase()):null;
     onStart(matched||null);
   }):null;
-  const viewDate=(()=>{const d=new Date();d.setDate(d.getDate()+viewOffset);return fmt8(d);})();
-  const viewWod=Array.isArray(wods)?wods.find(w=>w.date===viewDate)||null:undefined;
-  const minOffset=Array.isArray(wods)&&wods.length?Math.round((new Date(wods[0].date+'T12:00').getTime()-new Date(today8+'T12:00').getTime())/86400000):0;
-  const maxOffset=Array.isArray(wods)&&wods.length?Math.round((new Date(wods[wods.length-1].date+'T12:00').getTime()-new Date(today8+'T12:00').getTime())/86400000):0;
 
   const streak=(()=>{
     const completed=state.workouts.filter(w=>w.endedAt&&w.id!==state.activeWorkoutId).map(w=>fmt8(new Date(w.createdAt)));
@@ -357,6 +357,7 @@ function WorkoutsView({onStart,refresh}){
   })();
 
   const routines=state.routines;
+  const handleWodSwipe=e=>{const dx=e.changedTouches[0].clientX-touchStartXRef.current;if(Math.abs(dx)>=40)setViewOffset(o=>Math.max(minOffset,Math.min(maxOffset,o+(dx<0?1:-1))));};
 
   return(
     <div className="sc" style={{padding:'16px 20px 20px'}}>
@@ -398,15 +399,15 @@ function WorkoutsView({onStart,refresh}){
       <button className="cta" style={{marginBottom:22}} onClick={()=>onStart(null)}>Start Workout</button>
 
       <div className="sh">
-        <span className="sl">{viewOffset===0?"Today's Session":new Date(viewDate).toLocaleDateString('en-US',{weekday:'long'})}</span>
+        <span className="sl">{viewOffset===0?"Today's Session":new Date(viewDate+'T12:00').toLocaleDateString('en-US',{weekday:'long'})}</span>
         {viewOffset!==0&&<button onClick={()=>setViewOffset(0)} style={{fontSize:11,color:'var(--brand2)',background:'var(--bsoft)',border:'1px solid var(--bbd)',borderRadius:10,padding:'3px 10px',cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>← Today</button>}
       </div>
-      <div onTouchStart={e=>{touchStartXRef.current=e.touches[0].clientX;}} onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-touchStartXRef.current;if(Math.abs(dx)>=40)setViewOffset(o=>Math.max(minOffset,Math.min(maxOffset,o+(dx<0?1:-1))));}}>
+      <div onTouchStart={e=>{touchStartXRef.current=e.touches[0].clientX;}} onTouchEnd={handleWodSwipe}>
       {wods===null
         ? <div style={{height:80,display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{fontSize:12,color:'var(--t3)'}}>Loading…</div></div>
         : wodError
           ? <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20,textAlign:'center'}}><div style={{fontSize:12,color:'var(--t3)'}}>Couldn't load today's plan — check your connection.</div></div>
-          : <WodCard wod={viewWod} onTap={viewOffset===0?handleWodTap:null}/>
+          : <WodCard wod={viewWod} onTap={handleWodTap}/>
       }
       </div>
 
