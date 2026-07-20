@@ -29,7 +29,13 @@ One work unit within a Routine Item — carries `type`, `tag`, `weight`, `reps`,
 Tag metadata (label, short abbreviation) is centralised in `TAG_META` in `app.js`.
 
 ### Exercise fields (notable)
-- `progressionIncrement` — optional number (kg). When set, enables the progressive overload engine: after a clean session (all work sets completed, no failures) the app surfaces a weight suggestion of `last weight + increment` for the next session.
+- `progressionIncrement` — optional number (kg). Used as the default weight step when progression is enabled for a Routine Item. It also preserves the legacy exercise-level suggestion for routines that have not adopted Progression Coach v2.
+
+### Progression rule
+An optional `progression` object stored on a Routine Item: `enabled`, `minReps`, `maxReps`, and `increment`. Progression belongs to the Routine Item because the same Exercise can use different targets in different Routines.
+
+### Progression plan
+An immutable `progressionPlan` snapshot stored on a Workout Item when a session begins. It records the active rule, set-by-set prescribed weight/reps, the Routine Item identity, and the reason for the target. Completed results are evaluated against this snapshot so later Routine edits cannot rewrite historical intent.
 
 ### Muscle Tag Library
 A deduplicated, sorted store of muscle group strings (`state.muscleTagLibrary.primary` and `.detailed`). Populated when exercises are created or imported. Drives the tag autocomplete in the exercise editor. Each new import pass adds any strings not already present; existing strings are never removed.
@@ -45,7 +51,7 @@ A per-Routine-Item flag controlling how a set is tracked: `"reps"` (count of rep
 
 - **Previous-session reference** — each set row shows the prior session's weight/reps as dimmed tap-to-fill hints (`getLastSessionSetsForExercise`)
 - **Session summary + PR detection** — `SessionSummarySheet` appears after every workout; PR = all-time heaviest for that exercise at that rep count (`getSessionPRs`)
-- **Progressive overload engine** — per-exercise `progressionIncrement`; suggest next weight or deload prompt (`getProgressionStatus`)
+- **Progression Coach** — Routine Item-level double progression with set-by-set target snapshots, rep/load prefill, repeat-on-miss, and explicit deload offers (`buildProgressionPlan`, `evaluateProgressionAttempt`)
 - **52-week consistency heatmap** — `ConsistencyHeatmap` on the Forge tab (removed from Stats tab)
 - **Rest timer** — auto-start on set completion (toggle in Tools); optional audio alert via Web Audio API; −15s / +15s adjustment buttons
 - **Weekly muscle load rollup** — `MuscleLoadRollup` chips above Templates on the Forge tab (`getWeeklyMuscleRollup`)

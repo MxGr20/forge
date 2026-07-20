@@ -1,7 +1,11 @@
 ﻿
 const STORAGE_KEY = "forge_data_v1";
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 const STATS_DATA_VERSION = 5;
+const PROGRESSION_PLAN_VERSION = 1;
+const DEFAULT_PROGRESSION_MIN_REPS = 8;
+const DEFAULT_PROGRESSION_MAX_REPS = 10;
+const DEFAULT_PROGRESSION_INCREMENT = 2.5;
 const SUPABASE_URL = window.FORGE_CONFIG?.supabaseUrl ?? "";
 const SUPABASE_ANON_KEY = window.FORGE_CONFIG?.supabaseKey ?? "";
 const SUPABASE_AUTH_URL_KEYS = [
@@ -729,6 +733,70 @@ function normalizeItemMetricMode(item) {
   return item?.metricMode === "seconds" ? "seconds" : "reps";
 }
 
+function progressionNumberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeProgressionRule(rule) {
+  if (!rule || typeof rule !== "object") return null;
+  const rawMin = Number(rule.minReps);
+  const rawMax = Number(rule.maxReps);
+  const rawIncrement = Number(rule.increment);
+  const minReps = Number.isFinite(rawMin) && rawMin > 0
+    ? Math.round(rawMin)
+    : DEFAULT_PROGRESSION_MIN_REPS;
+  const maxReps = Number.isFinite(rawMax) && rawMax >= minReps
+    ? Math.round(rawMax)
+    : Math.max(minReps, DEFAULT_PROGRESSION_MAX_REPS);
+  const increment = Number.isFinite(rawIncrement) && rawIncrement > 0
+    ? rawIncrement
+    : DEFAULT_PROGRESSION_INCREMENT;
+  return {
+    enabled: rule.enabled === true,
+    minReps,
+    maxReps,
+    increment
+  };
+}
+
+function normalizeProgressionPlan(plan) {
+  if (!plan || typeof plan !== "object") return null;
+  const rule = normalizeProgressionRule(plan.rule);
+  const targets = Array.isArray(plan.targets)
+    ? plan.targets
+      .map((target) => {
+        if (!target || typeof target !== "object" || !target.setId) return null;
+        const weight = progressionNumberOrNull(target.weight);
+        const reps = progressionNumberOrNull(target.reps);
+        return {
+          setId: target.setId,
+          weight,
+          reps: Number.isFinite(reps) && reps > 0 ? Math.round(reps) : null
+        };
+      })
+      .filter(Boolean)
+    : [];
+  if (!rule || targets.length === 0) return null;
+  const priorMisses = Number(plan.priorMisses);
+  const decision = plan.decision && typeof plan.decision === "object"
+    ? { ...plan.decision }
+    : { type: "baseline" };
+  return {
+    ...plan,
+    version: PROGRESSION_PLAN_VERSION,
+    rule,
+    targets,
+    decision,
+    priorMisses: Number.isFinite(priorMisses) && priorMisses > 0
+      ? Math.floor(priorMisses)
+      : 0,
+    deloadApplied: plan.deloadApplied === true,
+    deloadDeclined: plan.deloadDeclined === true
+  };
+}
+
 function normalizeExercises(exercises) {
   return stripLegacyExercises(exercises)
     .map(normalizeExercise)
@@ -753,6 +821,7 @@ function mergeSettings(saved = {}) {
       items: items.map((item) => ({
         ...item,
         metricMode: normalizeItemMetricMode(item),
+        progression: normalizeProgressionRule(item.progression),
         sets: Array.isArray(item.sets)
           ? item.sets.map((set) => ({ ...set, completed: !!set.completed }))
           : []
@@ -767,6 +836,7 @@ function mergeSettings(saved = {}) {
       items: items.map((item) => ({
         ...item,
         metricMode: normalizeItemMetricMode(item),
+        progressionPlan: normalizeProgressionPlan(item.progressionPlan),
         sets: Array.isArray(item.sets)
           ? item.sets.map((set) => ({ ...set, completed: !!set.completed }))
           : []
@@ -1131,6 +1201,376 @@ function buildPrefilledSets(templateItem, sourceItem) {
   });
 }
 
+function roundProgressionValue(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function roundProgressionToStep(value, step) {
+  const safeStep = Number(step);
+  const safeValue = Number(value);
+  if (!Number.isFinite(safeValue)) return null;
+  if (!Number.isFinite(safeStep) || safeStep <= 0) return roundProgressionValue(safeValue);
+  return roundProgressionValue(Math.round(safeValue / safeStep) * safeStep);
+}
+
+function clampProgressionReps(value, rule) {
+  const reps = Number(value);
+  if (!Number.isFinite(reps)) return rule.minReps;
+  return Math.min(rule.maxReps, Math.max(rule.minReps, Math.round(reps)));
+}
+
+function getProgressionWorkSets(itemOrSets) {
+  const sets = Array.isArray(itemOrSets) ? itemOrSets : itemOrSets?.sets;
+  return (Array.isArray(sets) ? sets : [])
+    .filter((set) => normalizeSetTag(set.tag) === "work");
+}
+
+function createProgressionTargets(sets, rule) {
+  return getProgressionWorkSets(sets).map((set) => ({
+    setId: set.id,
+    weight: progressionNumberOrNull(set.weight),
+    reps: clampProgressionReps(set.reps, rule)
+  }));
+}
+
+function progressionValuesFromTargets(targets) {
+  return (Array.isArray(targets) ? targets : []).map((target) => ({
+    weight: progressionNumberOrNull(target.weight),
+    reps: progressionNumberOrNull(target.reps)
+  }));
+}
+
+function mapProgressionValuesToTargets(baseTargets, values, rule) {
+  return baseTargets.map((base, index) => {
+    const value = values[index];
+    return {
+      setId: base.setId,
+      weight: progressionNumberOrNull(value?.weight) ?? base.weight,
+      reps: clampProgressionReps(value?.reps ?? base.reps, rule)
+    };
+  });
+}
+
+function getProgressionAttempts(routineId, routineItemId) {
+  if (!routineId || !routineItemId) return [];
+  return state.workouts
+    .filter((workout) => workout.endedAt && workout.routineId === routineId)
+    .slice()
+    .sort((a, b) => getWorkoutSortTimestamp(b) - getWorkoutSortTimestamp(a))
+    .map((workout) => {
+      const item = (workout.items || []).find((entry) =>
+        entry.routineItemId === routineItemId
+        || entry.progressionPlan?.routineItemId === routineItemId
+      );
+      return item?.progressionPlan ? { workout, item } : null;
+    })
+    .filter(Boolean);
+}
+
+function evaluateProgressionAttempt(item) {
+  const plan = normalizeProgressionPlan(item?.progressionPlan);
+  if (!plan) return null;
+  const pairs = plan.targets.map((target) => ({
+    target,
+    set: (item.sets || []).find((entry) => entry.id === target.setId) || null
+  }));
+  const attempted = pairs.some(({ set }) => set?.completed);
+  if (!attempted) {
+    return { status: "skipped", plan, actuals: [] };
+  }
+
+  const actuals = pairs.map(({ target, set }) => ({
+    completed: set?.completed === true,
+    weight: progressionNumberOrNull(set?.weight),
+    reps: progressionNumberOrNull(set?.reps),
+    targetWeight: target.weight,
+    targetReps: target.reps
+  }));
+  const allCompleted = actuals.every((actual) => actual.completed);
+  const hasWeightBaseline = plan.targets.every((target) => Number.isFinite(target.weight));
+  const hasActualValues = actuals.every((actual) =>
+    Number.isFinite(actual.weight) && Number.isFinite(actual.reps)
+  );
+
+  if (!hasWeightBaseline) {
+    return {
+      status: "baseline",
+      complete: allCompleted && hasActualValues,
+      plan,
+      actuals
+    };
+  }
+
+  const metTarget = allCompleted && actuals.every((actual) =>
+    Number.isFinite(actual.weight)
+    && Number.isFinite(actual.reps)
+    && actual.weight >= actual.targetWeight
+    && actual.reps >= actual.targetReps
+  );
+  return {
+    status: metTarget ? "success" : "miss",
+    plan,
+    actuals
+  };
+}
+
+function getProgressionActualValues(result) {
+  if (!result?.plan) return [];
+  return result.plan.targets.map((target, index) => {
+    const actual = result.actuals?.[index];
+    return {
+      weight: Number.isFinite(actual?.weight) ? actual.weight : target.weight,
+      reps: Number.isFinite(actual?.reps) ? actual.reps : target.reps
+    };
+  });
+}
+
+function countConsecutiveProgressionMisses(attempts) {
+  let misses = 0;
+  for (const attempt of attempts) {
+    const result = evaluateProgressionAttempt(attempt.item);
+    if (!result || result.status === "skipped") continue;
+    if (result.status === "miss") {
+      misses += 1;
+      continue;
+    }
+    break;
+  }
+  return misses;
+}
+
+function createProgressionDecision(type, attempt, values, extra = {}) {
+  return {
+    type,
+    sourceWorkoutId: attempt?.workout?.id || null,
+    previous: {
+      weights: values.map((value) => value.weight),
+      reps: values.map((value) => value.reps)
+    },
+    ...extra
+  };
+}
+
+function buildProgressionPlan(routine, routineItem, workoutSets) {
+  const rule = normalizeProgressionRule(routineItem?.progression);
+  if (!rule?.enabled || normalizeItemMetricMode(routineItem) !== "reps") return null;
+  const baseTargets = createProgressionTargets(workoutSets, rule);
+  if (!baseTargets.length) return null;
+
+  const attempts = getProgressionAttempts(routine?.id, routineItem.id);
+  const latest = attempts[0] || null;
+  if (!latest) {
+    return normalizeProgressionPlan({
+      version: PROGRESSION_PLAN_VERSION,
+      routineItemId: routineItem.id,
+      createdAt: new Date().toISOString(),
+      rule,
+      targets: baseTargets,
+      decision: createProgressionDecision("baseline", null, []),
+      priorMisses: 0
+    });
+  }
+
+  const result = evaluateProgressionAttempt(latest.item);
+  const latestPlan = normalizeProgressionPlan(latest.item.progressionPlan);
+  const previousTargetValues = progressionValuesFromTargets(latestPlan.targets);
+  const actualValues = getProgressionActualValues(result);
+  let targets = mapProgressionValuesToTargets(baseTargets, previousTargetValues, rule);
+  let decision;
+  let priorMisses = 0;
+
+  if (result.status === "skipped") {
+    priorMisses = latestPlan.priorMisses || 0;
+    const type = priorMisses >= 2 ? "deload_offer" : "repeat";
+    decision = createProgressionDecision(type, latest, previousTargetValues, { reason: "skipped" });
+  } else if (result.status === "miss") {
+    priorMisses = countConsecutiveProgressionMisses(attempts);
+    const type = priorMisses >= 2 ? "deload_offer" : "repeat";
+    decision = createProgressionDecision(type, latest, actualValues, { reason: "missed" });
+  } else if (result.status === "baseline" && !result.complete) {
+    const usableValues = actualValues.map((value, index) => ({
+      weight: Number.isFinite(value.weight) ? value.weight : baseTargets[index]?.weight,
+      reps: Number.isFinite(value.reps) ? value.reps : baseTargets[index]?.reps
+    }));
+    targets = mapProgressionValuesToTargets(baseTargets, usableValues, rule);
+    decision = createProgressionDecision("baseline", latest, usableValues);
+  } else {
+    const completedValues = actualValues.map((value) => ({
+      weight: value.weight,
+      reps: clampProgressionReps(value.reps, rule)
+    }));
+    const reachedTop = completedValues.every((value) => value.reps >= rule.maxReps);
+    if (reachedTop) {
+      const progressed = completedValues.map((value) => ({
+        weight: Number.isFinite(value.weight)
+          ? roundProgressionValue(value.weight + rule.increment)
+          : null,
+        reps: rule.minReps
+      }));
+      targets = mapProgressionValuesToTargets(baseTargets, progressed, rule);
+      decision = createProgressionDecision("add_weight", latest, actualValues);
+    } else {
+      const progressed = completedValues.map((value) => ({ ...value }));
+      const nextRepIndex = progressed.findIndex((value) => value.reps < rule.maxReps);
+      if (nextRepIndex >= 0) progressed[nextRepIndex].reps += 1;
+      targets = mapProgressionValuesToTargets(baseTargets, progressed, rule);
+      decision = createProgressionDecision("add_rep", latest, actualValues);
+    }
+  }
+
+  return normalizeProgressionPlan({
+    version: PROGRESSION_PLAN_VERSION,
+    routineItemId: routineItem.id,
+    createdAt: new Date().toISOString(),
+    rule,
+    targets,
+    decision,
+    priorMisses
+  });
+}
+
+function applyProgressionPlanToSets(sets, plan) {
+  if (!plan) return sets;
+  plan.targets.forEach((target) => {
+    const set = sets.find((entry) => entry.id === target.setId);
+    if (!set) return;
+    if (Number.isFinite(target.weight)) set.weight = target.weight;
+    if (Number.isFinite(target.reps)) set.reps = target.reps;
+  });
+  return sets;
+}
+
+function formatProgressionNumber(value) {
+  const number = progressionNumberOrNull(value);
+  if (!Number.isFinite(number)) return "—";
+  return Number.isInteger(number) ? String(number) : String(roundProgressionValue(number));
+}
+
+function formatProgressionValues(values) {
+  const safeValues = Array.isArray(values) ? values : [];
+  const weights = safeValues.map((entry) => entry?.weight);
+  const reps = safeValues.map((entry) => entry?.reps);
+  const finiteWeights = weights.filter((weight) => Number.isFinite(progressionNumberOrNull(weight)));
+  let weightText = "Set working weight";
+  if (finiteWeights.length === weights.length && weights.length > 0) {
+    const unique = [...new Set(weights.map((weight) => progressionNumberOrNull(weight)))];
+    weightText = unique.length === 1
+      ? `${formatProgressionNumber(unique[0])} kg`
+      : `${weights.map(formatProgressionNumber).join(" / ")} kg`;
+  }
+  const repText = reps.length ? reps.map(formatProgressionNumber).join(" / ") : "—";
+  return `${weightText} · ${repText}`;
+}
+
+function getProgressionTargetText(plan) {
+  const normalized = normalizeProgressionPlan(plan);
+  return normalized ? formatProgressionValues(normalized.targets) : "";
+}
+
+function getProgressionPreviousText(plan) {
+  const normalized = normalizeProgressionPlan(plan);
+  const previous = normalized?.decision?.previous;
+  if (!previous?.reps?.length) return "";
+  const values = previous.reps.map((reps, index) => ({
+    weight: previous.weights?.[index],
+    reps
+  }));
+  return formatProgressionValues(values);
+}
+
+function getProgressionDecisionText(plan) {
+  const normalized = normalizeProgressionPlan(plan);
+  if (!normalized) return "";
+  const hasWeightTarget = normalized.targets.every((target) => Number.isFinite(target.weight));
+  if (!hasWeightTarget) return "Log a working weight to establish your baseline";
+  switch (normalized.decision?.type) {
+    case "add_weight": return `Top of the range reached · add ${formatProgressionNumber(normalized.rule.increment)} kg`;
+    case "add_rep": return "Last target completed · add one rep";
+    case "repeat": return normalized.decision.reason === "skipped"
+      ? "Exercise skipped last time · target unchanged"
+      : "Last target missed · repeat it";
+    case "deload_offer": return "Target missed twice · consider a 10% deload";
+    case "deload": return "10% deload applied · rebuild from here";
+    default: return "Starting target · complete it to begin progression";
+  }
+}
+
+function canApplyProgressionDeload(item) {
+  const plan = normalizeProgressionPlan(item?.progressionPlan);
+  if (!plan || plan.decision?.type !== "deload_offer") return false;
+  return !plan.targets.some((target) =>
+    item.sets?.find((set) => set.id === target.setId)?.completed
+  );
+}
+
+function applyProgressionDeload(itemId) {
+  const workout = getActiveWorkout();
+  const item = workout?.items?.find((entry) => entry.id === itemId);
+  const plan = normalizeProgressionPlan(item?.progressionPlan);
+  if (!item || !plan || !canApplyProgressionDeload(item)) return false;
+  plan.targets = plan.targets.map((target) => {
+    if (!Number.isFinite(target.weight)) return target;
+    const rounded = roundProgressionToStep(target.weight * 0.9, plan.rule.increment);
+    const lower = rounded >= target.weight
+      ? roundProgressionValue(Math.max(0, target.weight - plan.rule.increment))
+      : rounded;
+    return { ...target, weight: lower, reps: plan.rule.minReps };
+  });
+  plan.decision = { ...plan.decision, type: "deload" };
+  plan.priorMisses = 0;
+  plan.deloadApplied = true;
+  plan.deloadDeclined = false;
+  item.progressionPlan = plan;
+  applyProgressionPlanToSets(item.sets, plan);
+  saveState();
+  renderLog();
+  return true;
+}
+
+function dismissProgressionDeload(itemId) {
+  const workout = getActiveWorkout();
+  const item = workout?.items?.find((entry) => entry.id === itemId);
+  const plan = normalizeProgressionPlan(item?.progressionPlan);
+  if (!item || !plan) return false;
+  plan.deloadDeclined = true;
+  item.progressionPlan = plan;
+  saveState();
+  renderLog();
+  return true;
+}
+
+function getWorkoutProgressionOutcomes(workoutId) {
+  const workout = state.workouts.find((entry) => entry.id === workoutId);
+  if (!workout) return [];
+  return (workout.items || []).map((item) => {
+    const plan = normalizeProgressionPlan(item.progressionPlan);
+    const result = evaluateProgressionAttempt(item);
+    if (!plan || !result) return null;
+    const exerciseName = getExercise(item.exerciseId)?.name || "Exercise";
+    if (result.status === "skipped") {
+      return { exerciseName, type: "muted", text: "Skipped · target unchanged" };
+    }
+    if (result.status === "baseline") {
+      return result.complete
+        ? { exerciseName, type: "success", text: "Baseline recorded · next target ready" }
+        : { exerciseName, type: "warning", text: "Baseline incomplete · try again next time" };
+    }
+    if (result.status === "miss") {
+      const misses = plan.priorMisses + 1;
+      return misses >= 2
+        ? { exerciseName, type: "warning", text: "Stalled twice · deload available next time" }
+        : { exerciseName, type: "warning", text: "Target missed · repeat next time" };
+    }
+    if (plan.decision?.type === "baseline") {
+      return { exerciseName, type: "success", text: "Baseline recorded · next target ready" };
+    }
+    const reachedTop = result.actuals.every((actual) => actual.reps >= plan.rule.maxReps);
+    return reachedTop
+      ? { exerciseName, type: "success", text: "Target hit · load increases next time" }
+      : { exerciseName, type: "success", text: "Progress made · add one rep next time" };
+  }).filter(Boolean);
+}
+
 function workoutHasUnfinishedSets(workout) {
   if (!workout) return false;
   return (workout.items || []).some((item) => (item.sets || []).some((set) => !set.completed));
@@ -1165,13 +1605,24 @@ function startWorkout(routineId = null) {
       const occurrenceIndex = seenExerciseCounts.get(item.exerciseId) || 0;
       seenExerciseCounts.set(item.exerciseId, occurrenceIndex + 1);
       const sourceItem = findPrefillItemForExercise(lastRoutineSession, item.exerciseId, occurrenceIndex);
+      const sets = buildPrefilledSets(item, sourceItem);
+      if (normalizeProgressionRule(item.progression)?.enabled) {
+        sets.forEach((set, index) => {
+          const templateSet = item.sets?.[index];
+          if (templateSet) set.tag = normalizeSetTag(templateSet.tag);
+        });
+      }
+      const progressionPlan = buildProgressionPlan(routine, item, sets);
+      applyProgressionPlanToSets(sets, progressionPlan);
       return {
         id: uid(),
+        routineItemId: item.id,
         exerciseId: item.exerciseId,
         group: item.group || "",
         note: sourceItem?.note || item.note || "",
         metricMode: normalizeItemMetricMode(item),
-        sets: buildPrefilledSets(item, sourceItem)
+        progressionPlan,
+        sets
       };
     });
   }
@@ -1897,6 +2348,53 @@ function updateRoutineItemNote(routineId, itemId, note) {
   if (!item) return;
   item.note = note;
   saveState();
+}
+
+function getSuggestedProgressionRule(item, exercise) {
+  const existing = normalizeProgressionRule(item?.progression);
+  if (existing) return existing;
+  const firstWorkSet = getProgressionWorkSets(item)[0];
+  const currentReps = progressionNumberOrNull(firstWorkSet?.reps);
+  const minReps = Number.isFinite(currentReps) && currentReps > 0
+    ? Math.round(currentReps)
+    : DEFAULT_PROGRESSION_MIN_REPS;
+  const exerciseIncrement = progressionNumberOrNull(exercise?.progressionIncrement);
+  return {
+    enabled: false,
+    minReps,
+    maxReps: minReps + 2,
+    increment: Number.isFinite(exerciseIncrement) && exerciseIncrement > 0
+      ? exerciseIncrement
+      : DEFAULT_PROGRESSION_INCREMENT
+  };
+}
+
+function updateRoutineItemProgression(routineId, itemId, nextRule) {
+  const routine = state.routines.find((entry) => entry.id === routineId);
+  const item = routine?.items?.find((entry) => entry.id === itemId);
+  if (!item || !nextRule || typeof nextRule !== "object") return false;
+  const minReps = progressionNumberOrNull(nextRule.minReps);
+  const maxReps = progressionNumberOrNull(nextRule.maxReps);
+  const increment = progressionNumberOrNull(nextRule.increment);
+  const valid = Number.isInteger(minReps)
+    && Number.isInteger(maxReps)
+    && minReps > 0
+    && maxReps >= minReps
+    && Number.isFinite(increment)
+    && increment > 0;
+  if (!valid) {
+    toast("Check the progression rep range and weight step");
+    return false;
+  }
+  item.progression = {
+    enabled: nextRule.enabled === true,
+    minReps,
+    maxReps,
+    increment
+  };
+  saveState();
+  renderRoutines();
+  return true;
 }
 
 function toggleWorkoutItemMetricMode(itemId) {

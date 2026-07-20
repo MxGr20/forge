@@ -6,7 +6,7 @@ A progressive web app (PWA) for tracking weightlifting workouts. No build step �
 
 - **Previous-session reference** — each set row shows the prior session's weight/reps as dimmed tap-to-fill hints
 - **Session summary + PR detection** — summary sheet after every workout with personal record badges
-- **Progressive overload engine** — per-exercise increment config; surfaces weight suggestions and deload prompts
+- **Progression Coach** — per-template double progression; prefills the next rep/load target, repeats misses, and offers a deload after two stalls
 - **52-week consistency heatmap** — day-by-day workout calendar on the Forge tab
 - **Rest timer** — auto-starts on set completion; optional audio alert via Web Audio API; ±15 s adjustment
 - **Weekly muscle load rollup** — rolling 7-day set count per muscle group above the template list

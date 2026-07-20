@@ -1,12 +1,14 @@
 ---
 title: "feat: Rule-Based Progressive Overload + Stall Detection"
 date: 2026-06-09
-status: active
+status: superseded
 origin: docs/brainstorms/2026-06-09-forge-next-features-requirements.md
 type: feat
 ---
 
 # feat: Rule-Based Progressive Overload + Stall Detection
+
+> Superseded on 2026-07-20 by `docs/plans/2026-07-20-001-feat-progression-coach-v2-plan.md`.
 
 Add an optional `progressionIncrement` field to exercises. When set, evaluate the last few sessions for that exercise and surface a weight suggestion or deload prompt at the start of the next session.
 
