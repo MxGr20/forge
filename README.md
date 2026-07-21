@@ -11,7 +11,7 @@ A progressive web app (PWA) for tracking weightlifting workouts. No build step �
 - **Rest timer** — auto-starts on set completion; optional audio alert via Web Audio API; ±15 s adjustment
 - **Weekly muscle load rollup** — rolling 7-day set count per muscle group above the template list
 - **Warmup set auto-generator** — "Add Warmups" inserts 50% × 5, 70% × 3, 85% × 1 sets from the previous working weight
-- **WOD card** — renders today's scheduled session from `data/wod.json`; tap to start
+- **WOD card** — read-only daily schedule from `data/wod.json`, with swipe navigation across dates
 - **Template import** — load routines from a JSON file; deduplicated by name
 - **Body log** — weight and body-fat measurements over time with chart in Stats
 

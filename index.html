@@ -231,7 +231,7 @@ const INTENSITY_STYLE={
   'Hard':    {color:'var(--danger)',dots:3},
   'High':    {color:'var(--danger)',dots:3},
 };
-function WodCard({wod,onTap}){
+function WodCard({wod}){
   if(!wod){
     return(
       <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20}}>
@@ -243,7 +243,7 @@ function WodCard({wod,onTap}){
   const inS=INTENSITY_STYLE[wod.intensity]||{color:'var(--t2)',dots:1};
   const dots=[1,2,3];
   return(
-    <div onClick={onTap} style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20,position:'relative',overflow:'hidden',cursor:onTap?'pointer':'default'}}>
+    <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20,position:'relative',overflow:'hidden'}}>
       <div style={{position:'absolute',top:0,right:0,width:160,height:100,background:'radial-gradient(ellipse at 100% 0%, '+ts.bg+' 0%, transparent 70%)',pointerEvents:'none'}}/>
       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
         <span style={{fontSize:10,fontWeight:700,letterSpacing:'.08em',color:'var(--t2)',background:'var(--s2)',border:'1px solid var(--bd)',borderRadius:6,padding:'3px 8px'}}>WK {wod.week} · {(wod.phase||'').toUpperCase()}</span>
@@ -335,12 +335,6 @@ function WorkoutsView({onStart,refresh}){
   const dayDelta=date8=>Math.round((new Date(date8+'T12:00').getTime()-new Date(today8+'T12:00').getTime())/86400000);
   const minOffset=Array.isArray(wods)&&wods.length?dayDelta(wods[0].date):0;
   const maxOffset=Array.isArray(wods)&&wods.length?dayDelta(wods[wods.length-1].date):0;
-  const handleWodTap=viewOffset===0&&viewWod?(()=>{
-    const rn=viewWod.routineName;
-    const matched=rn?state.routines.find(r=>r.name.toLowerCase()===rn.toLowerCase()):null;
-    onStart(matched||null);
-  }):null;
-
   const streak=(()=>{
     const completed=state.workouts.filter(w=>w.endedAt&&w.id!==state.activeWorkoutId).map(w=>fmt8(new Date(w.createdAt)));
     const daySet=new Set(completed);
@@ -396,8 +390,6 @@ function WorkoutsView({onStart,refresh}){
         </div>
       </div>
 
-      <button className="cta" style={{marginBottom:22}} onClick={()=>onStart(null)}>Start Workout</button>
-
       <div className="sh">
         <span className="sl">{viewOffset===0?"Today's Session":new Date(viewDate+'T12:00').toLocaleDateString('en-US',{weekday:'long'})}</span>
         {viewOffset!==0&&<button onClick={()=>setViewOffset(0)} style={{fontSize:11,color:'var(--brand2)',background:'var(--bsoft)',border:'1px solid var(--bbd)',borderRadius:10,padding:'3px 10px',cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>← Today</button>}
@@ -407,7 +399,7 @@ function WorkoutsView({onStart,refresh}){
         ? <div style={{height:80,display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{fontSize:12,color:'var(--t3)'}}>Loading…</div></div>
         : wodError
           ? <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20,textAlign:'center'}}><div style={{fontSize:12,color:'var(--t3)'}}>Couldn't load today's plan — check your connection.</div></div>
-          : <WodCard wod={viewWod} onTap={handleWodTap}/>
+          : <WodCard wod={viewWod}/>
       }
       </div>
 
@@ -1957,8 +1949,8 @@ function App(){
     setDir(nxt>cur?1:-1);setInSess(false);setSheet(null);setView(v);
   };
   const startSess=(routine)=>{
-    if(routine){setSheet(routine);}
-    else{startWorkout(null);setInSess(true);}
+    if(!routine)return;
+    setSheet(routine);
   };
   const confirmSess=(routine)=>{setSheet(null);startWorkout(routine.id);setInSess(true);};
   const finishSess=()=>{const cid=state.activeWorkoutId;endWorkout();setSummaryWorkoutId(cid);};

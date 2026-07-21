@@ -56,7 +56,7 @@ A per-Routine-Item flag controlling how a set is tracked: `"reps"` (count of rep
 - **Rest timer** — auto-start on set completion (toggle in Tools); optional audio alert via Web Audio API; −15s / +15s adjustment buttons
 - **Weekly muscle load rollup** — `MuscleLoadRollup` chips above Templates on the Forge tab (`getWeeklyMuscleRollup`)
 - **Warmup set auto-generator** — "Add Warmups" button on exercise items when a previous working weight is known; inserts 50% × 5, 70% × 3, 85% × 1 sets tagged `"warmup"` (`addWarmupSets`)
-- **WOD card** — fetches `data/wod.json` and renders today's scheduled session; tapping it starts the matched routine
+- **WOD card** — fetches `data/wod.json` and renders a read-only daily schedule with swipe navigation; workouts start only from the This Week templates
 - **Template import** — JSON file import via `importTemplatesFromJSON`; deduplicated by name
 - **Body log** — weight + body-fat measurements over time with chart in Stats
 
