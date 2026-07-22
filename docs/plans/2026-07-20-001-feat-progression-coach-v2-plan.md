@@ -16,7 +16,7 @@ Replace the exercise-level clean-session banner with an opt-in, Routine Item-lev
 |---|---|
 | Routine-specific progression | Store a normalized `progression` rule on each Routine Item |
 | Stable historical prescription | Store a `progressionPlan` snapshot and `routineItemId` on each Workout Item |
-| Add reps before load | Advance one target rep after success until every set reaches `maxReps` |
+| Add reps before load | Advance every below-maximum set by one rep after success |
 | Add load at top of range | Add `increment` and reset all targets to `minReps` |
 | Repeat a missed target | Reuse the prior snapshot after any attempted but under-target workout |
 | Ignore skipped exercises | Zero completed planned sets do not add to the miss streak |
@@ -117,8 +117,8 @@ The existing Exercise-level `progressionIncrement` remains persisted and becomes
 ## Acceptance Scenarios
 
 1. `3 x 8–10 @ 20 kg`; complete `10/10/10` → next workout prefills `3 x 8 @ 22.5 kg`.
-2. Complete `10/9/8` → next workout prefills `10/10/8` at the same weight.
-3. Target `10/10/8`; actual `10/8/8` → next workout repeats `10/10/8`.
+2. Complete `10/9/8` → next workout prefills `10/10/9` at the same weight.
+3. Target `10/10/9`; actual `10/8/9` → next workout repeats `10/10/9`.
 4. Miss two consecutive attempts → next workout repeats the target and offers a 10% deload.
 5. Skip the exercise → the following workout preserves the target without increasing the miss streak.
 6. Use the same Exercise in two Routines → each target progresses independently.

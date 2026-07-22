@@ -1410,9 +1410,10 @@ function buildProgressionPlan(routine, routineItem, workoutSets) {
       targets = mapProgressionValuesToTargets(baseTargets, progressed, rule);
       decision = createProgressionDecision("add_weight", latest, actualValues);
     } else {
-      const progressed = completedValues.map((value) => ({ ...value }));
-      const nextRepIndex = progressed.findIndex((value) => value.reps < rule.maxReps);
-      if (nextRepIndex >= 0) progressed[nextRepIndex].reps += 1;
+      const progressed = completedValues.map((value) => ({
+        ...value,
+        reps: value.reps < rule.maxReps ? value.reps + 1 : value.reps
+      }));
       targets = mapProgressionValuesToTargets(baseTargets, progressed, rule);
       decision = createProgressionDecision("add_rep", latest, actualValues);
     }
@@ -1485,7 +1486,7 @@ function getProgressionDecisionText(plan) {
   if (!hasWeightTarget) return "Log a working weight to establish your baseline";
   switch (normalized.decision?.type) {
     case "add_weight": return `Top of the range reached · add ${formatProgressionNumber(normalized.rule.increment)} kg`;
-    case "add_rep": return "Last target completed · add one rep";
+    case "add_rep": return "Last target completed · add one rep per set";
     case "repeat": return normalized.decision.reason === "skipped"
       ? "Exercise skipped last time · target unchanged"
       : "Last target missed · repeat it";
@@ -1567,7 +1568,7 @@ function getWorkoutProgressionOutcomes(workoutId) {
     const reachedTop = result.actuals.every((actual) => actual.reps >= plan.rule.maxReps);
     return reachedTop
       ? { exerciseName, type: "success", text: "Target hit · load increases next time" }
-      : { exerciseName, type: "success", text: "Progress made · add one rep next time" };
+      : { exerciseName, type: "success", text: "Progress made · add one rep per set next time" };
   }).filter(Boolean);
 }
 

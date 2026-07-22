@@ -147,7 +147,7 @@ api.setState(makeState([workout2, workout1]));
 const sets3 = makeSets("c", [8, 8, 8], 22.5);
 const plan3 = api.buildProgressionPlan(routine, routineItem, sets3);
 assert.equal(plan3.decision.type, "add_rep");
-assert.deepEqual(plan3.targets.map((target) => target.reps), [9, 8, 8]);
+assert.deepEqual(plan3.targets.map((target) => target.reps), [9, 9, 9]);
 
 api.applyProgressionPlanToSets(sets3, plan3);
 sets3.forEach((set) => { set.completed = true; });
@@ -158,7 +158,7 @@ const sets4 = makeSets("d", [8, 8, 8], 22.5);
 const plan4 = api.buildProgressionPlan(routine, routineItem, sets4);
 assert.equal(plan4.decision.type, "repeat");
 assert.equal(plan4.priorMisses, 1);
-assert.deepEqual(plan4.targets.map((target) => target.reps), [9, 8, 8]);
+assert.deepEqual(plan4.targets.map((target) => target.reps), [9, 9, 9]);
 
 api.applyProgressionPlanToSets(sets4, plan4);
 sets4.forEach((set) => { set.completed = true; });
@@ -169,7 +169,7 @@ const sets5 = makeSets("e", [8, 8, 8], 22.5);
 const plan5 = api.buildProgressionPlan(routine, routineItem, sets5);
 assert.equal(plan5.decision.type, "deload_offer");
 assert.equal(plan5.priorMisses, 2);
-assert.deepEqual(plan5.targets.map((target) => target.reps), [9, 8, 8]);
+assert.deepEqual(plan5.targets.map((target) => target.reps), [9, 9, 9]);
 
 api.applyProgressionPlanToSets(sets5, plan5);
 const activeWorkout = makeWorkout("w5", 5, plan5, sets5);

@@ -69,7 +69,7 @@ The target weight and reps are prefilled into the work-set rows. They remain ful
 The session summary shows one outcome per enabled exercise:
 
 - `Target hit — load increases next time`
-- `Progress made — add 1 rep next time`
+- `Progress made — add 1 rep per set next time`
 - `Target missed — repeat next time`
 - `Stalled twice — consider a 10% deload`
 
@@ -88,13 +88,13 @@ If there is no previous attempt for this Routine Item, use the template's curren
 If the prior target was completed but at least one set was below the top of the rep range:
 
 - Keep the same weight.
-- Add one rep to the first set that is still below the maximum.
+- Add one rep to every set that is still below the maximum.
 
 Example with a range of `8–10`:
 
 ```text
 Last: 20 kg · 10 / 9 / 8
-Next: 20 kg · 10 / 10 / 8
+Next: 20 kg · 10 / 10 / 9
 ```
 
 ### 3. Add weight at the top of the range
@@ -176,8 +176,8 @@ Defer:
 Given `3 sets`, range `8–10`, and step `2.5 kg`:
 
 - `20 kg · 10 / 10 / 10`, all complete → next target `22.5 kg · 8 / 8 / 8`.
-- `20 kg · 10 / 9 / 8`, all prescribed targets complete → next target `20 kg · 10 / 10 / 8`.
-- Target `20 kg · 10 / 10 / 8`, actual `20 kg · 10 / 8 / 8` → repeat `20 kg · 10 / 10 / 8`.
+- `20 kg · 10 / 9 / 8`, all prescribed targets complete → next target `20 kg · 10 / 10 / 9`.
+- Target `20 kg · 10 / 10 / 9`, actual `20 kg · 10 / 8 / 9` → repeat `20 kg · 10 / 10 / 9`.
 - Two consecutive misses → offer a rounded 10% deload; do not apply automatically.
 
 ### Exclusions
