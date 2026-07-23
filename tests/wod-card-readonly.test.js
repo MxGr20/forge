@@ -15,7 +15,14 @@ const wodCardSource = html.slice(wodCardStart, wodCardEnd);
 const workoutsSource = html.slice(workoutsStart, workoutsEnd);
 
 assert.match(wodCardSource, /function WodCard\(\{wod\}\)/);
-assert.doesNotMatch(wodCardSource, /onClick=/);
+assert.match(wodCardSource, /const \[notesExpanded,setNotesExpanded\]=useState\(false\)/);
+assert.match(wodCardSource, /useEffect\(\(\)=>setNotesExpanded\(false\),\[wod\?\.date,wod\?\.sessionNum\]\)/);
+assert.match(wodCardSource, /aria-expanded=\{hasNotes\?notesExpanded:undefined\}/);
+assert.match(wodCardSource, /onClick=\{hasNotes\?toggleNotes:undefined\}/);
+assert.match(wodCardSource, /WebkitLineClamp:notesExpanded\?undefined:2/);
+assert.match(wodCardSource, /overflowWrap:'anywhere'/);
+assert.match(wodCardSource, /notesExpanded\?'Show less':'Read full notes'/);
+assert.doesNotMatch(wodCardSource, /onStart|startWorkout\(/);
 assert.doesNotMatch(workoutsSource, /handleWodTap/);
 assert.doesNotMatch(workoutsSource, />Start Workout<\/button>/);
 assert.match(workoutsSource, /<WodCard wod=\{viewWod\}\/>/);

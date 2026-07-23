@@ -92,9 +92,9 @@ Add a WOD card to `WorkoutsView` above the "This Week" section. The card shows:
 - **Distance** (if present)
 - **Duration** as a range: `X – Y min` (if both present; show single value if only one)
 - **Intensity**
-- **Notes** (smaller text, truncated to two lines with ellipsis)
+- **Notes** (smaller text, truncated to two lines with ellipsis by default)
 
-The card is **tappable**. Tapping it starts a workout linked to that day's session. The `wod.json` entry includes a `routineId` (or `routineName`) field that maps to an existing routine template in the app. If a match is found, tapping opens the same template-start sheet that tapping a routine card opens. If no match is found, tapping starts a blank workout.
+The card is **expandable when notes are present**. Tapping it reveals the complete notes; tapping again collapses them. The card never starts a workout. Workouts can only be started from the routine cards in the Templates section.
 
 ### Empty state
 When today's date has no matching entry in `wod.json`, display the card with the message: **"No session scheduled today."** The card is not tappable in this state.
@@ -151,5 +151,5 @@ Use `fmt8(new Date())` (already available in `index.html`) to produce `YYYY-MM-D
 - Timer displayed during a session matches wall-clock elapsed time within 1 second over a 60-minute session.
 - −15s button is visible and functional; rest cannot go below 0.
 - Each exercise card in an active session shows a reps/seconds toggle; the column header updates immediately on tap.
-- The WOD card appears on the main page showing today's session data; "No session scheduled today." appears when no entry exists.
+- The WOD card appears on the main page showing today's session data; long notes expand without horizontal overflow, and "No session scheduled today." appears when no entry exists.
 - Note fields appear for every exercise in both the template editor and active session; notes persist across sessions.

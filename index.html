@@ -232,6 +232,16 @@ const INTENSITY_STYLE={
   'High':    {color:'var(--danger)',dots:3},
 };
 function WodCard({wod}){
+  const [notesExpanded,setNotesExpanded]=useState(false);
+  useEffect(()=>setNotesExpanded(false),[wod?.date,wod?.sessionNum]);
+  const hasNotes=Boolean(wod?.notes);
+  const toggleNotes=()=>{if(hasNotes)setNotesExpanded(expanded=>!expanded);};
+  const handleNotesKeyDown=e=>{
+    if(hasNotes&&(e.key==='Enter'||e.key===' ')){
+      e.preventDefault();
+      toggleNotes();
+    }
+  };
   if(!wod){
     return(
       <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20}}>
@@ -243,7 +253,16 @@ function WodCard({wod}){
   const inS=INTENSITY_STYLE[wod.intensity]||{color:'var(--t2)',dots:1};
   const dots=[1,2,3];
   return(
-    <div style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20,position:'relative',overflow:'hidden'}}>
+    <div
+      role={hasNotes?'button':undefined}
+      tabIndex={hasNotes?0:undefined}
+      aria-expanded={hasNotes?notesExpanded:undefined}
+      aria-controls={hasNotes?`wod-notes-${wod.date}-${wod.sessionNum||1}`:undefined}
+      aria-label={hasNotes?`${notesExpanded?'Collapse':'Expand'} notes for ${wod.session}`:undefined}
+      onClick={hasNotes?toggleNotes:undefined}
+      onKeyDown={hasNotes?handleNotesKeyDown:undefined}
+      style={{background:'var(--s1)',border:'1px solid var(--bd)',borderRadius:20,padding:'18px',marginBottom:20,position:'relative',overflow:'hidden',cursor:hasNotes?'pointer':'default'}}
+    >
       <div style={{position:'absolute',top:0,right:0,width:160,height:100,background:'radial-gradient(ellipse at 100% 0%, '+ts.bg+' 0%, transparent 70%)',pointerEvents:'none'}}/>
       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
         <span style={{fontSize:10,fontWeight:700,letterSpacing:'.08em',color:'var(--t2)',background:'var(--s2)',border:'1px solid var(--bd)',borderRadius:6,padding:'3px 8px'}}>WK {wod.week} · {(wod.phase||'').toUpperCase()}</span>
@@ -277,7 +296,28 @@ function WodCard({wod}){
             <line x1="5" y1="8" x2="11" y2="8" stroke="var(--t3)" strokeWidth="1.2"/>
             <line x1="5" y1="11" x2="9" y2="11" stroke="var(--t3)" strokeWidth="1.2"/>
           </svg>
-          <div style={{fontSize:12,color:'var(--t2)',lineHeight:1.5,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{wod.notes}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div
+              id={`wod-notes-${wod.date}-${wod.sessionNum||1}`}
+              style={{
+                fontSize:12,
+                color:'var(--t2)',
+                lineHeight:1.5,
+                display:notesExpanded?'block':'-webkit-box',
+                WebkitLineClamp:notesExpanded?undefined:2,
+                WebkitBoxOrient:notesExpanded?undefined:'vertical',
+                overflow:'hidden',
+                overflowWrap:'anywhere',
+                whiteSpace:'pre-wrap'
+              }}
+            >{wod.notes}</div>
+            <div style={{display:'flex',alignItems:'center',gap:4,marginTop:7,fontSize:10,fontWeight:700,letterSpacing:'.04em',color:'var(--brand2)'}}>
+              <span>{notesExpanded?'Show less':'Read full notes'}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" style={{transition:'transform .18s ease',transform:notesExpanded?'rotate(180deg)':'none'}}>
+                <path d="M3 4.5 6 7.5l3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          </div>
         </div>
       )}
     </div>

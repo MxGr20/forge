@@ -158,8 +158,8 @@ const INTENSITY_STYLE = {
 - All stat tiles render (distance shows "—" when null, duration shows range)
 - Intensity dot bars: 0 dots for Rest, 1 for Easy/Low, 2 for Moderate, 3 for Hard/High
 - Key Session badge shows only when `keySession: true`
-- Tapping card with matching routine opens that routine's start flow
-- Tapping card with no matching routine starts a blank workout
+- Tapping a card with notes expands and collapses the complete note text
+- Tapping a card never starts a workout; routine cards remain the only start flow
 - Date with no WOD entry shows "No session scheduled today." without tappability
 - Offline: cached `wod.json` loads correctly
 
