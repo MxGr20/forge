@@ -19,6 +19,7 @@ Replace the exercise-level clean-session banner with an opt-in, Routine Item-lev
 | Add reps before load | Advance every below-maximum set by one rep after success |
 | Add load at top of range | Add `increment` and reset all targets to `minReps` |
 | Repeat a missed target | Reuse the prior snapshot after any attempted but under-target workout |
+| Preserve completion | Snapshot completed target-set IDs when finishing and repair the narrow legacy one-flag-loss case |
 | Ignore skipped exercises | Zero completed planned sets do not add to the miss streak |
 | Deload after two misses | Offer, but do not silently apply, a 10% step-rounded target reduction |
 | Explain every decision | Show target and reason in SessionView and an outcome in SessionSummarySheet |
@@ -37,6 +38,8 @@ New Workout Items store `routineItemId`. Prior progression attempts are matched 
 ### KTD3 — Suggestions prefill but remain editable
 
 `startWorkout()` first creates the normal previous-session prefill, calculates a progression plan, then overlays the prescribed target. The target is not historical data until the user completes the workout, and every set field remains editable.
+
+Editing a planned weight in the active workout updates that set's target snapshot immediately. The adjusted weight survives reloads and becomes the base for the following progression instead of being evaluated against the original suggestion.
 
 ### KTD4 — Deload is an explicit action
 

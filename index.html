@@ -789,7 +789,9 @@ function SessionView({onFinish,onDiscard,rest,restOn,setRest,setRestOn}){
     if(!s)return;
     if(field==='weight'||field==='reps'){const n=parseFloat(String(val).replace(',','.'));s[field]=isNaN(n)?null:n;}
     else s[field]=val;
+    if(field==='weight')syncProgressionTargetWeight(item,setId);
     saveState();
+    tick();
   };
   const doAddSet=(itemId)=>{
     const item=workout.items.find(i=>i.id===itemId);

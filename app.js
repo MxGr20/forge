@@ -797,6 +797,24 @@ function normalizeProgressionPlan(plan) {
   };
 }
 
+function normalizeProgressionAttemptSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") return null;
+  const targetSetIds = Array.isArray(snapshot.targetSetIds)
+    ? snapshot.targetSetIds.filter((id) => typeof id === "string" && id)
+    : [];
+  const targetIdSet = new Set(targetSetIds);
+  const completedTargetSetIds = Array.isArray(snapshot.completedTargetSetIds)
+    ? snapshot.completedTargetSetIds.filter((id) => targetIdSet.has(id))
+    : [];
+  if (!targetSetIds.length) return null;
+  return {
+    version: 1,
+    capturedAt: snapshot.capturedAt || null,
+    targetSetIds,
+    completedTargetSetIds
+  };
+}
+
 function normalizeExercises(exercises) {
   return stripLegacyExercises(exercises)
     .map(normalizeExercise)
@@ -831,17 +849,22 @@ function mergeSettings(saved = {}) {
 
   function normalizeWorkout(workout) {
     const items = Array.isArray(workout.items) ? workout.items : [];
-    return {
+    const normalizedWorkout = {
       ...workout,
       items: items.map((item) => ({
         ...item,
         metricMode: normalizeItemMetricMode(item),
         progressionPlan: normalizeProgressionPlan(item.progressionPlan),
+        progressionAttempt: normalizeProgressionAttemptSnapshot(item.progressionAttempt),
         sets: Array.isArray(item.sets)
           ? item.sets.map((set) => ({ ...set, completed: !!set.completed }))
           : []
       }))
     };
+    normalizedWorkout.items.forEach((item) => {
+      reconcileLegacyProgressionWeightAdjustment(item, normalizedWorkout.endedAt);
+    });
+    return normalizedWorkout;
   }
 
 function normalizeBodyMeasurement(entry) {
@@ -1267,6 +1290,68 @@ function getProgressionAttempts(routineId, routineItemId) {
     .filter(Boolean);
 }
 
+function progressionAttemptMatchesPlan(snapshot, plan) {
+  if (!snapshot || !plan || snapshot.targetSetIds.length !== plan.targets.length) return false;
+  return plan.targets.every((target) => snapshot.targetSetIds.includes(target.setId));
+}
+
+function snapshotProgressionAttempt(item, capturedAt = new Date().toISOString()) {
+  const plan = normalizeProgressionPlan(item?.progressionPlan);
+  if (!plan) return null;
+  const targetSetIds = plan.targets.map((target) => target.setId);
+  const completedTargetSetIds = targetSetIds.filter((setId) =>
+    item.sets?.find((set) => set.id === setId)?.completed === true
+  );
+  const snapshot = {
+    version: 1,
+    capturedAt,
+    targetSetIds,
+    completedTargetSetIds
+  };
+  item.progressionAttempt = snapshot;
+  return snapshot;
+}
+
+function syncProgressionTargetWeight(item, setId, adjustedAt = new Date().toISOString()) {
+  const plan = normalizeProgressionPlan(item?.progressionPlan);
+  const set = item?.sets?.find((entry) => entry.id === setId);
+  const target = plan?.targets.find((entry) => entry.setId === setId);
+  if (!plan || !set || !target) return false;
+  const weight = progressionNumberOrNull(set.weight);
+  if (target.weight === weight) return false;
+  target.weight = weight;
+  plan.targetAdjustedAt = adjustedAt;
+  item.progressionPlan = plan;
+  return true;
+}
+
+function reconcileLegacyProgressionWeightAdjustment(item, endedAt) {
+  const plan = normalizeProgressionPlan(item?.progressionPlan);
+  if (!endedAt || !plan || plan.targetAdjustedAt || item?.progressionAttempt) return false;
+  const pairs = plan.targets.map((target) => ({
+    target,
+    set: item.sets?.find((entry) => entry.id === target.setId) || null
+  }));
+  const completedPrescription = pairs.length > 0 && pairs.every(({ target, set }) =>
+    set?.completed === true
+    && Number.isFinite(progressionNumberOrNull(set.weight))
+    && Number.isFinite(progressionNumberOrNull(set.reps))
+    && progressionNumberOrNull(set.reps) >= target.reps
+  );
+  if (!completedPrescription) return false;
+  let changed = false;
+  pairs.forEach(({ target, set }) => {
+    const weight = progressionNumberOrNull(set.weight);
+    if (target.weight === weight) return;
+    target.weight = weight;
+    changed = true;
+  });
+  if (!changed) return false;
+  plan.targetAdjustedAt = endedAt;
+  item.progressionPlan = plan;
+  return true;
+}
+
 function evaluateProgressionAttempt(item) {
   const plan = normalizeProgressionPlan(item?.progressionPlan);
   if (!plan) return null;
@@ -1274,13 +1359,21 @@ function evaluateProgressionAttempt(item) {
     target,
     set: (item.sets || []).find((entry) => entry.id === target.setId) || null
   }));
-  const attempted = pairs.some(({ set }) => set?.completed);
+  const attemptSnapshot = normalizeProgressionAttemptSnapshot(item?.progressionAttempt);
+  const useSnapshot = progressionAttemptMatchesPlan(attemptSnapshot, plan);
+  const completedTargetSetIds = useSnapshot
+    ? new Set(attemptSnapshot.completedTargetSetIds)
+    : null;
+  const isCompleted = ({ target, set }) => completedTargetSetIds
+    ? completedTargetSetIds.has(target.setId)
+    : set?.completed === true;
+  const attempted = pairs.some(isCompleted);
   if (!attempted) {
     return { status: "skipped", plan, actuals: [] };
   }
 
   const actuals = pairs.map(({ target, set }) => ({
-    completed: set?.completed === true,
+    completed: isCompleted({ target, set }),
     weight: progressionNumberOrNull(set?.weight),
     reps: progressionNumberOrNull(set?.reps),
     targetWeight: target.weight,
@@ -1301,16 +1394,26 @@ function evaluateProgressionAttempt(item) {
     };
   }
 
-  const metTarget = allCompleted && actuals.every((actual) =>
+  const valuesMeetTarget = actuals.every((actual) =>
     Number.isFinite(actual.weight)
     && Number.isFinite(actual.reps)
     && actual.weight >= actual.targetWeight
     && actual.reps >= actual.targetReps
   );
+  // Before completion snapshots existed, a single checkbox could be lost while
+  // every prescribed value remained intact. Repair only that narrow legacy case.
+  const completedCount = actuals.filter((actual) => actual.completed).length;
+  const recoveredLegacyCompletion = !useSnapshot
+    && actuals.length > 1
+    && completedCount === actuals.length - 1
+    && pairs.every(({ set }) => !!set)
+    && valuesMeetTarget;
+  const metTarget = (allCompleted || recoveredLegacyCompletion) && valuesMeetTarget;
   return {
     status: metTarget ? "success" : "miss",
     plan,
-    actuals
+    actuals,
+    recoveredLegacyCompletion
   };
 }
 
@@ -1430,6 +1533,60 @@ function buildProgressionPlan(routine, routineItem, workoutSets) {
   });
 }
 
+function progressionPlanSignature(plan) {
+  const normalized = normalizeProgressionPlan(plan);
+  if (!normalized) return "";
+  return JSON.stringify({
+    rule: normalized.rule,
+    targets: normalized.targets,
+    decision: {
+      type: normalized.decision?.type || null,
+      reason: normalized.decision?.reason || null,
+      sourceWorkoutId: normalized.decision?.sourceWorkoutId || null
+    },
+    priorMisses: normalized.priorMisses
+  });
+}
+
+function refreshUnstartedActiveProgressionPlans() {
+  const workout = getActiveWorkout();
+  const routine = state.routines.find((entry) => entry.id === workout?.routineId);
+  if (!workout || !routine) return false;
+  let changed = false;
+  workout.items.forEach((item) => {
+    const currentPlan = normalizeProgressionPlan(item.progressionPlan);
+    if (!currentPlan) return;
+    if (currentPlan.targetAdjustedAt) return;
+    const hasAttemptedTarget = currentPlan.targets.some((target) =>
+      item.sets?.find((set) => set.id === target.setId)?.completed
+    );
+    if (hasAttemptedTarget) return;
+    const routineItem = routine.items?.find((entry) => entry.id === item.routineItemId);
+    if (!routineItem) return;
+    const nextPlan = buildProgressionPlan(routine, routineItem, item.sets);
+    if (!nextPlan || progressionPlanSignature(nextPlan) === progressionPlanSignature(currentPlan)) return;
+    item.progressionPlan = nextPlan;
+    applyProgressionPlanToSets(item.sets, nextPlan);
+    changed = true;
+  });
+  return changed;
+}
+
+function captureActiveProgressionWeightAdjustments() {
+  const workout = getActiveWorkout();
+  if (!workout) return false;
+  const adjustedAt = new Date().toISOString();
+  let changed = false;
+  workout.items.forEach((item) => {
+    const plan = normalizeProgressionPlan(item.progressionPlan);
+    if (!plan) return;
+    plan.targets.forEach((target) => {
+      if (syncProgressionTargetWeight(item, target.setId, adjustedAt)) changed = true;
+    });
+  });
+  return changed;
+}
+
 function applyProgressionPlanToSets(sets, plan) {
   if (!plan) return sets;
   plan.targets.forEach((target) => {
@@ -1484,6 +1641,7 @@ function getProgressionDecisionText(plan) {
   if (!normalized) return "";
   const hasWeightTarget = normalized.targets.every((target) => Number.isFinite(target.weight));
   if (!hasWeightTarget) return "Log a working weight to establish your baseline";
+  if (normalized.targetAdjustedAt) return "Weight adjusted manually · this is now your target";
   switch (normalized.decision?.type) {
     case "add_weight": return `Top of the range reached · add ${formatProgressionNumber(normalized.rule.increment)} kg`;
     case "add_rep": return "Last target completed · add one rep per set";
@@ -1639,7 +1797,9 @@ function startWorkout(routineId = null) {
   function endWorkout() {
     const active = getActiveWorkout();
     if (!active) return;
-    active.endedAt = new Date().toISOString();
+    const endedAt = new Date().toISOString();
+    active.items.forEach((item) => snapshotProgressionAttempt(item, endedAt));
+    active.endedAt = endedAt;
     state.activeWorkoutId = null;
     saveState();
     renderLog();
@@ -5565,6 +5725,7 @@ function updateSetFromControl(target) {
   if (field === "weight") {
     const value = parseFloat(target.value);
     set.weight = Number.isFinite(value) ? value : null;
+    syncProgressionTargetWeight(item, set.id);
     saveState();
     return true;
   }
@@ -6517,6 +6678,9 @@ function scheduleCloudSync() {
     handleInputEvents();
     applyTheme("dark", { persist: false });
     setView(ui.view);
+    const capturedWeightAdjustment = captureActiveProgressionWeightAdjustments();
+    const refreshedProgression = refreshUnstartedActiveProgressionPlans();
+    if (capturedWeightAdjustment || refreshedProgression) saveState();
     renderAll();
     renderTools();
     initSupabase().catch(() => {

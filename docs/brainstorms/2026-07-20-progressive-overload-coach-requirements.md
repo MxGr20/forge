@@ -167,6 +167,9 @@ Defer:
 - Removing a planned set during a workout counts as a miss only if another planned work set was attempted; otherwise the exercise is skipped.
 - Editing old workout history recalculates the next target the next time a session starts.
 - A manually edited target remains the actual session prescription and is captured in the snapshot.
+- Reducing a planned weight in an active workout immediately makes that value the new target and progression baseline; it must not revert or count as a miss.
+- Finishing a workout stores the completed planned-set IDs separately, so sync or reload cannot turn a fully checked target into a miss.
+- Legacy workouts recover from one lost completion flag when every prescribed weight and rep value was met.
 - Invalid rules, such as minimum reps above maximum reps or a zero increment, cannot be saved.
 
 ## Acceptance examples
@@ -178,6 +181,7 @@ Given `3 sets`, range `8–10`, and step `2.5 kg`:
 - `20 kg · 10 / 10 / 10`, all complete → next target `22.5 kg · 8 / 8 / 8`.
 - `20 kg · 10 / 9 / 8`, all prescribed targets complete → next target `20 kg · 10 / 10 / 9`.
 - Target `20 kg · 10 / 10 / 9`, actual `20 kg · 10 / 8 / 9` → repeat `20 kg · 10 / 10 / 9`.
+- Target `27.5 kg · 8 / 8 / 8`, manually adjusted to and completed at `22.5 kg · 8 / 8 / 8` → next target progresses from `22.5 kg`.
 - Two consecutive misses → offer a rounded 10% deload; do not apply automatically.
 
 ### Exclusions
