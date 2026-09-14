@@ -295,6 +295,9 @@ function mapMuscleToCanonicalGroups(muscle) {
   if (/\b(connective tissue)\b/.test(key)) return ["Upper Legs", "Lower Legs"];
   if (/\b(pelvis|pelvic)\b/.test(key)) return ["Pelvis"];
   if (/^legs?$/.test(key)) return ["Upper Legs"];
+  // Bare "anterior" is shorthand for the anterior deltoid. Matched exactly so it
+  // never swallows "serratus anterior" (kept in Other below).
+  if (/^anterior$/.test(key)) return ["Shoulders"];
   if (/\b(rotator cuff|infraspinatus|supraspinatus|subscapularis)\b/.test(key)) return ["Shoulders"];
   if (/\b(serratus anterior|spine|brachilias|brachialis)\b/.test(key)) return ["Other"];
 
@@ -307,13 +310,13 @@ function mapMuscleToCanonicalGroups(muscle) {
   // Hip flexors sit at the front of the hip/thigh. Kept above the hamstrings/biceps
   // rules so "biceps femoris" still resolves to Hamstrings, not Biceps.
   if (/\b(hip flexors?|ill?iopsoas|psoas)\b/.test(key)) return ["Upper Legs"];
-  if (/\b(hamstrings?|hammy|biceps femoris|semitendinosus|semimembranosus)\b/.test(key)) return ["Hamstrings"];
+  if (/\b(hamstrings?|hams|hammy|biceps femoris|semitendinosus|semimembranosus)\b/.test(key)) return ["Hamstrings"];
   if (/\b(quadriceps?|quads?|vastus|rectus femoris)\b/.test(key)) return ["Quadriceps"];
   // Glute complex plus hip extensors / rotators / stabilisers.
   if (/\b(glutes?|gluteus|butt|piriformis|hip (extensors?|rotators?|stabili[sz]ers?|capsule)|hip internal|hip external)\b/.test(key)) return ["Glutes"];
 
   if (/\b(cardio|running?|jog|sprint|cycling?|bike|swim|elliptical|rower|rowing|stair|hiit|jump rope|jumprope)\b/.test(key)) return ["Cardio"];
-  if (/\b(abdominals?|abs?|obliques?|obli|core|transverse|diaphragm|iliac crest)\b/.test(key)) return ["Abdominals"];
+  if (/\b(abdominals?|abs?|obliques?|obli|core|transverse|diaphragm|ill?iac crest)\b/.test(key)) return ["Abdominals"];
   if (/\b(abductors?|hip abduction)\b/.test(key)) return ["Abductors"];
   if (/\b(adductors?|groin|hip adduction)\b/.test(key)) return ["Adductors"];
   if (/\b(biceps?|brachii)\b/.test(key)) return ["Biceps"];

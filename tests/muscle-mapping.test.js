@@ -103,8 +103,11 @@ assert.strictEqual(first("Anterior Tibialis"), "Lower Legs", "reversed word orde
 assert.strictEqual(first("Tibialis Posterior"), "Lower Legs");
 assert.strictEqual(first("Illiopsoas"), "Upper Legs", "double-L misspelling should map to Upper Legs");
 assert.strictEqual(first("Obli"), "Abdominals", "obliques abbreviation should map to Abdominals");
+assert.strictEqual(first("Anterior"), "Shoulders", "bare anterior (anterior delt) should map to Shoulders");
+assert.strictEqual(first("Hams"), "Hamstrings", "hams abbreviation should map to Hamstrings");
+assert.strictEqual(first("Illiac Crest Attachments"), "Abdominals", "double-L iliac misspelling should map to Abdominals");
 
-// Deliberately unclassified strings stay in Other.
+// Deliberately unclassified strings stay in Other — the bare-anterior rule must not catch these.
 assert.strictEqual(first("Serratus Anterior"), "Other");
 assert.strictEqual(first("Spine"), "Other");
 
