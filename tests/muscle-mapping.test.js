@@ -98,6 +98,16 @@ for (const [muscle, expected] of Object.entries(legs)) {
   assert.strictEqual(first(muscle), expected, `${muscle} should map to ${expected}, got ${first(muscle)}`);
 }
 
+// Spelling / word-order variants seen in live data resolve correctly.
+assert.strictEqual(first("Anterior Tibialis"), "Lower Legs", "reversed word order should still map to Lower Legs");
+assert.strictEqual(first("Tibialis Posterior"), "Lower Legs");
+assert.strictEqual(first("Illiopsoas"), "Upper Legs", "double-L misspelling should map to Upper Legs");
+assert.strictEqual(first("Obli"), "Abdominals", "obliques abbreviation should map to Abdominals");
+
+// Deliberately unclassified strings stay in Other.
+assert.strictEqual(first("Serratus Anterior"), "Other");
+assert.strictEqual(first("Spine"), "Other");
+
 // Ordering hazards: these must not be swallowed by an earlier rule.
 assert.strictEqual(first("Biceps femoris"), "Hamstrings", "biceps femoris must resolve to Hamstrings, not Biceps");
 assert.strictEqual(first("Hip Abductors"), "Abductors", "hip abductors must resolve to Abductors, not Glutes");
