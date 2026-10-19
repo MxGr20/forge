@@ -316,7 +316,7 @@ function mapMuscleToCanonicalGroups(muscle) {
   if (/\b(glutes?|gluteus|butt|piriformis|hip (extensors?|rotators?|stabili[sz]ers?|capsule)|hip internal|hip external)\b/.test(key)) return ["Glutes"];
 
   if (/\b(cardio|running?|jog|sprint|cycling?|bike|swim|elliptical|rower|rowing|stair|hiit|jump rope|jumprope)\b/.test(key)) return ["Cardio"];
-  if (/\b(abdominals?|abs?|obliques?|obli|core|transverse|diaphragm|ill?iac crest)\b/.test(key)) return ["Abdominals"];
+  if (/\b(abdominals?|abdominis|abs?|obliques?|obli|core|transverse|diaphragm|ill?iac crest)\b/.test(key)) return ["Abdominals"];
   if (/\b(abductors?|hip abduction)\b/.test(key)) return ["Abductors"];
   if (/\b(adductors?|groin|hip adduction)\b/.test(key)) return ["Adductors"];
   if (/\b(biceps?|brachii)\b/.test(key)) return ["Biceps"];
@@ -327,7 +327,7 @@ function mapMuscleToCanonicalGroups(muscle) {
   if (/\b(neck|cervical|sternocleidomastoid|scalenes?)\b/.test(key)) return ["Neck"];
   if (/\b(shoulders?|deltoids?|delts?)\b/.test(key)) return ["Shoulders"];
   if (/\b(traps?|trapezius)\b/.test(key)) return ["Traps"];
-  if (/\b(triceps?|anconeus)\b/.test(key)) return ["Triceps"];
+  if (/\b(triceps?|anconeus|(?:lateral|medial|long) heads?)\b/.test(key)) return ["Triceps"];
   if (/\b(upper back|mid back|rhomboids?|teres|thoracic rotators?|back)\b/.test(key)) return ["Upper Back"];
   return ["Other"];
 }

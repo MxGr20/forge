@@ -106,6 +106,10 @@ assert.strictEqual(first("Obli"), "Abdominals", "obliques abbreviation should ma
 assert.strictEqual(first("Anterior"), "Shoulders", "bare anterior (anterior delt) should map to Shoulders");
 assert.strictEqual(first("Hams"), "Hamstrings", "hams abbreviation should map to Hamstrings");
 assert.strictEqual(first("Illiac Crest Attachments"), "Abdominals", "double-L iliac misspelling should map to Abdominals");
+assert.strictEqual(first("Rectus Abdominis"), "Abdominals", "rectus abdominis should map to Abdominals");
+assert.strictEqual(first("Lateral + Medial heads"), "Triceps", "triceps heads should map to Triceps");
+// The triceps-head rule must not disturb neighbouring shoulder tags.
+assert.strictEqual(first("Lateral Delts"), "Shoulders");
 
 // Deliberately unclassified strings stay in Other — the bare-anterior rule must not catch these.
 assert.strictEqual(first("Serratus Anterior"), "Other");
